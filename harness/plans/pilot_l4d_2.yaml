@@ -1,0 +1,26 @@
+# Pilot, Gd (L4 with --xla_gpu_deterministic_ops=true), part 2 of 2: the same
+# targets and design as pilot_l4_2.yaml (seeds 1 and 2, r1 and r2 fresh, w warm
+# rerun of seed 1 on the same VM), config l4_xla_det. Secondary arm added on
+# 2026-10-11 after the L4 determinism diagnostic (notes/analysis_plan.md,
+# section 10). Deadline about 10% above G's: deterministic ops ran about 8%
+# slower in the diagnostic.
+
+description: pilot with the official weights, Gd (L4 deterministic ops) part 2 of 2
+label: pilot2
+weights: gcs
+
+configs:
+  l4: l4_xla_det
+
+targets:
+  default: [7V3N, 7VBU, 7NPL, 7VC5, 7D5C]
+
+seeds: [1, 2]
+fresh_reps: 2
+warm_rerun_seed: 1
+num_recycles: default
+num_diffusion_samples: default
+run_timeout_min: 180
+
+deadline_min:
+  l4: 315

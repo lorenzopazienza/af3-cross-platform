@@ -63,7 +63,7 @@ l4_xla_highest:
 # determinism on GPU."; xla_gpu_autotune_level "Set GEMM and Convolution
 # auto-tuning level. 0 = off; 1 = on; ...".
 l4_xla_det:
-  description: NVIDIA L4, XLA attention, --xla_gpu_deterministic_ops=true (diagnostic)
+  description: NVIDIA L4, XLA attention, --xla_gpu_deterministic_ops=true (Gd arm; also the L4 determinism diagnostic)
   jax_backend: gpu
   flash_attention_implementation: xla
   env:
