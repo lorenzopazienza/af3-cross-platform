@@ -1,0 +1,25 @@
+# GT smoke test (engineering check only): AlphaFold3's GPU default attention (config l4_triton) has never run
+# with the official weights in this harness. One L4, official weights, 7U3J (256-token bucket), seed 1, r1.
+# Label smoke: its outputs are never quoted as findings and never enter a contrast (analysis/ selects main).
+# Deadline from the pilot2 G records with the main-study rule: setup 8.4 min + one 256-token process 127 s
+# = 10.5 min of job time; ceil(10.5 x 1.25 + 20) = 34 min.
+
+description: GT smoke test, l4_triton, official weights, one target (engineering check only)
+label: smoke
+weights: gcs
+
+configs:
+  l4: l4_triton
+
+targets:
+  default: [7U3J]
+
+seeds: [1]
+fresh_reps: 1
+warm_rerun_seed: none
+num_recycles: default
+num_diffusion_samples: default
+run_timeout_min: 30
+
+deadline_min:
+  l4: 34
