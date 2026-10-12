@@ -7,17 +7,17 @@ uv venv --python 3.12 analysis/.venv
 uv pip install --python analysis/.venv/bin/python -r analysis/requirements.txt
 source analysis/.venv/bin/activate
 
-python3 analysis/collect.py --out results/analysis/pilot          # tidy table + M1 (cached)
-python3 analysis/contrasts.py --samples results/analysis/pilot/samples.csv --labels pilot
-python3 analysis/cost.py --samples results/analysis/pilot/samples.csv --labels pilot
+python3 analysis/collect.py --labels pilot2 --out results/analysis/pilot2   # tidy table + M1 (cached)
+python3 analysis/contrasts.py --samples results/analysis/pilot2/samples.csv --labels pilot2
+python3 analysis/cost.py --samples results/analysis/pilot2/samples.csv --labels pilot2
 python3 -m pytest analysis -q
 ```
 
 | Script | Plan | Output (under `results/analysis/<name>/`) |
 |---|---|---|
 | `score_ligand.py` | M1 | one prediction's ligand RMSD, PoseBusters checks, success; `--self_test` scores the crystal against itself |
-| `collect.py` | sections 4, 8, 11 | `samples.csv`: one row per (platform, attention, libtpu, target, seed, repetition, sample); runs with `JAX_DEFAULT_MATMUL_PRECISION=highest` are the section 11 conditions V6h and Gh |
-| `contrasts.py` | M2 to M5, sections 5, 6, 8, 11 | `contrasts/`: flip rates, M4/M5 medians and p90, bootstrap intervals, HW minus RC, Q3, pilot checks, the section 11 contrasts PR and HWh, `report.md` |
+| `collect.py` | sections 4, 8, 11 | `samples.csv`: one row per (platform, attention, libtpu, target, seed, repetition, sample); runs with `JAX_DEFAULT_MATMUL_PRECISION=highest` are the section 11 conditions V6h and Gh; config `l4_xla_det` is Gd (section 10, 2026-10-11); `--labels` selects sessions |
+| `contrasts.py` | M2 to M5, sections 5, 6, 8, 11 | `contrasts/`: flip rates, M4/M5 medians and p90, bootstrap intervals, HW minus RC, Q3, pilot checks (check 2 as 2a, 2b, then bit-identity of all outputs except the mmCIF timestamp line), the section 11 contrasts PR and HWh, the 2026-10-11 contrasts RC(Gd), DET, HW(V6,Gd) and HW(Gd,C), `report.md` |
 | `cost.py` | M6, M7 | `cost/`: cost per structure and per sample at each price, amortised compilation, memory per bucket, `report.md` |
 
 M1, as implemented: the pocket is every crystal residue (data/rcsb/) with a heavy atom within 10 Å of a

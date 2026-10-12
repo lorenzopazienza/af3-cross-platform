@@ -1,7 +1,7 @@
 """Compares every harness run of a plan session, per target and sample, bit for bit and by RMSD.
 
     python3 harness/compare_runs.py --session results/af3/<session> \\
-        [--reference results/af3/<other session>/<run>] [--out NAME]
+        [--reference results/af3/<other session>/<run>] [--out NAME] [--strict]
 
 For each harness run of the session (a folder with session.json) and each
 target in it (<run>/<target>/af3_output/<target>):
@@ -14,7 +14,19 @@ and whether coordinates and confidences are bit-identical. Prints a table and
 writes <session>/<NAME>.txt and .json (NAME default compare_runs). Used by
 cloud/af3_run.sh after the fetch when the plan has a compare_reference.
 Bit-for-bit needs the full *_confidences.json: with FETCH=light they stay
-in the results bucket and show as "missing". Standard library only.
+in the results bucket and show as "missing".
+
+--strict adds, per comparison, every file of the two AlphaFold3 output
+folders byte for byte, ignoring only the mmCIF line that starts with
+_ma_model_list.model_group_name (AlphaFold3's version and the time the file
+was written; notes/analysis_plan.md section 10, 2026-10-11): the sample
+folders of the seeds both runs have, and the target's own files (ranked
+across the run's seeds) when both runs have the same seeds. A file expected
+on both sides (each sample's model, confidences and summary confidences;
+the target's model, confidences, summary confidences, ranking scores and
+data.json) or present on one side only is "missing", never a pass; with
+FETCH=light the full confidences and data.json are missing. Without
+--strict the output is as before. Standard library only.
 """
 
 import argparse
@@ -25,6 +37,10 @@ import sys
 from contextlib import redirect_stdout
 
 from compare_samples import compare, samples, verdict
+
+TIMESTAMP_TAG = b'_ma_model_list.model_group_name'
+TARGET_FILES = ('_model.cif', '_summary_confidences.json', '_confidences.json', '_ranking_scores.csv', '_data.json')
+SAMPLE_FILES = ('_model.cif', '_summary_confidences.json', '_confidences.json')
 
 
 def runs_of(session):
@@ -39,6 +55,63 @@ def target_dirs(run):
     if samples(d):
       out[t.name] = d
   return out
+
+
+def masked(path):
+  """The file's bytes; in an mmCIF, the line whose first token is TIMESTAMP_TAG is cut to the tag alone."""
+  data = pathlib.Path(path).read_bytes()
+  if not str(path).endswith('.cif'):
+    return data
+  return b'\n'.join(TIMESTAMP_TAG if line.split(None, 1)[:1] == [TIMESTAMP_TAG] else line
+                    for line in data.split(b'\n'))
+
+
+def strict_compare(ref_dir, run_dir):
+  """Every file of two AlphaFold3 output folders of one target, byte for byte, the mmCIF timestamp line masked.
+
+  Returns {'status': identical | differ | missing | no common seed, 'seeds', 'target_files_compared', 'files',
+  'identical', 'differ', 'missing'}; the three lists hold paths relative to the output folder.
+  """
+  ref_dir, run_dir = pathlib.Path(ref_dir), pathlib.Path(run_dir)
+  seeds_a, seeds_b = {s for s, _ in samples(ref_dir)}, {s for s, _ in samples(run_dir)}
+  seeds = sorted(seeds_a & seeds_b)
+  top = seeds_a == seeds_b
+  out = {'seeds': seeds, 'target_files_compared': top, 'files': 0, 'identical': [], 'differ': [], 'missing': []}
+  if not seeds:
+    out['status'] = 'no common seed'
+    return out
+  prefixes = tuple(f'seed-{s}_sample-' for s in seeds)
+
+  def files(d):
+    return {p.relative_to(d).as_posix(): p for p in d.rglob('*') if p.is_file() and
+            ((top and p.parent == d) or (p.parent.parent == d and p.parent.name.startswith(prefixes)))}
+  fa, fb = files(ref_dir), files(run_dir)
+  t = ref_dir.name
+  folders = {n.split('/')[0] for n in fa.keys() | fb.keys() if '/' in n}
+  expected = {f'{d}/{t}_{d}{s}' for d in folders for s in SAMPLE_FILES}
+  if top:
+    expected |= {f'{t}{s}' for s in TARGET_FILES}
+  out['missing'] = sorted((expected | fa.keys() | fb.keys()) - (fa.keys() & fb.keys()))
+  for n in sorted(fa.keys() & fb.keys()):
+    out['identical' if masked(fa[n]) == masked(fb[n]) else 'differ'].append(n)
+  out['files'] = len(fa.keys() | fb.keys() | expected)
+  out['status'] = 'differ' if out['differ'] else 'missing' if out['missing'] else 'identical'
+  return out
+
+
+def strict_line(s):
+  def names(xs):
+    return ', '.join(xs[:3]) + (f' and {len(xs) - 3} more' if len(xs) > 3 else '')
+  text = f'    strict (all files, mmCIF timestamp line ignored): {s["status"]}'
+  if s['status'] != 'no common seed':
+    text += f', {len(s["identical"])}/{s["files"]} files identical'
+    if not s['target_files_compared']:
+      text += ' (sample folders of the common seeds only: the runs have different seeds)'
+  if s['differ']:
+    text += f'; differ: {names(s["differ"])}'
+  if s['missing']:
+    text += f'; missing: {names(s["missing"])}'
+  return text
 
 
 def summarize(rows):
@@ -73,6 +146,8 @@ def main():
   ap.add_argument('--session', required=True)
   ap.add_argument('--reference', help='a harness run folder of another session')
   ap.add_argument('--out', default='compare_runs')
+  ap.add_argument('--strict', action='store_true',
+                  help='also compare every output file byte for byte, the mmCIF timestamp line ignored')
   args = ap.parse_args()
   session = pathlib.Path(args.session)
   runs = runs_of(session)
@@ -85,9 +160,12 @@ def main():
     with redirect_stdout(io.StringIO()):
       rows = compare(ref_dir, run_dir, bitwise=True)
     s = summarize(rows)
-    report['comparisons'].append({'label': label, 'reference': str(ref_dir), 'run': str(run_dir),
-                                  'summary': s, 'samples': rows})
+    entry = {'label': label, 'reference': str(ref_dir), 'run': str(run_dir), 'summary': s, 'samples': rows}
+    report['comparisons'].append(entry)
     lines.append(line(label, s))
+    if args.strict:
+      entry['strict'] = strict_compare(ref_dir, run_dir)
+      lines.append(strict_line(entry['strict']))
 
   if ref is not None:
     lines.append(f'Against the reference {ref}:')

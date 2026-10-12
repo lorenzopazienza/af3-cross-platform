@@ -1,20 +1,24 @@
 """Builds the tidy per-sample table of all AlphaFold3 runs (notes/analysis_plan.md, sections 4 and 6).
 
     analysis/.venv/bin/python analysis/collect.py [--root results/af3] [--root COPY_OF_BUCKET/af3] \\
-        [--out results/analysis/<name>] [--jobs 4] [--no_m1]
+        [--out results/analysis/<name>] [--labels pilot2] [--jobs 4] [--no_m1]
 
 Walks every harness run folder (one with session.json and runs.jsonl) under
 the roots: results/af3/ by default, or a local copy of the results bucket
 (gcloud storage rsync gs://BUCKET/af3 DIR; this script reads local files
-only). One row per (platform, attention, libtpu, target, seed, repetition,
-sample), with:
+only); with --labels, only the harness runs whose session.json label is one
+of them (the repeated pilot: --labels pilot2). One row per (platform,
+attention, libtpu, target, seed, repetition, sample), with:
   - condition: platform code (V5, V6, G, GT, C; plan section 3), attention,
     libtpu version and build label, device kind, zone and machine type, and
     the default matmul precision (JAX_DEFAULT_MATMUL_PRECISION as recorded
     in session.json xla_env, empty if unset). The precision-matched arms of
     plan section 11 (configs tpu_xla_highest and l4_xla_highest) set it to
     highest and get the code with an "h": V6h, Gh. Any other value is kept
-    apart as CODE[value], never merged with the default arm;
+    apart as CODE[value], never merged with the default arm. The run config
+    (session.json config_name) is kept too; config l4_xla_det, the L4 with
+    --xla_gpu_deterministic_ops=true, gets the code Gd (the secondary arm of
+    the 2026-10-11 amendment, plan section 10);
   - repetition: r1, r2, ... (fresh-cache repetitions) or w (warm rerun), from
     the run name harness/run_plan.py gives; num_recycles and
     num_diffusion_samples (AlphaFold3 defaults 10 and 5 when not set);
@@ -51,8 +55,10 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / 'analysis'))
 
 PLATFORM_BY_KIND = {'TPU v5 lite': 'V5', 'TPU v6 lite': 'V6', 'cpu': 'C'}
+# Arms set by the run config rather than the device: Gd, the L4 with deterministic ops (plan section 10, 2026-10-11).
+CODE_BY_CONFIG = {'l4_xla_det': 'Gd'}
 COLUMNS = [
-    'session', 'run', 'label', 'platform', 'attention', 'matmul_precision', 'device_kind', 'libtpu',
+    'session', 'run', 'label', 'platform', 'config', 'attention', 'matmul_precision', 'device_kind', 'libtpu',
     'libtpu_build', 'jax',
     'zone', 'machine_type', 'target', 'num_tokens', 'bucket', 'seed', 'repetition', 'cache', 'sample',
     'num_recycles', 'num_diffusion_samples', 'exit_code', 'failure', 'ranking_score', 'ptm', 'iptm',
@@ -73,9 +79,11 @@ def sha256(path):
   return h.hexdigest()
 
 
-def platform_of(kind, attention, matmul_precision=None):
-  """Condition code: section 3's platform code, with "h" for the section 11 arms (highest precision)."""
-  if 'L4' in kind:
+def platform_of(kind, attention, matmul_precision=None, config_name=None):
+  """Condition code: section 3's platform code, Gd for config l4_xla_det, "h" for the section 11 arms (highest)."""
+  if config_name in CODE_BY_CONFIG:
+    code = CODE_BY_CONFIG[config_name]
+  elif 'L4' in kind:
     code = 'GT' if attention == 'triton' else 'G'
   else:
     code = PLATFORM_BY_KIND.get(kind, kind)
@@ -113,11 +121,12 @@ def mean_plddt(cif):
   return round(sum(vals) / len(vals), 4) if vals else None
 
 
-def run_folders(roots):
+def run_folders(roots, labels=None):
   for root in roots:
     for ses in sorted(pathlib.Path(root).rglob('session.json')):
       if (ses.parent / 'runs.jsonl').exists():
-        yield ses.parent
+        if labels is None or json.loads(ses.read_text()).get('label') in labels:
+          yield ses.parent
 
 
 def _m1(args):
@@ -139,8 +148,9 @@ def rows_of_run(folder, manifest):
   host = session.get('host') or {}
   base = {
       'session': str(folder.relative_to(REPO)) if folder.resolve().is_relative_to(REPO) else folder.name,
-      'run': folder.name, 'label': session.get('label'), 'platform': platform_of(kind, attention, precision),
-      'attention': attention, 'matmul_precision': precision, 'device_kind': kind,
+      'run': folder.name, 'label': session.get('label'),
+      'platform': platform_of(kind, attention, precision, session.get('config_name')),
+      'config': session.get('config_name'), 'attention': attention, 'matmul_precision': precision, 'device_kind': kind,
       'libtpu': (probe.get('packages') or {}).get('libtpu'),
       'libtpu_build': tpu.get('build_label'), 'jax': (probe.get('packages') or {}).get('jax'),
       'zone': host.get('gce_zone'), 'machine_type': host.get('gce_machine_type') or host.get('gce_accelerator_type'),
@@ -207,6 +217,7 @@ def main():
   ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
   ap.add_argument('--root', action='append', help='folder holding sessions (default results/af3)')
   ap.add_argument('--out', default='results/analysis/collect')
+  ap.add_argument('--labels', help='comma-separated session labels to keep (default: all)')
   ap.add_argument('--jobs', type=int, default=4)
   ap.add_argument('--no_m1', action='store_true', help='skip M1 (quick look)')
   args = ap.parse_args()
@@ -216,7 +227,7 @@ def main():
   manifest = {r['pdb_id']: r for r in csv.DictReader(open(REPO / 'inputs' / 'manifest.csv'))}
 
   rows, todo = [], []
-  for folder in run_folders(roots):
+  for folder in run_folders(roots, args.labels.split(',') if args.labels else None):
     r, t = rows_of_run(folder, manifest)
     todo += [(len(rows) + i, target, cif) for i, target, cif in t]
     rows += r

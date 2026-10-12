@@ -34,6 +34,14 @@ Section 11 contrasts (secondary), paired and computed in the same way:
   PR(P)    r1 on P against r1 on Ph, P in {V6, G}: the default matmul precision;
   HWh(V6,G) r1 on V6h against r1 on Gh, and HWh(G,C) r1 on Gh against r1 on C:
            the platform difference with float32 matmuls matched.
+Contrasts of the 2026-10-11 amendment (plan section 10; secondary), paired
+and computed in the same way. Gd is the L4 with --xla_gpu_deterministic_ops
+(config l4_xla_det); it enters only these, W(Gd) and pilot checks 1 and 2,
+never SD, the other HW pairs, DU or Q3:
+  RC(Gd)   r1 against r2 on Gd;
+  DET      r1 on G against r1 on Gd: AlphaFold3's GPU defaults against
+           deterministic ops on the same hardware;
+  HW(V6,Gd), HW(Gd,C)  as HW, with HW - RC like the other hardware pairs.
 Statistics per contrast: flip rate of top-1, flip rate of top-1 success,
 flips that matter (top-1 changes and the two chosen structures differ in
 success), median and 90th percentile of M4 (ligand RMSD after pocket
@@ -50,8 +58,16 @@ Q3: for n = 1..N seeds, the overall top-1 over the first n seeds, its success
 rate per condition (on its own targets) and the pairwise differences on each
 pair's common targets, with bootstrap intervals; the answer is the smallest n
 where every interval lies within +-2 percentage points, or "not reached".
-Pilot checks (section 6): exit codes, W bit-identity, and the top-1 success
-on V6 against the 50% sanity threshold.
+Pilot checks (section 6 and the 2026-10-11 rows of section 10): 1, exit
+codes; 2, per arm with a warm rerun (V5, V6, G, Gd), read in order: 2a every
+fresh process started from an empty cache and compiled the model, 2b every
+warm process loaded a key its source fresh process wrote, then bit-identity
+of the warm rerun with its r1 run: every file of the AlphaFold3 output
+folder, byte for byte, except the mmCIF timestamp line
+(_ma_model_list.model_group_name); a missing file (FETCH=light leaves the
+full confidences and data.json in the bucket) fails it; 3, the top-1 success
+on V6 against the 50% sanity threshold. Also reported: whether M1 was
+computed for every sample.
 
 Outputs in --out: contrasts.csv, hw_minus_rc.csv, pairs_seed.csv,
 pairs_sample.csv, q3.csv, checks.csv, excluded.csv (section 8 counts) and report.md.
@@ -76,6 +92,12 @@ PRIMARY = [('V6', 'G'), ('V5', 'V6'), ('G', 'C')]
 ORDER = ['V5', 'V6', 'G', 'GT', 'C']
 # Section 11: (kind, condition A, condition B), A the first-named side (M4 reference).
 PRECISION_CONTRASTS = [('PR', 'V6', 'V6h'), ('PR', 'G', 'Gh'), ('HWh', 'V6h', 'Gh'), ('HWh', 'Gh', 'C')]
+# 2026-10-11 amendment (section 10): the deterministic-ops arm, kept out of the section 5 loops, and its
+# secondary contrasts besides RC(Gd) and W(Gd): (kind, condition A, condition B), A the first-named side.
+DET_ARMS = ('Gd',)
+DET_CONTRASTS = [('DET', 'G', 'Gd'), ('HW', 'V6', 'Gd'), ('HW', 'Gd', 'C')]
+WARM_ARMS = ('V5', 'V6', 'G', 'Gd')   # pilot check 2 covers every arm with a warm rerun
+TIMESTAMP_TAG = b'_ma_model_list.model_group_name'   # AlphaFold3 version and time of writing
 FLIP_STATS = ['flip_top1', 'flip_success', 'flip_matters']
 SAMPLE_STATS = ['m4_ligand_rmsd', 'm4_ca_rmsd_global', 'm5_ranking_score', 'm5_mean_plddt', 'm5_iptm']
 SANITY_THRESHOLD = 0.5
@@ -104,6 +126,16 @@ def precision_base(condition):
 
 def default_precision(condition):
   return precision_base(condition) is None
+
+
+def section5_arm(condition):
+  """The arms of the section 5 loops (RC, W, SD, HW, DU, Q3): default precision, not an added arm such as Gd."""
+  return default_precision(condition) and arm(condition) not in DET_ARMS
+
+
+def stack(condition):
+  """The libtpu suffix of --condition platform_libtpu ('' with --condition platform)."""
+  return condition[len(arm(condition)):]
 
 
 def unh(condition):
@@ -190,7 +222,7 @@ def pair_rows(name, kind, a_key, b_key, units, primary, contrast_pairs, seed_row
 def build_pairs(ok):
   units = seed_units(ok)
   all_conds = sorted(ok.condition.unique())
-  conds = [c for c in all_conds if default_precision(c)]
+  conds = [c for c in all_conds if section5_arm(c)]
   reps = {c: sorted(ok[ok.condition == c].repetition.unique()) for c in all_conds}
   seed_rows, sample_rows, contrasts, excluded = [], [], {}, []
 
@@ -242,6 +274,24 @@ def build_pairs(ok):
           continue
         name = f'PR({a})' if kind == 'PR' else f'HWh({unh(a)},{unh(b)})'
         add(name, kind, keys(a, 'r1'), keys(b, 'r1'), False)
+  # 2026-10-11 amendment, secondary: Gd enters only these (after every earlier contrast, which stay unchanged).
+  for c in all_conds:
+    if arm(c) in DET_ARMS and 'r1' in reps[c]:
+      if 'r2' in reps[c]:
+        add(f'RC({c})', 'RC', keys(c, 'r1'), keys(c, 'r2'), False)
+      if 'w' in reps[c]:
+        add(f'W({c})', 'W', keys(c, 'r1'), keys(c, 'w'), False)
+  for kind, code_a, code_b in DET_CONTRASTS:
+    for a, b in itertools.product(all_conds, all_conds):
+      if arm(a) != code_a or arm(b) != code_b or 'r1' not in reps[a] or 'r1' not in reps[b]:
+        continue
+      if kind == 'DET':
+        if stack(a) != stack(b):   # same platform and software stack, only the XLA flag differs
+          continue
+        name = 'DET' if not stack(a) else f'DET({a},{b})'
+      else:
+        name = f'HW({a},{b})'
+      add(name, kind, keys(a, 'r1'), keys(b, 'r1'), False)
   return pd.DataFrame(seed_rows), pd.DataFrame(sample_rows), contrasts, pd.DataFrame(excluded)
 
 
@@ -336,7 +386,7 @@ def hw_minus_rc(seed_pairs, contrasts, args):
 
 
 def q3(ok, args):
-  r1 = ok[(ok.repetition == 'r1') & ok.condition.map(default_precision)]
+  r1 = ok[(ok.repetition == 'r1') & ok.condition.map(section5_arm)]
   conds = sorted(r1.condition.unique(), key=rank)
   seeds = sorted(r1.seed.unique())
   rows, answer = [], None
@@ -390,7 +440,7 @@ def cache_checks(d):
     return rows
   procs = d.drop_duplicates(['session', 'target', 'seed'])
   for c, g in procs.groupby('condition'):
-    fresh = g[g.repetition != 'w']
+    fresh = g[g.repetition.astype(str).str.fullmatch(r'r\d+')]   # not w2, w3 (diagnostic warm loads)
     bad = fresh[(fresh.cache_files_before != 0) | (fresh.model_cache_hit == True)]  # noqa: E712
     rows.append({'check': '2a fresh runs started from an empty cache', 'condition': c,
                  'value': f'{len(fresh) - len(bad)}/{len(fresh)} processes',
@@ -398,15 +448,108 @@ def cache_checks(d):
                      f'{r.target} {r.repetition} seed {r.seed}' for r in bad.itertuples()))[:300]})
     warm = g[g.repetition == 'w']
     if warm.empty:
+      if arm(c) in WARM_ARMS:
+        rows.append({'check': '2b warm rerun loaded its source executable', 'condition': c,
+                     'value': '0/0 processes', 'detail': 'FAIL: no warm rerun'})
       continue
     source = {(r.target, r.seed): set(str(r.model_cache_written).split(';'))
               for r in fresh[fresh.repetition == 'r1'].itertuples() if isinstance(r.model_cache_written, str)}
-    loaded = [r for r in warm.itertuples()
-              if r.model_cache_hit == True and r.model_cache_key in source.get((r.target, r.seed), set())]  # noqa: E712
-    missing = sorted(set(warm.target) - {r.target for r in loaded})
+    loaded = {r.Index for r in warm.itertuples()
+              if r.model_cache_hit == True and r.model_cache_key in source.get((r.target, r.seed), set())}  # noqa: E712
+    # Every warm process must pass, not one per target (two warm loads of a target count twice).
+    missing = sorted(r.target for r in warm.itertuples() if r.Index not in loaded)
     rows.append({'check': '2b warm rerun loaded its source executable', 'condition': c,
                  'value': f'{len(loaded)}/{len(warm)} processes',
                  'detail': ('pass' if not missing else 'FAIL: ' + ', '.join(missing))[:300]})
+  return rows
+
+
+# What AlphaFold3 writes for a target and for each sample; FETCH=light leaves the full confidences and data.json in
+# the results bucket, so check 2 needs them copied (read-only) for the r1 and w runs it compares.
+TARGET_FILES = ('_model.cif', '_summary_confidences.json', '_confidences.json', '_ranking_scores.csv', '_data.json')
+SAMPLE_FILES = ('_model.cif', '_summary_confidences.json', '_confidences.json')
+
+
+def masked(path):
+  """The file's bytes; in an mmCIF the timestamp line (TIMESTAMP_TAG and its value) is cut to the tag alone."""
+  data = pathlib.Path(path).read_bytes()
+  if not str(path).endswith('.cif'):
+    return data
+  return b'\n'.join(TIMESTAMP_TAG if line.split(None, 1)[:1] == [TIMESTAMP_TAG] else line
+                    for line in data.split(b'\n'))
+
+
+def outputs_identical(dir_a, dir_b, seed):
+  """Bit-for-bit comparison of two AlphaFold3 output folders of one target (pilot check 2).
+
+  Compares the target's files and its seed-<seed>_sample-* folders, every file byte for byte except the mmCIF
+  timestamp line. A file expected (TARGET_FILES, SAMPLE_FILES) or present on one side only is missing.
+  Returns {'status': 'identical' | 'differ' | 'missing', 'differ': [...], 'missing': [...]}.
+  """
+  def files(d):
+    d = pathlib.Path(d)
+    if not d.is_dir():
+      return {}
+    return {str(p.relative_to(d)): p for p in d.rglob('*') if p.is_file() and
+            (p.parent == d or (p.parent.parent == d and p.parent.name.startswith(f'seed-{seed}_sample-')))}
+  fa, fb = files(dir_a), files(dir_b)
+  t = pathlib.Path(dir_a).name
+  samples = {pathlib.Path(n).parts[0] for n in fa.keys() | fb.keys() if len(pathlib.Path(n).parts) == 2}
+  expected = {f'{t}{s}' for s in TARGET_FILES} | {f'{sd}/{t}_{sd}{s}' for sd in samples for s in SAMPLE_FILES}
+  missing = sorted((expected | fa.keys() | fb.keys()) - (fa.keys() & fb.keys()))
+  if not samples:
+    missing.insert(0, 'no sample folder')
+  differ = sorted(n for n in fa.keys() & fb.keys() if masked(fa[n]) != masked(fb[n]))
+  return {'status': 'differ' if differ else 'missing' if missing else 'identical', 'differ': differ, 'missing': missing}
+
+
+def output_dir(rows):
+  """The AlphaFold3 output folder of one target in one harness run, from its collect.py rows."""
+  paths = rows.model_path.dropna() if 'model_path' in rows.columns else []
+  if len(paths):
+    return (REPO / paths.iloc[0]).parent.parent
+  r = rows.iloc[0]
+  return REPO / r.session / r.target / 'af3_output' / r.target
+
+
+def warm_identity(d, c):
+  """[(target, seed, outputs_identical result)]: each warm rerun of condition c against its r1 run."""
+  g = d[d.condition == c]
+  out = []
+  for (t, s), wg in g[g.repetition == 'w'].groupby(['target', 'seed']):
+    src = g[(g.repetition == 'r1') & (g.target == t) & (g.seed == s)]
+    res = outputs_identical(output_dir(src), output_dir(wg), s) if len(src) else \
+        {'status': 'missing', 'differ': [], 'missing': ['no r1 run']}
+    out.append((t, s, res))
+  return out
+
+
+def check2(d, sample_pairs, cache_rows, c):
+  """Check 2 for condition c, in order: 2a and 2b (cache_checks), bit-identity of all outputs, the overall verdict."""
+  rows = [r for r in cache_rows if r['condition'] == c]
+  ident = warm_identity(d, c)
+  if not ident and arm(c) not in WARM_ARMS:
+    return rows
+  pre = {r['check'][:2]: r['detail'] == 'pass' for r in rows}
+  gate = pre.get('2a', False) and pre.get('2b', False)
+  n_ok = sum(res['status'] == 'identical' for _, _, res in ident)
+  bad = [f'{t} seed {s} {res["status"]}: ' + ', '.join(res['differ'] or res['missing'])
+         for t, s, res in ident if res['status'] != 'identical']
+  bit_ok = bool(ident) and not bad
+  detail = 'pass' if bit_ok else 'FAIL: ' + ('; '.join(bad) if bad else 'no warm rerun')
+  if not gate:
+    detail = 'not read (2a or 2b failed); ' + detail
+  rows.append({'check': '2 bit-identity: warm rerun against r1, all outputs (mmCIF timestamp line ignored)',
+               'condition': c, 'value': f'{n_ok}/{len(ident)} targets', 'detail': detail[:600]})
+  w = sample_pairs[sample_pairs.contrast == f'W({c})'] if len(sample_pairs) else sample_pairs
+  if len(w):
+    rows.append({'check': '2 warm rerun coordinates identical to r1 (as written; M4)', 'condition': c,
+                 'value': f'{int(w.bit_identical.sum())}/{len(w)} samples',
+                 'detail': 'pass' if w.bit_identical.all() else 'FAIL'})
+  failed = [k for k, v in (('2a', pre.get('2a', False)), ('2b', pre.get('2b', False)), ('bit-identity', bit_ok))
+            if not v]
+  rows.append({'check': '2 overall (2a, 2b, then bit-identity)', 'condition': c, 'value': '',
+               'detail': 'pass' if not failed else 'FAIL: ' + ', '.join(failed)})
   return rows
 
 
@@ -417,12 +560,21 @@ def checks(d, ok, sample_pairs, args):
     failed = runs[runs.exit_code != 0]
     rows.append({'check': '1 exit codes', 'condition': c, 'value': f'{len(runs) - len(failed)}/{len(runs)} processes exit 0',
                  'detail': '; '.join(f'{r.target} {r.repetition} seed {r.seed}: {r.failure}' for r in failed.itertuples())[:300]})
-  rows += cache_checks(d)
-  for c in sorted(ok.condition.unique()):
-    w = sample_pairs[sample_pairs.contrast == f'W({c})']
-    if len(w):
-      rows.append({'check': '2 warm rerun bit-identical to r1', 'condition': c,
-                   'value': f'{int(w.bit_identical.sum())}/{len(w)} samples', 'detail': 'pass' if w.bit_identical.all() else 'FAIL'})
+  cache_rows = cache_checks(d)
+  for c in sorted(d.condition.unique(), key=rank):
+    rows += check2(d, sample_pairs, cache_rows, c)
+  present = {arm(c) for c in d.condition.unique()}
+  absent = [a for a in WARM_ARMS if a not in present]
+  rows.append({'check': '2 every arm with a warm rerun is present', 'condition': ', '.join(WARM_ARMS),
+               'value': f'{len(WARM_ARMS) - len(absent)}/{len(WARM_ARMS)} arms',
+               'detail': 'pass' if not absent else 'FAIL: absent ' + ', '.join(absent)})
+  if 'm1_error' in ok.columns:
+    for c in sorted(ok.condition.unique(), key=rank):
+      g = ok[ok.condition == c]
+      err = g[g.m1_error.notna() | g.m1_success.isna()]   # m1_success is empty when collect.py ran --no_m1
+      rows.append({'check': 'M1 computed for every sample', 'condition': c,
+                   'value': f'{len(g) - len(err)}/{len(g)} samples',
+                   'detail': 'pass' if err.empty else 'FAIL, targets: ' + ', '.join(sorted(set(err.target)))})
   v6 = [c for c in ok.condition.unique() if arm(c) == 'V6']
   for c in v6:
     r1 = ok[(ok.condition == c) & (ok.repetition == 'r1')]
@@ -451,7 +603,8 @@ def report(summary, hwrc, q3rows, q3answer, chk, excluded, args, out):
            f'include={args.include or "-"}, exclude={args.exclude or "-"}; condition={args.condition}; '
            f'bootstrap: {args.replicates} replicates over targets, seed {args.seed}. '
            'Definitions: analysis/contrasts.py and notes/analysis_plan.md sections 4, 5 and 11 '
-           '(PR and HWh: section 11, secondary).', '',
+           '(PR and HWh: section 11, secondary; RC(Gd), W(Gd), DET, HW(V6,Gd) and HW(Gd,C): the 2026-10-11 '
+           'amendment in section 10, secondary).', '',
            '## Pilot checks (section 6)', '', '| check | condition | value | detail |', '|---|---|---|---|']
   lines += [f'| {r.check} | {r.condition} | {r.value} | {r.detail} |' for r in chk.itertuples()]
   lines += ['', '## Flip rates', '', '| contrast | primary | statistic | n pairs | targets | estimate | 95% CI |',

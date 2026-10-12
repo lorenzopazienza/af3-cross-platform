@@ -16,7 +16,8 @@ M6, per process:
     structure being one (target, seed) prediction with its 5 samples; also per
     sample (divided by the number of diffusion samples);
   - prices: cloud/prices.csv rows for the platform (V5 v5e, V6 and V6h v6e,
-    G, GT and Gh l4, C cpu; V6h and Gh are the arms of plan section 11) in
+    G, GT, Gh and Gd l4, C cpu; V6h and Gh are the arms of plan section 11,
+    Gd the deterministic-ops arm of the 2026-10-11 amendment) in
     the region of the run's zone, at standard (on-demand), spot and
     flex_start; when the region has no row, the europe-west4 row is used
     and the fallback noted; a missing price (no Flex-start for L4, CPU) is
@@ -44,7 +45,7 @@ import numpy as np
 import pandas as pd
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-PRICE_KEY = {'V5': 'v5e', 'V6': 'v6e', 'V6h': 'v6e', 'G': 'l4', 'GT': 'l4', 'Gh': 'l4', 'C': 'cpu'}
+PRICE_KEY = {'V5': 'v5e', 'V6': 'v6e', 'V6h': 'v6e', 'G': 'l4', 'GT': 'l4', 'Gh': 'l4', 'Gd': 'l4', 'C': 'cpu'}
 PROVISIONING = ['standard', 'spot', 'flex_start']
 FALLBACK_REGION = 'europe-west4'
 GIB = 1024 ** 3
@@ -154,7 +155,7 @@ def memory_table(p):
     peak_args = (g.compiled_peak_bytes + g.compiled_args_bytes).max()
     limit = g.device_bytes_limit.max()
     reserved = g.alloc_peak_reserved_bytes.max()
-    if plat in ('G', 'GT', 'Gh') and reserved == 0:
+    if plat in ('G', 'GT', 'Gh', 'Gd') and reserved == 0:
       reserved = np.nan  # the CUDA allocator preallocates its pool and reports no reservation
     rows.append({'platform': plat, 'bucket': int(bucket), 'processes': len(g), 'succeeded': len(ok),
                  'max_tokens_run': ok.num_tokens.max() if len(ok) else np.nan,
