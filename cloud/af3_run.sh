@@ -15,7 +15,8 @@
 # l4        Compute Engine   g2-standard-8 (1 x L4)        Spot (SPOT=0: on-demand,
 #                                                          PROVISIONING=flex_start: Flex-start)
 # v5e       legacy TPU API   v5litepod-1                   Spot (SPOT=0: on-demand)
-# v6e       Compute Engine   ct6e-standard-1t              Flex-start
+# v6e       Compute Engine   ct6e-standard-1t              Flex-start (PROVISIONING=standard:
+#                                                          on-demand)
 #
 # Zones: ZONES="z1 z2 ..." (Compute Engine platforms: cpu, l4, v6e) tries each
 # zone in order and keeps the first VM that is created. A stockout or capacity
@@ -30,7 +31,7 @@
 # ZONE=z alone means that one zone.
 #
 # Overrides: PROJECT ZONE ZONES MACHINE_TYPE SPOT PROVISIONING (spot, standard, or
-# flex_start for l4 and v6e; wins over SPOT) IMAGE_PROJECT IMAGE_FAMILY RUNTIME
+# flex_start for l4; flex_start or standard for v6e; wins over SPOT) IMAGE_PROJECT IMAGE_FAMILY RUNTIME
 # (v5e) BOOT_DISK_SIZE MIN_CPU_PLATFORM (cpu) REQUEST_VALID_FOR (Flex-start
 # queue, 90s to 2h, default 2h) DETACHED_DEADLINE_MIN MAX_RUN_DURATION WEIGHTS
 # (random or gcs; default: the plan's) WEIGHTS_GCS_URI (gcs only; never
@@ -231,8 +232,11 @@ case "${PROVISIONING:-}" in
       l4 | v6e) ;;
       *) die "PROVISIONING=flex_start is supported here for PLATFORM=l4 and v6e only." ;;
     esac ;;
-  spot | standard)
-    [ "$PLATFORM" != "v6e" ] || die "PLATFORM=v6e runs with Flex-start only (PROVISIONING=flex_start)." ;;
+  standard) ;;
+  spot)
+    # 2026-10-12: v6e also runs on demand (no Flex-start capacity since
+    # 2026-10-10); Spot stays refused, since a preempted v6e run is lost.
+    [ "$PLATFORM" != "v6e" ] || die "PLATFORM=v6e runs with Flex-start or on demand (PROVISIONING=flex_start or standard), not Spot." ;;
   *) die "PROVISIONING must be spot, standard or flex_start." ;;
 esac
 # The zones to try, in order (one zone unless ZONES is set).

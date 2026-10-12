@@ -1,6 +1,7 @@
 #!/bin/bash
 # Suite 2 (first written 2026-10-08): preemption, results bucket, FETCH
-# light/full, L4 Flex-start, price by region, provisioning refusals, and the
+# light/full, L4 Flex-start, v6e on demand (2026-10-12), price by region,
+# provisioning refusals, and the
 # v5e bisection (V0 to V9) on a fake VM, with LIBTPU_VERSION=0.0.42.1 (the
 # stack that segfaults; the fake reproduces that).
 . "$(dirname "$0")/common.sh"
@@ -32,6 +33,8 @@ bash "$R" l4_spot_west1 ok PLATFORM=l4 FAKE_PLATFORM=l4 ZONE=europe-west1-b
 bash "$R" l4_g2_4 ok PLATFORM=l4 ZONE=europe-west4-a FAKE_PLATFORM=l4 MACHINE_TYPE=g2-standard-4 SPOT=0
 bash "$R" v6e_default ok PLATFORM=v6e FAKE_PLATFORM=v6e
 echo "   create: $(tr ' ' '\n' < "$WORK/state_v6e_default/create_args" | grep -E 'provisioning|valid-for' | tr '\n' ' ')"
+bash "$R" v6e_standard ok PLATFORM=v6e FAKE_PLATFORM=v6e PROVISIONING=standard
+echo "   create: $(tr ' ' '\n' < "$WORK/state_v6e_standard/create_args" | grep -E 'provisioning|valid-for|max-run|termination|machine-type' | tr '\n' ' ')"
 for pv in v5e:flex_start cpu:flex_start v6e:spot l4:preemptible; do
   bash "$R" refuse_prov_${pv%%:*}_${pv#*:} ok PLATFORM=${pv%%:*} PROVISIONING=${pv#*:}
 done
