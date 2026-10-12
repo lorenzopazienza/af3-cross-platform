@@ -23,7 +23,7 @@ EXPECTED = {
     'bucket_full_ssh': 0, 'fetchfail_light': 0, 'fetchfail_full': 0, 'fetchfail_nobucket': 0,
     'light_without_bucket': 0, 'uploadfail': 0, 'refuse_fetch': 1, 'refuse_bucket_uri': 1,
     'refuse_same_bucket': 1, 'l4_flex': 0, 'l4_flex_us': 0, 'l4_spot_us': 0, 'l4_spot_west1': 0,
-    'l4_g2_4': 0, 'v6e_default': 0, 'refuse_prov_v5e_flex_start': 1, 'refuse_prov_cpu_flex_start': 1,
+    'l4_g2_4': 0, 'v6e_default': 0, 'v6e_standard': 0, 'refuse_prov_v5e_flex_start': 1, 'refuse_prov_cpu_flex_start': 1,
     'refuse_prov_v6e_spot': 1, 'refuse_prov_l4_preemptible': 1, 'refuse_valid_for': 1, 'bisect': 0,
     'bisect_budget': 0, 'bisect_preempt': 1, 'bisect_refuse': 1,
     'zones_suggest': 0, 'zones_staging_gone': 0, 'zones_leftover': 0, 'zones_all_out': 1,

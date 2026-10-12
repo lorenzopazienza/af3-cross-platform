@@ -6,7 +6,7 @@ the VM, and injects failures on request. No test creates, reads or deletes anyth
 Google Cloud.
 
 ```bash
-bash tests/cloud/run_all.sh          # all six suites (93 scenarios), about 15 minutes
+bash tests/cloud/run_all.sh          # all six suites (94 scenarios), about 15 minutes
 bash tests/cloud/mkrepo.sh           # or one scenario at a time:
 bash tests/cloud/run.sh probe_l4 ok PLATFORM=l4 FAKE_PLATFORM=l4 ZONES=us-east4-a
 ```
