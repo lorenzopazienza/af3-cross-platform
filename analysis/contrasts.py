@@ -67,7 +67,9 @@ folder, byte for byte, except the mmCIF timestamp line
 (_ma_model_list.model_group_name); a missing file (FETCH=light leaves the
 full confidences and data.json in the bucket) fails it; 3, the top-1 success
 on V6 against the 50% sanity threshold. Also reported: whether M1 was
-computed for every sample.
+computed for every sample, and the M2 cross-check (section 10, 2026-10-12): every
+run's overall top-1 by full-precision ranking_score is the sample AlphaFold3 wrote as its top-level model, with
+no tie at the top.
 
 Outputs in --out: contrasts.csv, hw_minus_rc.csv, pairs_seed.csv,
 pairs_sample.csv, q3.csv, checks.csv, excluded.csv (section 8 counts) and report.md.
@@ -189,13 +191,27 @@ def top(g):
   return first, bool(order.m1_success.iloc[0] == True), margin  # noqa: E712 - NaN counts as not a success
 
 
+ROLE = {'RC': 'recompilation', 'W': 'warm-cache check', 'SD': 'seed yardstick', 'DU': 'default use',
+        'ST': 'software stack', 'PR': 'precision (section 11)', 'HWh': 'matched hardware (section 11)',
+        'DET': 'deterministic ops (2026-10-11)'}
+
+
+def role(kind, primary):
+  """The contrast's role in the outputs (column role). Only a section 5 primary hardware pair is "primary pair";
+  RC, W and SD of an added arm (Gd) are marked secondary."""
+  if kind == 'HW':
+    return 'primary pair' if primary else 'secondary pair'
+  r = ROLE.get(kind, kind)
+  return r if primary or kind not in ('RC', 'W', 'SD') else r + ', secondary arm'
+
+
 def pair_rows(name, kind, a_key, b_key, units, primary, contrast_pairs, seed_rows, sample_rows):
   """Adds one (target, seed) pair and its sample pairs to the output lists."""
   ga, gb = units[a_key], units[b_key]
   ta, sa, ma = top(ga)
   tb, sb, mb = top(gb)
   target = a_key[2]
-  seed_rows.append({'contrast': name, 'kind': kind, 'primary': primary, 'target': target, 'seed_a': a_key[3],
+  seed_rows.append({'contrast': name, 'kind': kind, 'role': role(kind, primary), 'target': target, 'seed_a': a_key[3],
                     'seed_b': b_key[3], 'top1_a': ta, 'top1_b': tb, 'success_a': sa, 'success_b': sb,
                     'margin_a': ma, 'margin_b': mb, 'flip_top1': ta != tb, 'flip_success': sa != sb,
                     'flip_matters': ta != tb and sa != sb})
@@ -209,7 +225,7 @@ def pair_rows(name, kind, a_key, b_key, units, primary, contrast_pairs, seed_row
       m4 = divergence(target, ra.model_path, rb.model_path)
     else:
       m4 = {'ligand_rmsd': None, 'ca_rmsd_global': None, 'error': 'model missing'}
-    sample_rows.append({'contrast': name, 'kind': kind, 'primary': primary, 'target': target, 'seed_a': a_key[3],
+    sample_rows.append({'contrast': name, 'kind': kind, 'role': role(kind, primary), 'target': target, 'seed_a': a_key[3],
                         'seed_b': b_key[3], 'sample': k, 'bit_identical': ident,
                         'm4_ligand_rmsd': m4['ligand_rmsd'], 'm4_ca_rmsd_global': m4['ca_rmsd_global'],
                         'm4_error': m4['error'],
@@ -331,7 +347,7 @@ def summarize(seed_pairs, sample_pairs, contrasts, args):
         note = ''
       groups = [sp[sp.target == t][st].astype(float).values for t in targets]
       lo, hi = boot_ci(groups, mean, np.random.default_rng(args.seed), args.replicates)
-      rows.append({'contrast': name, 'kind': kind, 'primary': primary, 'statistic': st, 'n': len(sp),
+      rows.append({'contrast': name, 'kind': kind, 'role': role(kind, primary), 'statistic': st, 'n': len(sp),
                    'n_targets': len(targets), 'estimate': mean(sp[st].astype(float).values),
                    'ci_low': lo, 'ci_high': hi, 'note': note})
     for st in SAMPLE_STATS:
@@ -339,17 +355,17 @@ def summarize(seed_pairs, sample_pairs, contrasts, args):
       for fn, fname in ((med, 'median'), (p90, 'p90')):
         groups = [sm[(sm.target == t)][st].dropna().astype(float).values for t in targets]
         lo, hi = boot_ci(groups, fn, np.random.default_rng(args.seed), args.replicates)
-        rows.append({'contrast': name, 'kind': kind, 'primary': primary, 'statistic': f'{st}_{fname}',
+        rows.append({'contrast': name, 'kind': kind, 'role': role(kind, primary), 'statistic': f'{st}_{fname}',
                      'n': len(vals), 'n_targets': len(targets), 'estimate': fn(vals.values),
                      'ci_low': lo, 'ci_high': hi, 'note': ''})
     groups = [sm[sm.target == t].bit_identical.astype(float).values for t in targets]
     lo, hi = boot_ci(groups, mean, np.random.default_rng(args.seed), args.replicates)
-    rows.append({'contrast': name, 'kind': kind, 'primary': primary, 'statistic': 'bit_identical_fraction',
+    rows.append({'contrast': name, 'kind': kind, 'role': role(kind, primary), 'statistic': 'bit_identical_fraction',
                  'n': len(sm), 'n_targets': len(targets), 'estimate': mean(sm.bit_identical.astype(float).values),
                  'ci_low': lo, 'ci_high': hi, 'note': ''})
     m4err = sm.m4_error.dropna()
     if len(m4err):
-      rows.append({'contrast': name, 'kind': kind, 'primary': primary, 'statistic': 'm4_errors', 'n': len(m4err),
+      rows.append({'contrast': name, 'kind': kind, 'role': role(kind, primary), 'statistic': 'm4_errors', 'n': len(m4err),
                    'n_targets': len(targets), 'estimate': np.nan, 'ci_low': np.nan, 'ci_high': np.nan,
                    'note': '; '.join(sorted(set(m4err)))[:300]})
   return pd.DataFrame(rows)
@@ -378,7 +394,7 @@ def hw_minus_rc(seed_pairs, contrasts, args):
           for row in rng.integers(0, len(targets), size=(args.replicates, len(targets))):
             diffs.append(mean(np.concatenate([hw_g[i] for i in row])) - mean(np.concatenate([rc_g[i] for i in row])))
         diffs = np.array(diffs)
-        rows.append({'hardware': name, 'recompilation': rc, 'reference': which, 'primary': primary,
+        rows.append({'hardware': name, 'recompilation': rc, 'reference': which, 'role': role(kind, primary),
                      'statistic': st, 'n_targets': len(targets), 'estimate': est,
                      'ci_low': float(np.percentile(diffs, 2.5)) if len(diffs) else np.nan,
                      'ci_high': float(np.percentile(diffs, 97.5)) if len(diffs) else np.nan})
@@ -553,6 +569,49 @@ def check2(d, sample_pairs, cache_rows, c):
   return rows
 
 
+def top_model_check(ok):
+  """M2 cross-check (plan section 10, 2026-10-12), per condition, over every (run, target) with sample models.
+
+  The overall top-1 of the run (highest full-precision ranking_score over its seeds and samples) must be the
+  sample AlphaFold3 wrote as its top-level <target>_model.cif (equal apart from the mmCIF timestamp line), and
+  no full-precision score may tie at the top, overall or within a seed. A missing full-precision score fails.
+  """
+  rows = []
+  if 'model_path' not in ok.columns:
+    return rows
+  for c in sorted(ok.condition.unique(), key=rank):
+    g = ok[(ok.condition == c) & ok.model_path.notna()]
+    units, same, bad, ties, seed_ties, n_seed = 0, 0, [], [], 0, 0
+    for (session, t), h in g.groupby(['session', 'target']):
+      units += 1
+      label = f'{t} {h.repetition.iloc[0]} {pathlib.Path(session).name}'
+      if h.ranking_score.isna().any():
+        bad.append(f'{label}: no full-precision ranking_score')
+        continue
+      best = h.ranking_score.max()
+      if (h.ranking_score == best).sum() > 1:
+        ties.append(label)
+      for _, u in h.groupby('seed'):
+        n_seed += 1
+        seed_ties += int((u.ranking_score == u.ranking_score.max()).sum() > 1)
+      top = h.sort_values(['ranking_score'], ascending=False, kind='mergesort').iloc[0]
+      cif = REPO / top.model_path
+      ref = cif.parent.parent / f'{t}_model.cif'
+      if not ref.is_file():
+        bad.append(f'{label}: no top-level model')
+      elif masked(cif) == masked(ref):
+        same += 1
+      else:
+        bad.append(f'{label}: top-1 seed {top.seed} sample {top["sample"]} is not the top-level model')
+    rows.append({'check': "M2 overall top-1 is AlphaFold3's top-level model", 'condition': c,
+                 'value': f'{same}/{units} (run, target)',
+                 'detail': ('pass' if not bad else 'FAIL: ' + '; '.join(bad))[:600]})
+    rows.append({'check': 'M2 no full-precision tie at the top', 'condition': c,
+                 'value': f'{len(ties)} tie(s) in {units} (run, target); {seed_ties} in {n_seed} (run, target, seed)',
+                 'detail': 'pass' if not ties and not seed_ties else 'FAIL: ' + '; '.join(ties)[:600]})
+  return rows
+
+
 def checks(d, ok, sample_pairs, args):
   rows = []
   for c, g in d.groupby('condition'):
@@ -568,6 +627,7 @@ def checks(d, ok, sample_pairs, args):
   rows.append({'check': '2 every arm with a warm rerun is present', 'condition': ', '.join(WARM_ARMS),
                'value': f'{len(WARM_ARMS) - len(absent)}/{len(WARM_ARMS)} arms',
                'detail': 'pass' if not absent else 'FAIL: absent ' + ', '.join(absent)})
+  rows += top_model_check(ok)
   if 'm1_error' in ok.columns:
     for c in sorted(ok.condition.unique(), key=rank):
       g = ok[ok.condition == c]
@@ -607,10 +667,10 @@ def report(summary, hwrc, q3rows, q3answer, chk, excluded, args, out):
            'amendment in section 10, secondary).', '',
            '## Pilot checks (section 6)', '', '| check | condition | value | detail |', '|---|---|---|---|']
   lines += [f'| {r.check} | {r.condition} | {r.value} | {r.detail} |' for r in chk.itertuples()]
-  lines += ['', '## Flip rates', '', '| contrast | primary | statistic | n pairs | targets | estimate | 95% CI |',
+  lines += ['', '## Flip rates', '', '| contrast | role | statistic | n pairs | targets | estimate | 95% CI |',
             '|---|---|---|---|---|---|---|']
   for r in summary[summary.statistic.isin(FLIP_STATS + ['bit_identical_fraction'])].itertuples():
-    lines.append(f'| {r.contrast} | {"yes" if r.primary else "no"} | {r.statistic} | {r.n} | {r.n_targets} | '
+    lines.append(f'| {r.contrast} | {r.role} | {r.statistic} | {r.n} | {r.n_targets} | '
                  f'{fmt(r.estimate, True)} | {fmt(r.ci_low, True)} to {fmt(r.ci_high, True)} |'
                  + (f' ({r.note})' if r.note else ''))
   lines += ['', '## M4 and M5 (median and 90th percentile)', '',

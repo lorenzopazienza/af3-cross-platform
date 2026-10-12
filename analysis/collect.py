@@ -22,8 +22,12 @@ attention, libtpu, target, seed, repetition, sample), with:
   - repetition: r1, r2, ... (fresh-cache repetitions) or w (warm rerun), from
     the run name harness/run_plan.py gives; num_recycles and
     num_diffusion_samples (AlphaFold3 defaults 10 and 5 when not set);
-  - per sample: ranking_score, ptm, iptm, has_clash, fraction_disordered
-    (summary confidences), mean pLDDT (mean of the per-atom pLDDT AlphaFold3
+  - per sample: ranking_score at full precision, as AlphaFold3 ranks the
+    samples (<target>_ranking_scores.csv in the same output folder; empty
+    if that file is missing), ranking_score_summary (the same score as
+    *_summary_confidences.json writes it, rounded to 2 decimals; plan
+    section 10, 2026-10-12), ptm, iptm, has_clash, fraction_disordered
+    (summary confidences; AlphaFold3 writes them at 2 decimals), mean pLDDT (mean of the per-atom pLDDT AlphaFold3
     writes in the mmCIF B-factor column), the model path, and M1 (ligand RMSD,
     PoseBusters validity, success, error; analysis/score_ligand.py);
   - per run: the persistent cache evidence of harness/run_af3.py (files in the
@@ -61,7 +65,7 @@ COLUMNS = [
     'session', 'run', 'label', 'platform', 'config', 'attention', 'matmul_precision', 'device_kind', 'libtpu',
     'libtpu_build', 'jax',
     'zone', 'machine_type', 'target', 'num_tokens', 'bucket', 'seed', 'repetition', 'cache', 'sample',
-    'num_recycles', 'num_diffusion_samples', 'exit_code', 'failure', 'ranking_score', 'ptm', 'iptm',
+    'num_recycles', 'num_diffusion_samples', 'exit_code', 'failure', 'ranking_score', 'ranking_score_summary', 'ptm', 'iptm',
     'mean_plddt', 'has_clash', 'fraction_disordered', 'm1_ligand_rmsd', 'm1_pb_valid', 'm1_success',
     'm1_pb_failed', 'm1_error', 'model_path', 'model_sha256', 'wall_s', 'inference_s', 'compile_s',
     'compiled_peak_bytes', 'compiled_temp_bytes', 'compiled_args_bytes', 'compiled_needed_bytes',
@@ -103,6 +107,14 @@ def repetition_of(run_name, cache_mode):
   if cache_mode == 'warm':
     return 'w'
   return 'r1'
+
+
+def ranking_scores(outdir, target):
+  """{(seed, sample): full-precision ranking_score} from AlphaFold3's <target>_ranking_scores.csv ({} if absent)."""
+  f = pathlib.Path(outdir) / f'{target}_ranking_scores.csv'
+  if not f.is_file():
+    return {}
+  return {(int(r['seed']), int(r['sample'])): float(r['ranking_score']) for r in csv.DictReader(open(f))}
 
 
 def mean_plddt(cif):
@@ -189,6 +201,7 @@ def rows_of_run(folder, manifest):
     outdir = REPO / r['output_dir'] / t if not pathlib.Path(r['output_dir']).is_absolute() else pathlib.Path(r['output_dir']) / t
     if not outdir.exists():
       outdir = folder / t / 'af3_output' / t
+    full = ranking_scores(outdir, t) if outdir.exists() else {}
     for seed in r.get('seeds') or []:
       inf = (r.get('inference_seconds_by_seed') or {}).get(str(seed))
       samples = sorted(outdir.glob(f'seed-{seed}_sample-*')) if outdir.exists() else []
@@ -201,7 +214,8 @@ def rows_of_run(folder, manifest):
         summ = next((p for p in d.glob('*_summary_confidences.json')), None)
         if summ:
           s = json.loads(summ.read_text())
-          row.update(ranking_score=s.get('ranking_score'), ptm=s.get('ptm'), iptm=s.get('iptm'),
+          row.update(ranking_score=full.get((int(seed), k)), ranking_score_summary=s.get('ranking_score'),
+                     ptm=s.get('ptm'), iptm=s.get('iptm'),
                      has_clash=s.get('has_clash'), fraction_disordered=s.get('fraction_disordered'))
         cif = next((p for p in d.glob('*_model.cif')), None)
         if cif:

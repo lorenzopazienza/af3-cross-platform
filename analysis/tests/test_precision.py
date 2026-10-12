@@ -141,7 +141,7 @@ def test_hwh_minus_rc_uses_the_default_arms(tmp_path):
   args, _, _, sp, sm, cons, _ = run(table(PILOT + MATCHED, flips), tmp_path)
   h = contrasts.hw_minus_rc(sp, cons, args)
   r = h[(h.hardware == 'HWh(V6,G)') & (h.reference == 'RC(P)') & (h.statistic == 'flip_top1')].iloc[0]
-  assert r.recompilation == 'RC(V6)' and r.primary == False  # noqa: E712
+  assert r.recompilation == 'RC(V6)' and r.role == 'matched hardware (section 11)'
   assert r.estimate == pytest.approx(2 / 6 - 2 / 6)           # HWh flips on T1; RC(V6) on T1
   q = h[(h.hardware == 'HWh(G,C)')]
   assert set(q.recompilation) == {'RC(G)'}                    # no RC(C): C runs r1 only
