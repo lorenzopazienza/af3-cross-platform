@@ -41,9 +41,16 @@ attention, libtpu, target, seed, repetition, sample), with:
 A run that failed (no model files) still gets one row per seed, with the
 failure and empty sample columns (plan section 8: never dropped silently).
 
+Duplicate sessions (notes/analysis_plan.md section 10, row of 2026-10-13): sessions named
+<UTC stamp>_<platform>_<plan> belong to one part (platform, plan). If a part has more than one fully exit-0
+session (its job finished with exit code 0 in final_status.json, and every process in its runs.jsonl exited
+0), only the one that completed first (final_status.json finished_utc) is kept, and every other session of that
+part is excluded and listed in excluded_sessions.csv; the choice reads no output. A part with at most one fully
+exit-0 session is left as it is.
+
 Outputs in --out (default results/analysis/collect, gitignored like all of
 results/, so nothing produced with official weights reaches git):
-samples.csv and m1_cache.jsonl (M1 by model-file SHA-256, reused on reruns).
+samples.csv, excluded_sessions.csv and m1_cache.jsonl (M1 by model-file SHA-256, reused on reruns).
 """
 
 import argparse
@@ -139,6 +146,43 @@ def run_folders(roots, labels=None):
       if (ses.parent / 'runs.jsonl').exists():
         if labels is None or json.loads(ses.read_text()).get('label') in labels:
           yield ses.parent
+
+
+SESSION_NAME = re.compile(r'^\d{8}T\d{6}Z_(cpu|l4|v5e|v6e)_(.+)$')
+
+
+def session_status(session_dir):
+  """(fully exit-0, completion time) of a session folder, from final_status.json and its runs' runs.jsonl."""
+  status = session_dir / 'final_status.json'
+  final = json.loads(status.read_text()) if status.is_file() else {}
+  codes = [json.loads(l).get('exit_code') for r in session_dir.glob('*/runs.jsonl') for l in r.read_text().splitlines()]
+  ok = final.get('exit_code') == 0 and bool(codes) and all(c == 0 for c in codes)
+  return ok, final.get('finished_utc') or ''
+
+
+def resolve_duplicate_sessions(folders):
+  """(kept run folders, excluded rows): the section 10 rule of 2026-10-13 for parts with several exit-0 sessions."""
+  folders = list(folders)
+  parts = {}
+  for f in folders:
+    m = SESSION_NAME.match(f.parent.name)
+    if m:
+      parts.setdefault((m.group(1), m.group(2)), set()).add(f.parent)
+  excluded, drop = [], set()
+  for (platform, plan), sessions in sorted(parts.items()):
+    status = {s: session_status(s) for s in sessions}
+    full = sorted((done, s.name, s) for s, (ok, done) in status.items() if ok)
+    if len(full) < 2:
+      continue
+    keep = full[0][2]
+    for s in sorted(sessions, key=lambda x: x.name):
+      if s != keep:
+        drop.add(s)
+        excluded.append({'part': f'{platform} {plan}', 'session': s.name, 'kept_session': keep.name,
+                         'fully_exit_0': status[s][0], 'completed_utc': status[s][1],
+                         'kept_completed_utc': status[keep][1],
+                         'reason': 'part has more than one fully exit-0 session; the first completed is kept'})
+  return [f for f in folders if f.parent not in drop], excluded
 
 
 def _m1(args):
@@ -241,7 +285,15 @@ def main():
   manifest = {r['pdb_id']: r for r in csv.DictReader(open(REPO / 'inputs' / 'manifest.csv'))}
 
   rows, todo = [], []
-  for folder in run_folders(roots, args.labels.split(',') if args.labels else None):
+  folders, excluded = resolve_duplicate_sessions(run_folders(roots, args.labels.split(',') if args.labels else None))
+  with open(out_dir / 'excluded_sessions.csv', 'w', newline='') as f:
+    w = csv.DictWriter(f, fieldnames=['part', 'session', 'kept_session', 'fully_exit_0', 'completed_utc',
+                                      'kept_completed_utc', 'reason'])
+    w.writeheader()
+    w.writerows(excluded)
+  for e in excluded:
+    print(f'>> excluded session {e["session"]} ({e["part"]}): kept {e["kept_session"]}', flush=True)
+  for folder in folders:
     r, t = rows_of_run(folder, manifest)
     todo += [(len(rows) + i, target, cif) for i, target, cif in t]
     rows += r

@@ -72,7 +72,9 @@ run's overall top-1 by full-precision ranking_score is the sample AlphaFold3 wro
 no tie at the top.
 
 Outputs in --out: contrasts.csv, hw_minus_rc.csv, pairs_seed.csv,
-pairs_sample.csv, q3.csv, checks.csv, excluded.csv (section 8 counts) and report.md.
+pairs_sample.csv, q3.csv, checks.csv, excluded.csv (section 8 counts) and report.md; then, apart from them,
+the training-cutoff sensitivity analysis (analysis/cutoff.py; section 10, 2026-10-13): release_dates.csv,
+sensitivity_post_cutoff.csv and its section at the end of report.md.
 """
 
 import argparse
@@ -728,6 +730,14 @@ def main():
   chk.to_csv(out / 'checks.csv', index=False)
   excluded.to_csv(out / 'excluded.csv', index=False)
   report(summary, hwrc, q3rows, q3answer, chk, excluded, args, out)
+  # Training-cutoff sensitivity (secondary, section 10 row of 2026-10-13): written after, and apart from, the outputs above.
+  import cutoff
+  releases = cutoff.release_table()
+  releases.to_csv(out / 'release_dates.csv', index=False)
+  sens, post = cutoff.sensitivity(ok, args, releases)
+  sens.to_csv(out / 'sensitivity_post_cutoff.csv', index=False)
+  with open(out / 'report.md', 'a') as f:
+    f.write('\n'.join(cutoff.report_lines(sens, post, releases)) + '\n')
   print(f'>> {len(contrasts)} contrasts, {len(seed_pairs)} (target, seed) pairs, {len(sample_pairs)} sample pairs; '
         f'report: {out / "report.md"}', flush=True)
   return 0
