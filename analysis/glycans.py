@@ -22,9 +22,10 @@ drop_af3_removed and compared (m4_spot_check.csv). Pairs of the three targets ar
 Also checked: the rescoring leaves M1 of one sample per target of the 57 unchanged (nochange_check.csv), and (3)
 leaves top-1, M3, M5, the bit-identity fractions, and M6 and M7 (cost.py reads no M1 column; its tables recomputed
 from the rescored table equal the primary ones) unchanged: unchanged.csv.
-M4's protein C-alpha RMSD does not use M1, but in (1) score_ligand.pair_divergence stops at the missing O1 before
-computing it, so it is missing there for the non-identical sample pairs of the three targets; (3) computes it for
-them. It is checked equal on every pair where (1) has it, and its statistics are reported side by side, flagged.
+M4's protein C-alpha RMSD does not use M1, but in (1), the output of <main>/contrasts, score_ligand.pair_divergence
+stopped at the missing O1 before computing it (corrected afterwards: section 10, 2026-10-14, "Correction to the
+implementation of M4"; rerun in <main>/primary_v2), so it is missing there for the non-identical sample pairs of the
+three targets; (3) computes it for them. It is checked equal on every pair where (1) has it, and its statistics are reported side by side, flagged.
 
 Outputs in <main>/glycans/: m1_rescored.jsonl, samples_rescored.csv, rescored_targets.csv, nochange_check.csv,
 m4_spot_check.csv, unchanged.csv, side_by_side.csv, report.md, and per variant (without_three/, rescored/):

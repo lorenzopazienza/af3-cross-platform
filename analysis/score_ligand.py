@@ -31,7 +31,9 @@ the first.
 
 Also used by analysis/contrasts.py for M4 (pair_divergence): the same pocket
 superposition between two predictions, their ligand RMSD, and the protein
-C-alpha RMSD after global superposition.
+C-alpha RMSD after global superposition. The C-alpha RMSD uses the protein
+only and is computed even when the ligand cannot be scored (section 10,
+2026-10-14, correction to the implementation of M4).
 
 Post-hoc rescoring (section 10, 2026-10-14, analysis (3); never the primary
 analysis): with drop_af3_removed=True, the reference ligand loses the atoms
@@ -226,10 +228,10 @@ def reference(target, drop_af3_removed=False):
   return Reference(target, drop_af3_removed)
 
 
-class Prediction:
-  """Protein C-alpha atoms (by label_seq_id) and ligand atoms (by name) of one model."""
+class Protein:
+  """Protein C-alpha atoms (by label_seq_id) of one model."""
 
-  def __init__(self, path, ccd, protein_chain='A', ligand_seqid=None):
+  def __init__(self, path, protein_chain='A'):
     self.path = pathlib.Path(path)
     try:
       st = _load_structure(self.path)
@@ -247,6 +249,14 @@ class Prediction:
         self.resname[res.label_seq] = res.name
         if ca:
           self.ca[res.label_seq] = np.array(ca.pos.tolist())
+
+
+class Prediction(Protein):
+  """Protein C-alpha atoms (by label_seq_id) and ligand atoms (by name) of one model."""
+
+  def __init__(self, path, ccd, protein_chain='A', ligand_seqid=None):
+    super().__init__(path, protein_chain)
+    model = self.structure[0]
     ligands = [r for c in model for r in c if r.name == ccd and (ligand_seqid is None or r.seqid.num == ligand_seqid)]
     if len(ligands) != 1:
       raise ScoreError(f'{self.path.name}: expected one {ccd} ligand, found {len(ligands)}')
@@ -323,23 +333,32 @@ def pair_divergence(target, path_a, path_b, drop_af3_removed=False):
 
   ligand_rmsd: symmetry-corrected heavy-atom RMSD of B's ligand on A's, after
   superposing B on A by the pocket C-alpha atoms (pocket from the crystal, as
-  in M1). ca_rmsd_global: protein C-alpha RMSD after global superposition.
+  in M1). ca_rmsd_global: protein C-alpha RMSD after global superposition,
+  computed from the proteins alone, also when the ligand part fails (section 10,
+  2026-10-14). error: the ligand part's error, then the C-alpha part's, if any.
   drop_af3_removed: the ligand atoms compared are those of the rescored reference (analysis (3) above).
   """
   out = {'ligand_rmsd': None, 'ca_rmsd_global': None, 'error': None}
+  errors, parsed = [], {}
   try:
     ref = reference(target, drop_af3_removed)
-    a = Prediction(path_a, ref.ccd)
-    b = Prediction(path_b, ref.ccd)
+    a = parsed['a'] = Prediction(path_a, ref.ccd)
+    b = parsed['b'] = Prediction(path_b, ref.ccd)
     r, t, _ = _pocket_superposition(a.ca, b.ca, ref.pocket)
     mol_a, mol_b = ref.ligand_with(a.ligand), ref.ligand_with(_transform(b.ligand, r, t))
     out['ligand_rmsd'] = round(float(rdMolAlign.CalcRMS(mol_b, mol_a)), 4)
+  except Exception as e:  # noqa: BLE001
+    errors.append(f'{type(e).__name__}: {e}'[:300])
+  try:
+    a = parsed.get('a') or Protein(path_a)
+    b = parsed.get('b') or Protein(path_b)
     common = sorted(set(a.ca) & set(b.ca))
     xa, xb = np.array([a.ca[s] for s in common]), np.array([b.ca[s] for s in common])
     rg, tg = kabsch(xb, xa)
     out['ca_rmsd_global'] = round(rmsd(xb @ rg.T + tg, xa), 4)
   except Exception as e:  # noqa: BLE001
-    out['error'] = f'{type(e).__name__}: {e}'[:300]
+    errors.append(f'{type(e).__name__}: {e}'[:300])
+  out['error'] = '; '.join(errors)[:300] if errors else None
   return out
 
 

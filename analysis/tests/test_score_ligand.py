@@ -91,3 +91,50 @@ def test_pair_divergence_of_a_model_with_itself():
   res = score_ligand.pair_divergence(TARGET, models[0], models[0])
   assert res['error'] is None
   assert res['ligand_rmsd'] == 0.0 and res['ca_rmsd_global'] < 1e-6
+
+
+def _model(target):
+  models = sorted((REPO / 'results' / 'af3').glob(f'*/*/{target}/af3_output/{target}/seed-1_sample-0/*_model.cif'))
+  if not models:
+    pytest.skip(f'no AlphaFold3 output of {target} under results/af3/')
+  return models[0]
+
+
+@needs_data
+def test_c_alpha_rmsd_survives_a_ligand_that_cannot_be_scored(tmp_path):
+  """Section 10, 2026-10-14: M4's C-alpha RMSD does not depend on the ligand scoring."""
+  import gemmi
+  st = gemmi.read_structure(str(_model(TARGET)))
+  ccd = score_ligand.reference(TARGET).ccd
+  for chain in st[0]:
+    for i in reversed(range(len(chain))):
+      if chain[i].name == ccd:
+        del chain[i]
+  r, t = random_rigid(3)
+  st[0].transform_pos_and_adp(gemmi.Transform(gemmi.Mat33(r.tolist()), gemmi.Vec3(*t)))
+  st.setup_entities()
+  path = tmp_path / 'no_ligand_moved.cif'
+  st.make_mmcif_document().write_file(str(path))
+  res = score_ligand.pair_divergence(TARGET, _model(TARGET), path)
+  assert res['ligand_rmsd'] is None and 'expected one' in res['error']
+  assert res['ca_rmsd_global'] is not None and res['ca_rmsd_global'] < 1e-3
+
+
+@needs_data
+def test_c_alpha_rmsd_of_a_glycan_pair_equals_the_rescored_one():
+  """7WJB: the ligand fails on the missing O1, the C-alpha RMSD is the one of analysis (3)."""
+  a = _model('7WJB')
+  b = sorted(a.parent.parent.glob('seed-1_sample-1/*_model.cif'))[0]
+  plain = score_ligand.pair_divergence('7WJB', a, b)
+  rescored = score_ligand.pair_divergence('7WJB', a, b, drop_af3_removed=True)
+  assert plain['ligand_rmsd'] is None and plain['error'] == "ScoreError: ligand atoms missing in the prediction: ['O1']"
+  assert rescored['error'] is None and rescored['ligand_rmsd'] is not None
+  assert plain['ca_rmsd_global'] == rescored['ca_rmsd_global'] > 0
+
+
+def test_unparseable_models_give_no_c_alpha_rmsd_and_both_errors(tmp_path):
+  bad = tmp_path / 'bad_model.cif'
+  bad.write_text('data_x\nthis is not an mmCIF atom table\n')
+  res = score_ligand.pair_divergence(TARGET, bad, bad)
+  assert res['ligand_rmsd'] is None and res['ca_rmsd_global'] is None
+  assert res['error'].count('bad_model.cif') >= 1 and '; ' in res['error']
