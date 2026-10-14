@@ -630,6 +630,13 @@ def checks(d, ok, sample_pairs, args):
                'value': f'{len(WARM_ARMS) - len(absent)}/{len(WARM_ARMS)} arms',
                'detail': 'pass' if not absent else 'FAIL: absent ' + ', '.join(absent)})
   rows += top_model_check(ok)
+  rows += m1_checks(ok)
+  return pd.DataFrame(rows)
+
+
+def m1_checks(ok):
+  """The checks that use M1: whether M1 was computed for every sample, and check 3 (V6 success-rate sanity)."""
+  rows = []
   if 'm1_error' in ok.columns:
     for c in sorted(ok.condition.unique(), key=rank):
       g = ok[ok.condition == c]
@@ -650,7 +657,7 @@ def checks(d, ok, sample_pairs, args):
     rows.append({'check': '3 success-rate sanity (top-1 per seed, r1; secondary)', 'condition': c,
                  'value': f'{rate:.0%} of {len(per_seed)} (target, seed)',
                  'detail': 'pass' if rate >= SANITY_THRESHOLD else 'BELOW 50%'})
-  return pd.DataFrame(rows)
+  return rows
 
 
 def fmt(x, pct=False):

@@ -32,12 +32,21 @@ the first.
 Also used by analysis/contrasts.py for M4 (pair_divergence): the same pocket
 superposition between two predictions, their ligand RMSD, and the protein
 C-alpha RMSD after global superposition.
+
+Post-hoc rescoring (section 10, 2026-10-14, analysis (3); never the primary
+analysis): with drop_af3_removed=True, the reference ligand loses the atoms
+AlphaFold3 v3.0.4 itself removes from the input (af3_removed_atoms), and
+nothing else; the pocket stays the one of the full reference ligand, and the
+superposition, symmetry correction and PoseBusters checks are unchanged. For a
+ligand without such an atom the result is the same as without the option.
 """
 
 import argparse
+import builtins
 import functools
 import json
 import pathlib
+import pickle
 import sys
 import tempfile
 
@@ -51,6 +60,10 @@ POCKET_RADIUS = 10.0
 SUCCESS_RMSD = 2.0
 MIN_RESIDUE_IDENTITY = 0.95
 PB_CONFIG = 'dock'
+# AlphaFold3's glycan sets (GLYCAN_LINKING_LIGANDS, GLYCAN_OTHER_LIGANDS), as its build_data step writes them from the
+# CCD (chemical_component_sets_gen.py: every component whose _chem_comp.type contains "saccharide").
+AF3_COMPONENT_SETS = (REPO / 'third_party' / 'alphafold3' / 'src' / 'alphafold3' / 'constants' / 'converters' /
+                      'chemical_component_sets.pickle')
 RDLogger.DisableLog('rdApp.*')
 
 
@@ -64,6 +77,33 @@ def _subset_row(target):
     if row['pdb_id'] == target:
       return row
   raise ScoreError(f'{target} is not in targets/posebusters_subset.csv')
+
+
+class _SetsUnpickler(pickle.Unpickler):
+  """Reads the component-sets pickle (a dict of frozensets of strings) and nothing else."""
+
+  def find_class(self, module, name):
+    if module == 'builtins' and name in ('dict', 'frozenset', 'set'):
+      return getattr(builtins, name)
+    raise pickle.UnpicklingError(f'{module}.{name} not allowed in {AF3_COMPONENT_SETS.name}')
+
+
+@functools.lru_cache(maxsize=None)
+def af3_glycans(path=AF3_COMPONENT_SETS):
+  """GLYCAN_LINKING_LIGANDS | GLYCAN_OTHER_LIGANDS of the AlphaFold3 install."""
+  with open(path, 'rb') as f:
+    sets = _SetsUnpickler(f).load()
+  return frozenset(sets['glycans_linking']) | frozenset(sets['glycans_other'])
+
+
+def af3_removed_atoms(ccd, atom_names):
+  """The atoms of a ligand that AlphaFold3 v3.0.4 removes from its input, among atom_names.
+
+  At its default --fix_standalone_glycans=false, for a ligand without bondedAtomPairs (every input of this study),
+  AlphaFold3 drops the atom named O1 of every component in its glycan sets
+  (model/atom_layout/atom_layout.py get_link_drop_atoms, model/pipeline/structure_cleaning.py clean_structure).
+  """
+  return frozenset({'O1'} & set(atom_names)) if ccd in af3_glycans() else frozenset()
 
 
 def _load_structure(path):
@@ -96,7 +136,7 @@ def rmsd(a, b):
 class Reference:
   """The crystal side of M1 for one target: pocket, C-alpha atoms, ligand."""
 
-  def __init__(self, target):
+  def __init__(self, target, drop_af3_removed=False):
     row = _subset_row(target)
     self.target, self.ccd, self.pb_id = target, row['ligand_ccd'], row['posebusters_id']
     self.sequence = row['sequence']
@@ -153,6 +193,15 @@ class Reference:
     self.pocket = sorted(s for s in pocket if s in self.ca)
     if len(self.pocket) < 3:
       raise ScoreError(f'{target}: fewer than 3 pocket residues with a C-alpha')
+    # Analysis (3) of section 10, 2026-10-14: the pocket above stays the one of the full ligand.
+    self.removed_atoms = sorted(af3_removed_atoms(self.ccd, self.ligand_names)) if drop_af3_removed else []
+    if self.removed_atoms:
+      mol = Chem.RWMol(self.ligand)
+      for i in sorted((i for i, n in enumerate(self.ligand_names) if n in self.removed_atoms), reverse=True):
+        mol.RemoveAtom(i)
+      self.ligand = mol.GetMol()
+      Chem.SanitizeMol(self.ligand)
+      self.ligand_names = [n for n in self.ligand_names if n not in self.removed_atoms]
     # Residue numbering check: crystal residue i against the input sequence (AlphaFold3's residue i).
     same = sum(_one_letter(n) == self.sequence[i - 1] for i, n in self.resname.items() if 0 < i <= len(self.sequence))
     self.residue_identity = same / max(1, len(self.resname))
@@ -173,8 +222,8 @@ class Reference:
 
 
 @functools.lru_cache(maxsize=None)
-def reference(target):
-  return Reference(target)
+def reference(target, drop_af3_removed=False):
+  return Reference(target, drop_af3_removed)
 
 
 class Prediction:
@@ -238,15 +287,16 @@ def _write_protein_pdb(pred, r, t, path):
   st.write_pdb(str(path))
 
 
-def score(target, prediction_path, pb_protein='predicted', protein_chain='A', ligand_seqid=None):
-  """M1 for one predicted model; never raises, errors go to the result."""
+def score(target, prediction_path, pb_protein='predicted', protein_chain='A', ligand_seqid=None,
+          drop_af3_removed=False):
+  """M1 for one predicted model; never raises, errors go to the result. drop_af3_removed: analysis (3) above."""
   shown = pathlib.Path(prediction_path).resolve()
   shown = str(shown.relative_to(REPO)) if shown.is_relative_to(REPO) else shown.name
   out = {'target': target, 'prediction': shown, 'ligand_rmsd': None, 'pocket_residues': None,
          'pocket_ca_used': None, 'pb_valid': None, 'pb_failed': None, 'pb_protein': pb_protein,
          'success': False, 'error': None}
   try:
-    ref = reference(target)
+    ref = reference(target, drop_af3_removed)
     pred = Prediction(prediction_path, ref.ccd, protein_chain, ligand_seqid)
     r, t, n = _pocket_superposition(ref.ca, pred.ca, ref.pocket)
     out.update(pocket_residues=len(ref.pocket), pocket_ca_used=n)
@@ -268,16 +318,17 @@ def score(target, prediction_path, pb_protein='predicted', protein_chain='A', li
   return out
 
 
-def pair_divergence(target, path_a, path_b):
+def pair_divergence(target, path_a, path_b, drop_af3_removed=False):
   """M4 between two predictions of the same target, prediction A as reference.
 
   ligand_rmsd: symmetry-corrected heavy-atom RMSD of B's ligand on A's, after
   superposing B on A by the pocket C-alpha atoms (pocket from the crystal, as
   in M1). ca_rmsd_global: protein C-alpha RMSD after global superposition.
+  drop_af3_removed: the ligand atoms compared are those of the rescored reference (analysis (3) above).
   """
   out = {'ligand_rmsd': None, 'ca_rmsd_global': None, 'error': None}
   try:
-    ref = reference(target)
+    ref = reference(target, drop_af3_removed)
     a = Prediction(path_a, ref.ccd)
     b = Prediction(path_b, ref.ccd)
     r, t, _ = _pocket_superposition(a.ca, b.ca, ref.pocket)
