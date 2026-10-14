@@ -18,8 +18,8 @@ S, the rep 1 run of seed S keeps its compiled executables
 (--save_fresh_cache) and the rerun loads them (--compile_cache warm:...), so
 it can be compared with its source run. A failed run or target never stops the
 plan; every harness exit code goes to results/af3/<session>/plan_runs.jsonl.
-Exit status: 0 if every harness run exited 0, 1 otherwise, 5 if a libtpu
-switch failed.
+Exit status: 0 if every harness run exited 0 (with stop_rule: if the plan ran
+to its end under the rule), 1 otherwise, 5 if a libtpu switch failed.
 
 TPU stacks (optional plan key "libtpu", per platform, a list of libtpu
 versions; TPU platforms only): every run is repeated for each version, in the
@@ -39,6 +39,22 @@ loads of one executable separate run-time from compile-time nondeterminism
 compare_reference (optional, per platform): a harness run folder of an
 earlier session; cloud/af3_run.sh compares the fetched session with it
 (harness/compare_runs.py, bit for bit and by RMSD).
+
+buckets (optional, a list of token sizes, strictly increasing): one harness run
+per size, in that order, each passing that single size as AlphaFold3's own
+--buckets (harness/run_af3.py --buckets; recorded in session.json), so every
+target is padded to it. Run names carry it (l4_xla_bucket1280_rep1_seed1_fresh).
+No warm reruns with buckets. Without the key nothing changes.
+
+stop_rule (optional, "first_failure"; the memory-limit measurement of section
+10, 2026-10-14): runs go in order and the first harness run that does not exit
+0 (a process that failed, out of memory or otherwise, or that exceeded the
+plan's run_timeout_min) ends the plan. Its plan_runs.jsonl line gets
+stop_rule = "stopped here" with each process's exit code, failure and
+failure_detail; every later run gets a line with harness_exit_code null and
+not_run = "stop rule"; stop_rule.json in the session says which run (and
+size) stopped the plan, why, and which completed last. Under the rule the
+stopping run is the measurement's result, not a plan failure: exit status 0.
 
 --describe prints the expanded plan as JSON and runs nothing; cloud/af3_run.sh
 uses it on the laptop to choose uploads and to size the VM's lifetime.
@@ -118,6 +134,15 @@ def expand(plan_path, platform, manifest_path):
   if warm_reps < 1:
     raise SystemExit(f'warm_reruns must be 1 or more, not {warm_reps}')
 
+  buckets = [int(b) for b in as_list(per_platform(plan.get('buckets', 'none'), platform)) if b != 'none']
+  if buckets and (min(buckets) <= 0 or any(b <= a for a, b in zip(buckets, buckets[1:]))):
+    raise SystemExit(f'plan: buckets must be positive and strictly increasing: {buckets}')
+  if buckets and warm_seed is not None:
+    raise SystemExit('plan: buckets and warm_rerun_seed cannot be combined')
+  stop_rule = per_platform(plan.get('stop_rule', 'none'), platform)
+  if stop_rule not in ('none', 'first_failure'):
+    raise SystemExit(f'plan: stop_rule must be first_failure or none, not {stop_rule!r}')
+
   libtpu = [v for v in as_list(per_platform(plan.get('libtpu', 'none'), platform)) if v != 'none']
   for v in libtpu:
     if not re.fullmatch(r'[0-9]+(\.[0-9]+)+', v):
@@ -132,16 +157,26 @@ def expand(plan_path, platform, manifest_path):
     tag = f'_libtpu-{version}' if version else ''
     for config in configs:
       name = f'{config}{tag}'
-      for rep in range(1, reps + 1):
-        for seed in seeds:
-          runs.append({'run': f'{name}_rep{rep}_seed{seed}_fresh', 'config': config, 'rep': rep,
-                       'seed': seed, 'cache': 'fresh', 'libtpu': version,
-                       'save_cache': warm_seed == seed and rep == 1})
+      for bucket in buckets or [None]:   # sizes in increasing order within each (libtpu, config)
+        size = f'_bucket{bucket}' if bucket else ''
+        for rep in range(1, reps + 1):
+          for seed in seeds:
+            run = {'run': f'{name}{size}_rep{rep}_seed{seed}_fresh', 'config': config, 'rep': rep,
+                   'seed': seed, 'cache': 'fresh', 'libtpu': version,
+                   'save_cache': warm_seed == seed and rep == 1}
+            if bucket:
+              run['buckets'] = bucket
+            runs.append(run)
       for w in range(1, warm_reps + 1) if warm_seed is not None else ():
         runs.append({'run': f'{name}_seed{warm_seed}_warm{w if w > 1 else ""}', 'config': config, 'rep': None,
                      'seed': warm_seed, 'cache': 'warm', 'save_cache': False, 'libtpu': version,
                      'source_run': f'{name}_rep1_seed{warm_seed}_fresh'})
   reference = per_platform(plan.get('compare_reference', 'none'), platform)
+  extra = {}   # only when set, so the description of every other plan is unchanged
+  if buckets:
+    extra['buckets'] = buckets
+  if stop_rule != 'none':
+    extra['stop_rule'] = stop_rule
   return {
       'plan': str(pathlib.Path(plan_path)), 'platform': platform,
       'description': plan.get('description', ''), 'label': plan.get('label', 'measurement'),
@@ -153,7 +188,7 @@ def expand(plan_path, platform, manifest_path):
       'run_timeout_min': float(plan.get('run_timeout_min', '180')),
       'deadline_min': int(per_platform(plan['deadline_min'], platform)),
       'libtpu': libtpu, 'compare_reference': None if reference == 'none' else reference,
-      'runs': runs, 'processes': len(runs) * len(targets),
+      'runs': runs, 'processes': len(runs) * len(targets), **extra,
   }
 
 
@@ -177,6 +212,33 @@ def ensure_libtpu(version):
              PATH=f'{pathlib.Path.home() / ".local" / "bin"}:{os.environ.get("PATH", "")}')
   rc = subprocess.run(['bash', str(REPO / 'cloud' / 'vm_tpu_stack.sh'), '--switch'], cwd=REPO, env=env).returncode
   return rc == 0 and installed_libtpu() == version
+
+
+def stopped_processes(session_dir, run_name):
+  """Exit code, failure and its detail of each process of one harness run (its runs.jsonl)."""
+  path = session_dir / run_name / 'runs.jsonl'
+  records = [json.loads(l) for l in path.read_text().splitlines()] if path.is_file() else []
+  return [{k: r.get(k) for k in ('pdb_id', 'exit_code', 'timed_out', 'failure', 'failure_detail', 'wall_seconds',
+                                 'padded_bucket')} for r in records]
+
+
+def apply_stop_rule(log, session_dir, desc, i, rc):
+  """After run i (1-based) of a stop_rule plan exited rc != 0: logs the later runs as not run, writes
+  stop_rule.json. Returns the stop record."""
+  run = desc['runs'][i - 1]
+  completed = [r for r in desc['runs'][:i - 1]]
+  skipped = desc['runs'][i:]
+  stop = {'rule': desc['stop_rule'], 'stopped_at_run': run['run'], 'stopped_at_bucket': run.get('buckets'),
+          'harness_exit_code': rc, 'processes': stopped_processes(session_dir, run['run']),
+          'last_completed_run': completed[-1]['run'] if completed else None,
+          'last_completed_bucket': completed[-1].get('buckets') if completed else None,
+          'not_run': [r['run'] for r in skipped],
+          'utc': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}
+  with open(log, 'a') as f:
+    for r in skipped:
+      f.write(json.dumps(dict(r, harness_exit_code=None, not_run='stop rule', stopped_by=run['run'])) + '\n')
+  (session_dir / 'stop_rule.json').write_text(json.dumps(stop, indent=2) + '\n')
+  return stop
 
 
 def main():
@@ -230,17 +292,31 @@ def main():
       cmd += ['--num_recycles', str(desc['num_recycles'])]
     if desc['num_diffusion_samples'] is not None:
       cmd += ['--num_diffusion_samples', str(desc['num_diffusion_samples'])]
+    if run.get('buckets'):
+      cmd += ['--buckets', str(run['buckets'])]
     if args.upload_uri:
       cmd += ['--upload_uri', f'{args.upload_uri.rstrip("/")}/{run["run"]}']
     print(f'>> [{i}/{len(desc["runs"])}] {run["run"]}: {len(desc["targets"])} targets', flush=True)
     start = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
     rc = subprocess.run(cmd, cwd=REPO).returncode
-    failed += rc != 0
+    stopping = rc != 0 and desc.get('stop_rule') == 'first_failure'
+    failed += rc != 0 and not stopping
+    entry = dict(run, start_utc=start, harness_exit_code=rc, session=f'{args.session}/{run["run"]}')
+    if stopping:
+      entry.update(stop_rule='stopped here', processes=stopped_processes(log.parent, run['run']))
     with open(log, 'a') as f:
-      f.write(json.dumps(dict(run, start_utc=start, harness_exit_code=rc,
-                              session=f'{args.session}/{run["run"]}')) + '\n')
+      f.write(json.dumps(entry) + '\n')
+    if stopping:
+      stop = apply_stop_rule(log, log.parent, desc, i, rc)
+      causes = '; '.join(f'{p["pdb_id"]}: exit {p["exit_code"]}, {p["failure"]} ({p["failure_detail"]})'
+                         for p in stop['processes']) or 'no process record'
+      print(f'>> Stop rule: {run["run"]} did not complete ({causes}); last completed: '
+            f'{stop["last_completed_run"] or "none"}; not run: {len(stop["not_run"])} run(s)', flush=True)
     if args.upload_uri:
       upload(log.parent, args.upload_uri.rstrip('/'))
+    if stopping:
+      print(f'>> Plan done under the stop rule: {i - 1} run(s) completed, stopped at {run["run"]}', flush=True)
+      sys.exit(0)
   print(f'>> Plan done: {len(desc["runs"]) - failed}/{len(desc["runs"])} harness runs exited 0',
         flush=True)
   sys.exit(1 if failed else 0)

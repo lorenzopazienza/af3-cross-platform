@@ -97,7 +97,7 @@ for bad in "gpu harness/plans/t/t_l4_01.yaml" "l4 harness/plans/t/missing.yaml" 
 done
 fresh; many env "$WORK/parts_dup.txt" YES=1 AF2_COMMIT=x
 check "cloud/env.sh sourced: refused" '[ "$(rc env)" = 2 ] && grep -q "env.sh is sourced" "$S/out"'
-fresh; (bash -c 'sleep 15' cloud/af3_run.sh &) ; sleep 0.5
+fresh; (bash -c 'sleep 15; :' cloud/af3_run.sh &) ; sleep 0.5   # '; :' keeps bash from exec'ing sleep, which would drop cloud/af3_run.sh from the command line
 printf 'l4 harness/plans/t/t_l4_01.yaml\n' > "$WORK/parts_one.txt"
 S="$WORK/state_many_others"; rm -rf "$S"; mkdir -p "$S"
 (cd "$R" && fake_env "$S" PARTS="$WORK/parts_one.txt" YES=1 LAUNCHER="$MANY/stub_launcher.sh" STUB_EVENTS="$S/events" \

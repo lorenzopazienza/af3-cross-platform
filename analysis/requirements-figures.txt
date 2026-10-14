@@ -1,0 +1,19 @@
+# Figures environment for analysis/paper_assets.py: the analysis environment (requirements.txt, unchanged) plus
+# matplotlib. Kept apart so the analysis environment, and every number computed in it, stays as it was.
+#   uv venv --python 3.12 analysis/figures/.venv && \
+#     uv pip install --python analysis/figures/.venv/bin/python -r analysis/requirements-figures.txt
+# Every package, direct and transitive, is pinned (uv pip freeze, 2026-10-14). Licences as declared in each
+# package's metadata.
+-r requirements.txt
+
+# Direct dependency
+matplotlib==3.11.2        # Matplotlib License (PSF-based; classifier "Python Software Foundation License")
+
+# Transitive dependencies
+contourpy==1.4.0          # BSD-3-Clause; from matplotlib
+cycler==0.12.1            # BSD (classifier "BSD License"); from matplotlib
+fonttools==4.66.1         # MIT; from matplotlib
+kiwisolver==1.5.1         # BSD (classifier "BSD License"); from matplotlib
+pyparsing==3.3.3          # MIT; from matplotlib
+pluggy==1.6.0             # MIT; from pytest
+pygments==2.21.0          # BSD-2-Clause; from pytest

@@ -69,8 +69,15 @@ Optional records (flags):
                       derived inputs excluded), so a lost VM loses at most
                       the target in progress. An upload failure is printed and
                       never stops the run. The URI is not written to records.
+  --buckets N[,N...]  pass AlphaFold3's own --buckets with these token sizes
+                      (strictly increasing), recorded in session.json
+                      (af3_buckets) and per process; an input below the
+                      first size is padded to it (the memory-limit
+                      measurement, section 10 of 2026-10-14, uses one size per
+                      process). Without it AlphaFold3's default list applies.
 A failed run is recorded with failure = oom, timeout, signal N or error, and
-the harness goes on with the next target.
+failure_detail (the out-of-memory line of the log, else its last error line,
+else its last line), and the harness goes on with the next target.
 
 Records hold no absolute paths and no hostname. Paths are relative to the
 repository root; the recorded command is the one that ran, from the repository
@@ -276,6 +283,33 @@ def model_entries(path):
   return sorted(m.group(1) for p in pathlib.Path(path).iterdir() if (m := MODEL_ENTRY.match(p.name)))
 
 
+ERROR_LINE = re.compile(r'(Error|Exception|Traceback|Fatal|Killed)')
+
+
+def failure_detail(failure, timed_out, text):
+  """The log line that says why a process failed (at most 300 characters), or None if it did not fail."""
+  if failure is None:
+    return None
+  if timed_out:
+    return 'killed by the harness at --timeout_min'
+  lines = [l.strip() for l in text.splitlines() if l.strip()]
+  oom = [l for l in lines if OOM_LINE.search(l)]
+  errors = [l for l in lines if ERROR_LINE.search(l)]
+  line = oom[0] if oom else errors[-1] if errors else lines[-1] if lines else 'empty log'
+  return line[:300]
+
+
+def parse_buckets(value):
+  """--buckets: comma-separated token sizes, positive and strictly increasing."""
+  try:
+    sizes = [int(v) for v in value.split(',')]
+  except ValueError:
+    raise SystemExit(f'--buckets {value!r}: comma-separated integers, for example 1280 or 1280,1536')
+  if not sizes or min(sizes) <= 0 or any(b <= a for a, b in zip(sizes, sizes[1:])):
+    raise SystemExit(f'--buckets {value!r}: sizes must be positive and strictly increasing')
+  return sizes
+
+
 def classify_failure(rc, timed_out, text):
   if rc == 0 and not timed_out:
     return None
@@ -367,7 +401,9 @@ def main():
   ap.add_argument('--log_compiles', action='store_true', help='record XLA compile times (JAX_LOG_COMPILES=1)')
   ap.add_argument('--save_fresh_cache', help='with fresh caches: keep them in data/jax_cache/NAME')
   ap.add_argument('--upload_uri', help='gs:// folder: upload this session after each target')
+  ap.add_argument('--buckets', help="AlphaFold3's --buckets, for example 1280 (default: AlphaFold3's list)")
   args = ap.parse_args()
+  af3_buckets = parse_buckets(args.buckets) if args.buckets else None
 
   configs = read_configs(CONFIGS)
   if args.config not in configs:
@@ -448,6 +484,7 @@ def main():
                    model_dir='<model_dir>',
                    upload_uri='<results bucket>' if args.upload_uri else None),
       'targets': [r['pdb_id'] for r in rows],
+      'af3_buckets': af3_buckets,   # None: AlphaFold3's default bucket list
       'compile_cache': {'mode': args.compile_cache.split(':')[0],
                         'warm_dir': rel(warm_dir) if warm_dir else None,
                         'warm_at_start': dir_stats(warm_dir) if warm_dir else None},
@@ -513,6 +550,8 @@ def main():
       cmd.append(f'--num_recycles={args.num_recycles}')
     if args.num_diffusion_samples is not None:
       cmd.append(f'--num_diffusion_samples={args.num_diffusion_samples}')
+    if af3_buckets:
+      cmd.append(f'--buckets={",".join(map(str, af3_buckets))}')
     shown_env = dict(cfg.get('env', {}), **extra_env)
     if args.entry:
       shown_env['AF3_ENTRY_STATS'] = run_env['AF3_ENTRY_STATS']
@@ -568,11 +607,15 @@ def main():
                           'model_entries_before': entries_before, 'model_entries_written': entries_written},
         'output_dir': str((tdir / 'af3_output').relative_to(REPO)), 'outputs': outputs,
         'failure': classify_failure(rc, timed_out, log_text),
+        'af3_buckets': af3_buckets,
+        'padded_bucket': (int(m.group(1)) if (m := re.search(r'Got bucket size (\d+)', parsed['bucket_line'] or ''))
+                          else None),
         'compile': parse_compiles(log_text),
         'entry': args.entry, 'entry_stats': stats,
         'memory': memory_summary(stats),
     }
     record['compile_cache']['saved_to'] = saved_to
+    record['failure_detail'] = failure_detail(record['failure'], timed_out, log_text)
     record = scrub(record)
     write_json(tdir / 'run.json', record)
     with open(out_dir / 'runs.jsonl', 'a') as f:

@@ -17,8 +17,13 @@ token bucket, and the key also hashes the cache directory path unless
 JAX_PERSISTENT_CACHE_ENABLE_XLA_CACHES=none (jax/_src/compiler.py puts
 <dir>/xla_gpu_per_fusion_autotune_cache_dir into the compile options). Entries
 are <key>-cache files; a hit is logged with its key, like JAX_LOG_COMPILES.
+Buckets: --buckets as AlphaFold3 defines it (default list; the input is padded
+to the smallest size >= its token count, here its residue count), logged as
+"Got bucket size B for input with T tokens". Memory-limit measurement:
+FAKE_OOM_BUCKET=B fails with RESOURCE_EXHAUSTED from bucket B up;
+FAKE_SLOW_BUCKET=B sleeps FAKE_SLOW_S seconds (default 600) from bucket B up.
 """
-import glob, hashlib, json, os, shutil, signal, sys, time
+import bisect, glob, hashlib, json, os, shutil, signal, sys, time
 from absl import app, flags
 _JSON_PATH = flags.DEFINE_string('json_path', None, '')
 _OUTPUT_DIR = flags.DEFINE_string('output_dir', None, '')
@@ -30,6 +35,8 @@ flags.DEFINE_bool('run_data_pipeline', True, '')
 _CACHE = flags.DEFINE_string('jax_compilation_cache_dir', None, '')
 _RECYCLES = flags.DEFINE_integer('num_recycles', 10, '')
 _SAMPLES = flags.DEFINE_integer('num_diffusion_samples', 5, '')
+_BUCKETS = flags.DEFINE_list('buckets', ['256', '512', '768', '1024', '1280', '1536', '2048', '2560', '3072',
+                                         '3584', '4096', '4608', '5120'], '')
 
 
 def venv_file(name, default):
@@ -50,6 +57,18 @@ def main(_):
   assert os.listdir(_MODEL_DIR.value), 'no weights'
   print(f'Found local {_JAX_BACKEND.value.upper()} devices: [FakeDevice(id=0)], using device 0: fake:0', flush=True)
   print(f'Featurising data with {len(seeds)} seed(s) took 2.00 seconds.', flush=True)
+  residues = sum(len(s[k]['sequence']) for s in data['sequences'] for k in s if 'sequence' in s[k])
+  sizes = [int(b) for b in _BUCKETS.value]
+  i = bisect.bisect_left(sizes, residues)
+  bucket = sizes[i] if i < len(sizes) else residues
+  print(f'Got bucket size {bucket} for input with {residues} tokens, resulting in {bucket - residues} padded tokens.',
+        flush=True)
+  if os.environ.get('FAKE_OOM_BUCKET') and bucket >= int(os.environ['FAKE_OOM_BUCKET']):
+    print(f'jaxlib.xla_extension.XlaRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate '
+          f'{bucket / 100:.1f}GiB.', flush=True)
+    sys.exit(1)
+  if os.environ.get('FAKE_SLOW_BUCKET') and bucket >= int(os.environ['FAKE_SLOW_BUCKET']):
+    time.sleep(float(os.environ.get('FAKE_SLOW_S', '600')))
   if sc == 'oom' and name == '7D5C':
     print('jaxlib.xla_extension.XlaRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 17.2GiB.', flush=True)
     sys.exit(1)
@@ -85,8 +104,6 @@ def main(_):
   key = path = None
   if cache:
     os.makedirs(cache, exist_ok=True)
-    residues = sum(len(s[k]['sequence']) for s in data['sequences'] for k in s if 'sequence' in s[k])
-    bucket = next(b for b in (256, 512, 768, 1024, 1280, 1536, 2048, 4096) if residues <= b)
     path_part = '' if os.environ.get('JAX_PERSISTENT_CACHE_ENABLE_XLA_CACHES') == 'none' else cache
     key = 'jit_apply_fn-' + hashlib.sha256(f'{bucket}|{path_part}'.encode()).hexdigest()[:32]
     path = os.path.join(cache, f'{key}-cache')
