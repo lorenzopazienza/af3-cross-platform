@@ -75,6 +75,11 @@ Optional records (flags):
                       first size is padded to it (the memory-limit
                       measurement, section 10 of 2026-10-14, uses one size per
                       process). Without it AlphaFold3's default list applies.
+  --save_embeddings   pass AlphaFold3's own --save_embeddings=true (final trunk
+                      single and pair embeddings, float16, written as
+                      af3_output/<name>/seed-<S>_embeddings/<name>_embeddings.npz);
+                      recorded in session.json (save_embeddings) and per
+                      process (embedding_files, with sizes). Off by default.
 A failed run is recorded with failure = oom, timeout, signal N or error, and
 failure_detail (the out-of-memory line of the log, else its last error line,
 else its last line), and the harness goes on with the next target.
@@ -402,6 +407,7 @@ def main():
   ap.add_argument('--save_fresh_cache', help='with fresh caches: keep them in data/jax_cache/NAME')
   ap.add_argument('--upload_uri', help='gs:// folder: upload this session after each target')
   ap.add_argument('--buckets', help="AlphaFold3's --buckets, for example 1280 (default: AlphaFold3's list)")
+  ap.add_argument('--save_embeddings', action='store_true', help="AlphaFold3's --save_embeddings=true")
   args = ap.parse_args()
   af3_buckets = parse_buckets(args.buckets) if args.buckets else None
 
@@ -485,6 +491,7 @@ def main():
                    upload_uri='<results bucket>' if args.upload_uri else None),
       'targets': [r['pdb_id'] for r in rows],
       'af3_buckets': af3_buckets,   # None: AlphaFold3's default bucket list
+      'save_embeddings': args.save_embeddings,
       'compile_cache': {'mode': args.compile_cache.split(':')[0],
                         'warm_dir': rel(warm_dir) if warm_dir else None,
                         'warm_at_start': dir_stats(warm_dir) if warm_dir else None},
@@ -552,6 +559,8 @@ def main():
       cmd.append(f'--num_diffusion_samples={args.num_diffusion_samples}')
     if af3_buckets:
       cmd.append(f'--buckets={",".join(map(str, af3_buckets))}')
+    if args.save_embeddings:
+      cmd.append('--save_embeddings=true')
     shown_env = dict(cfg.get('env', {}), **extra_env)
     if args.entry:
       shown_env['AF3_ENTRY_STATS'] = run_env['AF3_ENTRY_STATS']
@@ -608,6 +617,9 @@ def main():
         'output_dir': str((tdir / 'af3_output').relative_to(REPO)), 'outputs': outputs,
         'failure': classify_failure(rc, timed_out, log_text),
         'af3_buckets': af3_buckets,
+        'save_embeddings': args.save_embeddings,
+        'embedding_files': [{'path': str(p.relative_to(tdir)), 'bytes': p.stat().st_size}
+                            for p in sorted((tdir / 'af3_output').rglob('*_embeddings.npz'))],
         'padded_bucket': (int(m.group(1)) if (m := re.search(r'Got bucket size (\d+)', parsed['bucket_line'] or ''))
                           else None),
         'compile': parse_compiles(log_text),

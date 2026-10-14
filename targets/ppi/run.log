@@ -1,0 +1,42 @@
+1 search: release 2021-10-01 to 2024-12-31: 47168
+1 search: X-ray diffraction: 30619
+1 search: resolution <= 2.5 A: 24540
+1 search: exactly two protein entities: 3343
+1 search: no nucleic-acid entity: 3291
+1 search: no nucleic-acid hybrid entity: 3291
+2 data API: re-check of 1, assembly 1 one chain per protein entity: 2232
+3 chain lengths 30 to 700, total <= 1000: 1487
+   contacts: 200/1487
+   contacts: 400/1487
+   contacts: 600/1487
+   contacts: 800/1487
+   contacts: 1000/1487
+   contacts: 1200/1487
+   contacts: 1400/1487
+4 contact: >= 10 residue pairs within 5 A (assembly 1): 1486
+/Users/lorenzopazienza/Desktop/alphafold-on-tpu/analysis/ppi/.venv/lib/python3.12/site-packages/Bio/Align/__init__.py:4412: BiopythonDeprecationWarning: The attribute 'target_end_gap_score' was renamed to 'end_insertion_score'. This was done to be consistent with the
+AlignmentCounts object returned by the .counts method of an Alignment object.
+  warnings.warn(
+/Users/lorenzopazienza/Desktop/alphafold-on-tpu/analysis/ppi/.venv/lib/python3.12/site-packages/Bio/Align/__init__.py:4412: BiopythonDeprecationWarning: The attribute 'query_end_gap_score' was renamed to 'end_deletion_score'. This was done to be consistent with the
+AlignmentCounts object returned by the .counts method of an Alignment object.
+  warnings.warn(
+   redundancy: 200/1486, kept 40
+   redundancy: 400/1486, kept 61
+   redundancy: 600/1486, kept 82
+   redundancy: 800/1486, kept 100
+   redundancy: 1000/1486, kept 107
+   redundancy: 1200/1486, kept 117
+   redundancy: 1400/1486, kept 123
+5 redundancy at 30% identity (random order, seed 2026): 124
+1 search: release 2021-10-01 to 2024-12-31: 47168
+1 search: X-ray diffraction: 30619
+1 search: resolution <= 2.5 A: 24540
+1 search: exactly two protein entities: 3343
+1 search: no nucleic-acid entity: 3291
+1 search: no nucleic-acid hybrid entity: 3291
+2 data API: re-check of 1, assembly 1 one chain per protein entity: 2232
+3 chain lengths 30 to 700, total <= 1000: 1487
+4 contact: >= 10 residue pairs within 5 A (assembly 1): 1486
+5 redundancy at 30% identity (random order, seed 2026): 124
+6 draw: first 30 of a permutation (seed 2026): 30
+analysis/ppi/.venv/bin/python targets/build_ppi_targets.py  180.96s user 5.02s system 97% cpu 3:09.99 total

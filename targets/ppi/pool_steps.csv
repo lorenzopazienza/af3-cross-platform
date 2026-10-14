@@ -1,0 +1,12 @@
+step,pool
+1 search: release 2021-10-01 to 2024-12-31,47168
+1 search: X-ray diffraction,30619
+1 search: resolution <= 2.5 A,24540
+1 search: exactly two protein entities,3343
+1 search: no nucleic-acid entity,3291
+1 search: no nucleic-acid hybrid entity,3291
+"2 data API: re-check of 1, assembly 1 one chain per protein entity",2232
+"3 chain lengths 30 to 700, total <= 1000",1487
+4 contact: >= 10 residue pairs within 5 A (assembly 1),1486
+"5 redundancy at 30% identity (random order, seed 2026)",124
+6 draw: first 30 of a permutation (seed 2026),30

@@ -42,14 +42,15 @@ def test_plans_are_what_the_generator_writes():
   assert {p.name: p.read_text() for p in (PLANS / 'memlimit').glob('memlimit_*.yaml')} == before
 
 
-@pytest.mark.parametrize('plan', sorted(p for p in PLANS.rglob('*.yaml') if 'memlimit' not in p.parts))
+@pytest.mark.parametrize('plan', sorted(p for p in PLANS.rglob('*.yaml') if not {'memlimit', 'embed', 'ppi'} & set(p.parts)))
 def test_other_plans_get_no_new_keys(plan):
   for platform in run_plan.PLATFORMS:
     try:
       d = expand(plan, platform, MANIFEST)
     except SystemExit:
       continue                                                                       # not a plan for this platform
-    assert 'buckets' not in d and 'stop_rule' not in d and not any('buckets' in r for r in d['runs'])
+    assert not {'buckets', 'stop_rule', 'save_embeddings', 'manifest'} & set(d)
+    assert not any('buckets' in r for r in d['runs'])
 
 
 def test_plan_refuses_bad_buckets(tmp_path):

@@ -272,6 +272,9 @@ TARGETS=$(jget "['targets']" | python3 -c "import ast,sys; print(','.join(ast.li
 [ -n "$TARGETS" ] || die "The plan has no targets for $PLATFORM."
 PLAN_NAME=$(basename "$PLAN" .yaml | tr 'A-Z' 'a-z' | tr -c 'a-z0-9_\n-' '-')
 PLAN_WEIGHTS=$(jget "['weights']")
+# The frozen-input manifest of the plan (plan key manifest; inputs/manifest.csv by default) and its targets' inputs.
+MANIFEST=$(jget ".get('manifest', 'inputs/manifest.csv')")
+INPUT_FILES=$(python3 -c "import csv,sys; m={r['pdb_id']: r['input_path'] for r in csv.DictReader(open(sys.argv[1]))}; print(' '.join(m[t] for t in sys.argv[2].split(',') if t in m))" "$MANIFEST" "$TARGETS")
 PLAN_DEADLINE=$(jget "['deadline_min']")
 WEIGHTS="${WEIGHTS:-$PLAN_WEIGHTS}"
 case "$WEIGHTS" in
@@ -342,9 +345,9 @@ fi
 
 if [ "$RESUME" != "1" ]; then
   # Frozen inputs must match the manifest before anything is created.
-  echo ">> Checking the plan's frozen inputs against inputs/manifest.csv"
-  python3 harness/verify_inputs.py --targets "$TARGETS" \
-    || die "Frozen inputs do not match inputs/manifest.csv; nothing was created."
+  echo ">> Checking the plan's frozen inputs against $MANIFEST"
+  python3 harness/verify_inputs.py --targets "$TARGETS" --manifest "$MANIFEST" \
+    || die "Frozen inputs do not match $MANIFEST; nothing was created."
   STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
   SESSION="${STAMP}_${PLATFORM}_${PLAN_NAME}"
   [ ! -e "results/af3/$SESSION" ] || die "results/af3/$SESSION exists; sessions are never overwritten."
@@ -752,7 +755,8 @@ vm_wait_ssh || exit 1
 echo ">> Uploading the plan's files (commit $BENCH_COMMIT)"
 TGZ=$(mktemp -t af3-run.XXXXXX)
 FILES="af3_tpu harness targets inputs/manifest.csv cloud/vm_af3_setup.sh cloud/vm_af3_weights.sh cloud/vm_device_check.sh cloud/vm_tpu_stack.sh cloud/vm_af3_job.sh cloud/vm_job_finish.sh"
-for t in $(echo "$TARGETS" | tr ',' ' '); do FILES="$FILES data/inputs/$t.json"; done
+[ "$MANIFEST" = "inputs/manifest.csv" ] || FILES="$FILES $MANIFEST"
+FILES="$FILES $INPUT_FILES"
 # Provenance: the git blob hash of every uploaded file (comparable with
 # `git ls-tree -r <commit>`), with the commit and the uncommitted-file count.
 {

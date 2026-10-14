@@ -1,0 +1,60 @@
+{
+  "built_utc": "2026-10-14T18:56:48+00:00",
+  "script": "targets/build_ppi_targets.py",
+  "search_api": "https://search.rcsb.org/rcsbsearch/v2/query",
+  "data_api": "https://data.rcsb.org/graphql",
+  "files": "https://files.rcsb.org/download",
+  "seed": 2026,
+  "identity_threshold": 0.3,
+  "identity_definition": "identical aligned pairs / length of the shorter chain; global alignment, BLOSUM62, gap open -11, extend -1, free end gaps (Bio.Align.PairwiseAligner)",
+  "biopython": "1.88",
+  "gemmi": "0.7.5",
+  "numpy": "1.26.4",
+  "search_ids_sha256": "36b263ec72ef50c38d71ae6a9db2dbf0b08e7bf585574242fc792e1d7a45d661",
+  "pool_steps": [
+    {
+      "step": "1 search: release 2021-10-01 to 2024-12-31",
+      "pool": 47168
+    },
+    {
+      "step": "1 search: X-ray diffraction",
+      "pool": 30619
+    },
+    {
+      "step": "1 search: resolution <= 2.5 A",
+      "pool": 24540
+    },
+    {
+      "step": "1 search: exactly two protein entities",
+      "pool": 3343
+    },
+    {
+      "step": "1 search: no nucleic-acid entity",
+      "pool": 3291
+    },
+    {
+      "step": "1 search: no nucleic-acid hybrid entity",
+      "pool": 3291
+    },
+    {
+      "step": "2 data API: re-check of 1, assembly 1 one chain per protein entity",
+      "pool": 2232
+    },
+    {
+      "step": "3 chain lengths 30 to 700, total <= 1000",
+      "pool": 1487
+    },
+    {
+      "step": "4 contact: >= 10 residue pairs within 5 A (assembly 1)",
+      "pool": 1486
+    },
+    {
+      "step": "5 redundancy at 30% identity (random order, seed 2026)",
+      "pool": 124
+    },
+    {
+      "step": "6 draw: first 30 of a permutation (seed 2026)",
+      "pool": 30
+    }
+  ]
+}

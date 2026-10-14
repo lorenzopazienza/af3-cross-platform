@@ -16,7 +16,10 @@ EXPECT_CACHE_CHECK = {'pilot_v5e', 'pilot_v6e', 'pilot_l4_1', 'pilot_cpu_2'}
 # Suite 7: these must also print "memlimit check: 0 problem(s)" (sizes, --buckets records, stop rule).
 EXPECT_MEMLIMIT_CHECK = {'memlimit_v5e_oom', 'memlimit_v6e_oom', 'memlimit_g_all', 'memlimit_gt_first',
                          'memlimit_v6e_timeout'}
+# Suite 8: these must also print "followup check: 0 problem(s)" (embeddings saved and fetched; ppi manifest used).
+EXPECT_FOLLOWUP_CHECK = {'embed_v6e', 'embed_g', 'ppi_manifest', 'ppi_real_g'}
 EXPECTED = {
+    'embed_v6e': 0, 'embed_g': 0, 'ppi_manifest': 0, 'ppi_tampered': 1, 'ppi_real_g': 0,
     'memlimit_v5e_oom': 0, 'memlimit_v6e_oom': 0, 'memlimit_g_all': 0, 'memlimit_gt_first': 0,
     'memlimit_v6e_timeout': 0,
     'probe_cpu': 0, 'probe_l4': 0, 'probe_v5e': 0, 'probe_v6e': 0, 'oom_v5e': 1, 'drop_v6e': 0,
@@ -68,6 +71,9 @@ for line in open(sys.argv[1]).read().splitlines():
   m = re.search(r'memlimit check: (\d+) problem', line)
   if m:
     cur['memlimit_problems'] = int(m.group(1))
+  m = re.search(r'followup check: (\d+) problem', line)
+  if m:
+    cur['followup_problems'] = int(m.group(1))
 bad = 0
 for r in rows:
   if 'rc' not in r:
@@ -81,13 +87,15 @@ for r in rows:
   ok = (r['exists'] == 'no' and not r['left'] and (viol == 0) != (r['name'] in EXPECT_VIOLATION)
         and int(r['rc']) == EXPECTED.get(r['name'])
         and (r['name'] not in EXPECT_CACHE_CHECK or r.get('cache_problems') == 0)
-        and (r['name'] not in EXPECT_MEMLIMIT_CHECK or r.get('memlimit_problems') == 0))
+        and (r['name'] not in EXPECT_MEMLIMIT_CHECK or r.get('memlimit_problems') == 0)
+        and (r['name'] not in EXPECT_FOLLOWUP_CHECK or r.get('followup_problems') == 0))
   bad += not ok
   print(f"{'ok ' if ok else 'BAD'} {r['name']:28} exit {r['rc']:>3}  created {r['created']:22} deleted {r['deleted']:4}"
         f" left {'YES' if r['exists'] != 'no' or r['left'] else 'no ':3} fetched {r.get('fetched', '-'):3}"
         f" gpu/rocm {r.get('viol', '-')}" + (f" cache {r.get('cache_problems', 'MISSING')}"
                                             if r['name'] in EXPECT_CACHE_CHECK else '')
-        + (f" memlimit {r.get('memlimit_problems', 'MISSING')}" if r['name'] in EXPECT_MEMLIMIT_CHECK else ''))
+        + (f" memlimit {r.get('memlimit_problems', 'MISSING')}" if r['name'] in EXPECT_MEMLIMIT_CHECK else '')
+        + (f" followup {r.get('followup_problems', 'MISSING')}" if r['name'] in EXPECT_FOLLOWUP_CHECK else ''))
 missing = sorted(set(EXPECTED) - {r['name'] for r in rows})
 for name in missing:
   print(f'BAD {name}: missing from the output')

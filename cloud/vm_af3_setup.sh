@@ -30,8 +30,14 @@ export PYTHONUNBUFFERED=1
 mkdir -p "$OUT"
 step() { echo; echo ">> [$(date -u +%H:%M:%S)] setup: $*"; }
 
-step "inputs against inputs/manifest.csv"
-python3 "$ROOT/harness/verify_inputs.py" --targets "$TARGETS" || exit 3
+# The plan's manifest (plan key manifest, default inputs/manifest.csv; harness/run_plan.py).
+MANIFEST=inputs/manifest.csv
+if [ -n "${PLAN:-}" ]; then
+  MANIFEST=$(cd "$ROOT" && python3 harness/run_plan.py --plan "$PLAN" --platform "$PLATFORM" --describe \
+    | python3 -c "import json,sys; print(json.load(sys.stdin).get('manifest', 'inputs/manifest.csv'))") || exit 3
+fi
+step "inputs against $MANIFEST"
+python3 "$ROOT/harness/verify_inputs.py" --targets "$TARGETS" --manifest "$MANIFEST" || exit 3
 
 step "system packages (the ones AlphaFold3's docker/Dockerfile installs)"
 sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq

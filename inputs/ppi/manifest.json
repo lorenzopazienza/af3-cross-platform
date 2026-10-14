@@ -1,0 +1,42 @@
+{
+  "built_utc": "2026-10-14T20:05:53+00:00",
+  "built_by": "inputs/ppi/build_ppi_inputs.py",
+  "repo_commit": "b25d3c9e91c878f854028800a5365c9ea7c64559",
+  "alphafold3_commit": "85c4d20505fd5cef05eac22b534d4e793971ae69",
+  "af3_buckets": [
+    256,
+    512,
+    768,
+    1024,
+    1280,
+    1536,
+    2048,
+    2560,
+    3072,
+    3584,
+    4096,
+    4608,
+    5120
+  ],
+  "validation": "folding_input.load_fold_inputs_from_path + featurisation.featurise_input (first seed, no inference)",
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "python": "3.12.6",
+  "packages": {
+    "alphafold3": "3.0.4",
+    "jax": "0.10.2",
+    "jaxlib": "0.10.2",
+    "numpy": "2.4.1",
+    "rdkit": "2025.9.4"
+  },
+  "draw_csv_sha256": "5caaf72fb6d90a436d9e67b57ba30c562b2abb477c304b02936f54085a5acc82",
+  "inputs": 30,
+  "replaced": 0,
+  "unpaired": "https://api.colabfold.com /ticket/msa mode env",
+  "paired": "https://api.colabfold.com /ticket/pair mode pairgreedy (ColabFold 2934b1b61ea1f6646c40aad47086e8f28863a2db)"
+}

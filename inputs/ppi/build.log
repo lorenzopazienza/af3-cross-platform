@@ -1,0 +1,63 @@
+[1/30] draw 1 7SVT (158 + 142 residues)
+    300 tokens, bucket 512, unpaired rows 5288;12524, paired rows 23018
+[2/30] draw 2 7LPW (557 + 429 residues)
+    986 tokens, bucket 1024, unpaired rows 4944;4178, paired rows 3588
+[3/30] draw 3 8EZR (102 + 312 residues)
+    414 tokens, bucket 512, unpaired rows 7264;4969, paired rows 9568
+[4/30] draw 4 7S8J (206 + 242 residues)
+    448 tokens, bucket 512, unpaired rows 5762;7249, paired rows 1004
+[5/30] draw 5 7YMF (303 + 178 residues)
+    481 tokens, bucket 512, unpaired rows 23998;16431, paired rows 45718
+[6/30] draw 6 7QU4 (147 + 142 residues)
+    289 tokens, bucket 512, unpaired rows 5177;4454, paired rows 12559
+[7/30] draw 7 8Q6Q (117 + 192 residues)
+    309 tokens, bucket 512, unpaired rows 6594;155, paired rows 253
+[8/30] draw 8 7MNX (217 + 141 residues)
+    358 tokens, bucket 512, unpaired rows 11447;8666, paired rows 3374
+[9/30] draw 9 7YKA (118 + 122 residues)
+    240 tokens, bucket 256, unpaired rows 2917;2910, paired rows 2300
+[10/30] draw 10 7L5M (107 + 69 residues)
+    176 tokens, bucket 256, unpaired rows 10406;10832, paired rows 10265
+[11/30] draw 11 8FJ3 (101 + 76 residues)
+    177 tokens, bucket 256, unpaired rows 259;5852, paired rows 2
+[12/30] draw 12 8BS3 (383 + 73 residues)
+    456 tokens, bucket 512, unpaired rows 14076;7357, paired rows 3515
+[13/30] draw 13 8HFP (77 + 108 residues)
+    185 tokens, bucket 256, unpaired rows 1644;2686, paired rows 1260
+[14/30] draw 14 7VRC (169 + 61 residues)
+    230 tokens, bucket 256, unpaired rows 111;968, paired rows 38
+[15/30] draw 15 8HHJ (108 + 158 residues)
+    266 tokens, bucket 512, unpaired rows 134;1115, paired rows 28
+[16/30] draw 16 7OQP (246 + 290 residues)
+    536 tokens, bucket 768, unpaired rows 10287;3579, paired rows 6483
+[17/30] draw 17 7MWR (204 + 249 residues)
+    453 tokens, bucket 512, unpaired rows 12;5, paired rows 2
+[18/30] draw 18 8EHE (353 + 152 residues)
+    505 tokens, bucket 512, unpaired rows 17046;73, paired rows 9
+[19/30] draw 19 8DRJ (106 + 106 residues)
+    212 tokens, bucket 256, unpaired rows 647;632, paired rows 779
+[20/30] draw 20 8FWP (279 + 307 residues)
+    586 tokens, bucket 768, unpaired rows 8189;6778, paired rows 3355
+[21/30] draw 21 8OI3 (208 + 91 residues)
+    299 tokens, bucket 512, unpaired rows 2320;8215, paired rows 2765
+[22/30] draw 22 8C26 (105 + 71 residues)
+    176 tokens, bucket 256, unpaired rows 793;32, paired rows 4
+[23/30] draw 23 8AKO (300 + 246 residues)
+    546 tokens, bucket 768, unpaired rows 526;630, paired rows 221
+[24/30] draw 24 7T6A (185 + 44 residues)
+    229 tokens, bucket 256, unpaired rows 12;1, paired rows 1
+[25/30] draw 25 7MMR (337 + 142 residues)
+    479 tokens, bucket 512, unpaired rows 3562;3455, paired rows 5756
+[26/30] draw 26 8I34 (196 + 196 residues)
+    392 tokens, bucket 512, unpaired rows 32;42, paired rows 857
+[27/30] draw 27 8H0N (367 + 244 residues)
+    611 tokens, bucket 768, unpaired rows 2642;4794, paired rows 10527
+[28/30] draw 28 8DSO (277 + 99 residues)
+    376 tokens, bucket 512, unpaired rows 13269;10919, paired rows 2642
+[29/30] draw 29 8BZR (172 + 84 residues)
+    256 tokens, bucket 256, unpaired rows 1187;953, paired rows 968
+[30/30] draw 30 8EY4 (70 + 88 residues)
+    158 tokens, bucket 256, unpaired rows 6012;2469, paired rows 273
+Wrote inputs/ppi/manifest.csv with 30 validated inputs; 0 replaced.
+.venv/bin/python ../../inputs/ppi/build_ppi_inputs.py  138.24s user 5.59s system 4% cpu 53:21.30 total
+exit 0

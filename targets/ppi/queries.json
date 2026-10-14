@@ -1,0 +1,432 @@
+[
+ {
+  "utc": "2026-10-14T18:53:39+00:00",
+  "service": "search",
+  "query": {
+   "query": {
+    "type": "group",
+    "logical_operator": "and",
+    "nodes": [
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_accession_info.initial_release_date",
+       "operator": "range",
+       "value": {
+        "from": "2021-10-01",
+        "to": "2024-12-31",
+        "include_lower": true,
+        "include_upper": true
+       }
+      }
+     }
+    ]
+   },
+   "return_type": "entry",
+   "request_options": {
+    "results_content_type": [
+     "experimental"
+    ],
+    "return_counts": true
+   }
+  },
+  "total_count": 47168,
+  "ids_sha256": null
+ },
+ {
+  "utc": "2026-10-14T18:53:40+00:00",
+  "service": "search",
+  "query": {
+   "query": {
+    "type": "group",
+    "logical_operator": "and",
+    "nodes": [
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_accession_info.initial_release_date",
+       "operator": "range",
+       "value": {
+        "from": "2021-10-01",
+        "to": "2024-12-31",
+        "include_lower": true,
+        "include_upper": true
+       }
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "exptl.method",
+       "operator": "exact_match",
+       "value": "X-RAY DIFFRACTION"
+      }
+     }
+    ]
+   },
+   "return_type": "entry",
+   "request_options": {
+    "results_content_type": [
+     "experimental"
+    ],
+    "return_counts": true
+   }
+  },
+  "total_count": 30619,
+  "ids_sha256": null
+ },
+ {
+  "utc": "2026-10-14T18:53:41+00:00",
+  "service": "search",
+  "query": {
+   "query": {
+    "type": "group",
+    "logical_operator": "and",
+    "nodes": [
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_accession_info.initial_release_date",
+       "operator": "range",
+       "value": {
+        "from": "2021-10-01",
+        "to": "2024-12-31",
+        "include_lower": true,
+        "include_upper": true
+       }
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "exptl.method",
+       "operator": "exact_match",
+       "value": "X-RAY DIFFRACTION"
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.resolution_combined",
+       "operator": "less_or_equal",
+       "value": 2.5
+      }
+     }
+    ]
+   },
+   "return_type": "entry",
+   "request_options": {
+    "results_content_type": [
+     "experimental"
+    ],
+    "return_counts": true
+   }
+  },
+  "total_count": 24540,
+  "ids_sha256": null
+ },
+ {
+  "utc": "2026-10-14T18:53:42+00:00",
+  "service": "search",
+  "query": {
+   "query": {
+    "type": "group",
+    "logical_operator": "and",
+    "nodes": [
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_accession_info.initial_release_date",
+       "operator": "range",
+       "value": {
+        "from": "2021-10-01",
+        "to": "2024-12-31",
+        "include_lower": true,
+        "include_upper": true
+       }
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "exptl.method",
+       "operator": "exact_match",
+       "value": "X-RAY DIFFRACTION"
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.resolution_combined",
+       "operator": "less_or_equal",
+       "value": 2.5
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.polymer_entity_count_protein",
+       "operator": "equals",
+       "value": 2
+      }
+     }
+    ]
+   },
+   "return_type": "entry",
+   "request_options": {
+    "results_content_type": [
+     "experimental"
+    ],
+    "return_counts": true
+   }
+  },
+  "total_count": 3343,
+  "ids_sha256": null
+ },
+ {
+  "utc": "2026-10-14T18:53:42+00:00",
+  "service": "search",
+  "query": {
+   "query": {
+    "type": "group",
+    "logical_operator": "and",
+    "nodes": [
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_accession_info.initial_release_date",
+       "operator": "range",
+       "value": {
+        "from": "2021-10-01",
+        "to": "2024-12-31",
+        "include_lower": true,
+        "include_upper": true
+       }
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "exptl.method",
+       "operator": "exact_match",
+       "value": "X-RAY DIFFRACTION"
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.resolution_combined",
+       "operator": "less_or_equal",
+       "value": 2.5
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.polymer_entity_count_protein",
+       "operator": "equals",
+       "value": 2
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.polymer_entity_count_nucleic_acid",
+       "operator": "equals",
+       "value": 0
+      }
+     }
+    ]
+   },
+   "return_type": "entry",
+   "request_options": {
+    "results_content_type": [
+     "experimental"
+    ],
+    "return_counts": true
+   }
+  },
+  "total_count": 3291,
+  "ids_sha256": null
+ },
+ {
+  "utc": "2026-10-14T18:53:43+00:00",
+  "service": "search",
+  "query": {
+   "query": {
+    "type": "group",
+    "logical_operator": "and",
+    "nodes": [
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_accession_info.initial_release_date",
+       "operator": "range",
+       "value": {
+        "from": "2021-10-01",
+        "to": "2024-12-31",
+        "include_lower": true,
+        "include_upper": true
+       }
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "exptl.method",
+       "operator": "exact_match",
+       "value": "X-RAY DIFFRACTION"
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.resolution_combined",
+       "operator": "less_or_equal",
+       "value": 2.5
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.polymer_entity_count_protein",
+       "operator": "equals",
+       "value": 2
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.polymer_entity_count_nucleic_acid",
+       "operator": "equals",
+       "value": 0
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.polymer_entity_count_nucleic_acid_hybrid",
+       "operator": "equals",
+       "value": 0
+      }
+     }
+    ]
+   },
+   "return_type": "entry",
+   "request_options": {
+    "results_content_type": [
+     "experimental"
+    ],
+    "return_counts": true
+   }
+  },
+  "total_count": 3291,
+  "ids_sha256": null
+ },
+ {
+  "utc": "2026-10-14T18:53:44+00:00",
+  "service": "search",
+  "query": {
+   "query": {
+    "type": "group",
+    "logical_operator": "and",
+    "nodes": [
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_accession_info.initial_release_date",
+       "operator": "range",
+       "value": {
+        "from": "2021-10-01",
+        "to": "2024-12-31",
+        "include_lower": true,
+        "include_upper": true
+       }
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "exptl.method",
+       "operator": "exact_match",
+       "value": "X-RAY DIFFRACTION"
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.resolution_combined",
+       "operator": "less_or_equal",
+       "value": 2.5
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.polymer_entity_count_protein",
+       "operator": "equals",
+       "value": 2
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.polymer_entity_count_nucleic_acid",
+       "operator": "equals",
+       "value": 0
+      }
+     },
+     {
+      "type": "terminal",
+      "service": "text",
+      "parameters": {
+       "attribute": "rcsb_entry_info.polymer_entity_count_nucleic_acid_hybrid",
+       "operator": "equals",
+       "value": 0
+      }
+     }
+    ]
+   },
+   "return_type": "entry",
+   "request_options": {
+    "results_content_type": [
+     "experimental"
+    ],
+    "return_all_hits": true
+   }
+  },
+  "total_count": 3291,
+  "ids_sha256": "36b263ec72ef50c38d71ae6a9db2dbf0b08e7bf585574242fc792e1d7a45d661"
+ },
+ {
+  "utc": "2026-10-14T18:55:20+00:00",
+  "service": "files (assembly1.cif.gz)",
+  "entries": 1487
+ }
+]

@@ -22,6 +22,8 @@ to the smallest size >= its token count, here its residue count), logged as
 "Got bucket size B for input with T tokens". Memory-limit measurement:
 FAKE_OOM_BUCKET=B fails with RESOURCE_EXHAUSTED from bucket B up;
 FAKE_SLOW_BUCKET=B sleeps FAKE_SLOW_S seconds (default 600) from bucket B up.
+--save_embeddings: writes <name>/seed-<S>_embeddings/<name>_embeddings.npz as AlphaFold3 does (float16
+single_embeddings [T, 384] and pair_embeddings [T, T, 128]), with T cut to 8 tokens to keep tests small.
 """
 import bisect, glob, hashlib, json, os, shutil, signal, sys, time
 from absl import app, flags
@@ -35,6 +37,7 @@ flags.DEFINE_bool('run_data_pipeline', True, '')
 _CACHE = flags.DEFINE_string('jax_compilation_cache_dir', None, '')
 _RECYCLES = flags.DEFINE_integer('num_recycles', 10, '')
 _SAMPLES = flags.DEFINE_integer('num_diffusion_samples', 5, '')
+_SAVE_EMBEDDINGS = flags.DEFINE_bool('save_embeddings', False, '')
 _BUCKETS = flags.DEFINE_list('buckets', ['256', '512', '768', '1024', '1280', '1536', '2048', '2560', '3072',
                                          '3584', '4096', '4608', '5120'], '')
 
@@ -137,6 +140,13 @@ def main(_):
       src = glob.glob(os.path.join(ref, f'seed-{s}_sample-{k}', '*_model.cif')) if ref else []
       if src:
         shutil.copy(src[0], os.path.join(sd, f'{name}_seed-{s}_sample-{k}_model.cif'))
+  if _SAVE_EMBEDDINGS.value:
+    import numpy as np
+    t = min(residues, 8)
+    for s in seeds:
+      d = os.path.join(out, f'seed-{s}_embeddings'); os.makedirs(d, exist_ok=True)
+      np.savez_compressed(os.path.join(d, f'{name}_embeddings.npz'),
+                          single_embeddings=np.ones((t, 384), np.float16), pair_embeddings=np.ones((t, t, 128), np.float16))
   print('Done running 1 fold jobs.', flush=True)
 
 

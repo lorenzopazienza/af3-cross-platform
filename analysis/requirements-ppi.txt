@@ -1,0 +1,24 @@
+# PPI environment for follow-up experiment 1 (notes/analysis_plan.md section 10, 2026-10-14): DockQ 2 for
+# analysis/score_dockq.py, gemmi and Biopython for targets/build_ppi_targets.py.
+#   uv venv --python 3.12 analysis/ppi/.venv && \
+#     uv pip install --python analysis/ppi/.venv/bin/python -r analysis/requirements-ppi.txt
+# Kept apart from requirements.txt: DockQ 2.1.3 (the latest release, source only) declares numpy<2.0, and the
+# analysis environment, in which every earlier result was computed, uses numpy 2.5.3. Every package, direct and
+# transitive, is pinned (uv pip freeze, 2026-10-14). Licences as declared in each package's metadata.
+
+# Direct dependencies
+dockq==2.1.3              # MIT (classifier "MIT License"); DockQ v2 (Mirabello and Wallner)
+gemmi==0.7.5              # MPL-2.0; mmCIF reading (contacts in the target rule)
+pytest==9.1.1             # MIT; analysis/tests/test_score_dockq.py
+
+# Transitive dependencies
+numpy==1.26.4             # BSD (classifier "BSD License"); from dockq (numpy<2.0)
+biopython==1.88           # Biopython License Agreement (LicenseRef-Biopython-License-Agreement); from dockq
+networkx==3.7             # BSD-3-Clause; from dockq
+parallelbar==2.5          # MIT; from dockq
+tqdm==4.70.1              # MPL-2.0 AND MIT; from parallelbar
+colorama==0.4.6           # BSD (classifier "BSD License"); from parallelbar
+iniconfig==2.3.1          # MIT; from pytest
+packaging==26.3           # Apache-2.0 OR BSD-2-Clause; from pytest
+pluggy==1.6.0             # MIT; from pytest
+pygments==2.21.0          # BSD-2-Clause; from pytest

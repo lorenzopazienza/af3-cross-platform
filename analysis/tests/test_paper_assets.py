@@ -40,16 +40,21 @@ def test_role_order_puts_primary_pairs_first():
   assert list(pa.by_role(df).contrast) == ['HW(V5,V6)', 'HW(V6,G)', 'RC(G)', 'RC(Gd)', 'SD(G)']
 
 
-def _memlimit_session(root, name, config, sizes, stop=None, cause='oom'):
+def _memlimit_session(root, name, config, sizes, stop=None):
   for size in sizes:
     d = root / name / f'{config}_bucket{size}_rep1_seed1_fresh'
     (d / '7D5C').mkdir(parents=True)
-    (d / 'session.json').write_text(json.dumps({'label': 'memlimit', 'config_name': config, 'af3_buckets': [size]}))
+    (d / 'session.json').write_text(json.dumps({'label': 'memlimit', 'config_name': config, 'af3_buckets': [size],
+                                                'host': {'gce_zone': 'europe-west4-a'}}))
     failed = size == stop
     (d / '7D5C' / 'run.json').write_text(json.dumps({
-        'af3_buckets': [size], 'exit_code': 1 if failed else 0, 'failure': cause if failed else None,
-        'failure_detail': 'RESOURCE_EXHAUSTED: Out of memory' if failed else None,
-        'memory': {'compiled_peak_memory_in_bytes': size * 2 ** 22}}))
+        'af3_buckets': [size], 'padded_bucket': size, 'num_tokens': 1023, 'seeds': [1], 'exit_code': 1 if failed else 0,
+        'failure': 'oom' if failed else None, 'wall_seconds': 60.0 if failed else 600.0,
+        'inference_seconds_by_seed': {} if failed else {'1': 500.0}, 'compile': {'model_seconds': 40.0},
+        'failure_detail': ('jax.errors.JaxRuntimeError: RESOURCE_EXHAUSTED: Ran out of memory on HBM, the total memory '
+                           'required for HLO temporaries (20.95G) exceeds available HBM (15.75G).') if failed else None,
+        'memory': {} if failed else {'compiled_peak_memory_in_bytes': size * 2 ** 22,
+                                     'compiled_argument_size_in_bytes': 2 ** 30, 'bytes_limit': int(15.75 * 2 ** 30)}}))
 
 
 def test_memlimit_table_from_session_records(tmp_path, monkeypatch):
@@ -57,19 +62,14 @@ def test_memlimit_table_from_session_records(tmp_path, monkeypatch):
   _memlimit_session(tmp_path / 'af3', '20261015T000000Z_v5e_memlimit_v5', 'tpu_xla', [1280, 1536, 2048], stop=2048)
   _memlimit_session(tmp_path / 'af3', '20261015T000000Z_l4_memlimit_g', 'l4_xla', pa.MEMLIMIT_SIZES)
   recs = pa.t18_memlimit(tmp_path / 'out')
-  t = pd.read_csv(tmp_path / 'out' / 'tables' / 'T18_memlimit.csv', dtype=str).set_index('arm')
+  t = pd.read_csv(tmp_path / 'out' / 'tables' / 'T18_memlimit.csv', dtype=str, keep_default_na=False).set_index('arm')
   assert len(recs) == 3 + 9
   assert t.loc['V5', 'largest completed size'] == '1536' and t.loc['V5', 'stopping size'] == '2048'
-  assert t.loc['V5', 'cause'].startswith('oom: RESOURCE_EXHAUSTED')
+  assert t.loc['V5', 'cause'] == 'oom: 20.95 GiB required, 15.75 available'
   assert t.loc['G', 'largest completed size'] == '5120' and t.loc['G', 'stopping size'] == 'none (all sizes ran)'
   assert t.loc['V6', 'largest completed size'] == 'pending'
-
-
-def test_memlimit_table_is_a_placeholder_without_sessions(tmp_path, monkeypatch):
-  monkeypatch.setattr(pa, 'AF3', tmp_path / 'empty')
-  assert pa.t18_memlimit(tmp_path) == []
-  t = pd.read_csv(tmp_path / 'tables' / 'T18_memlimit.csv')
-  assert (t['largest completed size'] == 'pending').all()
+  b = pd.read_csv(tmp_path / 'out' / 'tables' / 'T18b_memlimit_processes.csv', dtype=str, keep_default_na=False)
+  assert ((b.arm == 'V5') & (b['size'] == '2048') & (b['memory in the error (GiB)'] == '20.95 required of 15.75')).any()
 
 
 def run(out, tables_only):
@@ -83,7 +83,7 @@ def test_tables_regenerate_identically(tmp_path):
   a, b = run(tmp_path / 'a', True), run(tmp_path / 'b', True)
   assert a == b
   tables = [k for k in a if k.startswith('tables/')]
-  assert len(tables) == 2 * 21 and 'sources.tsv' in a and 'README.md' in a
+  assert len(tables) == 2 * 22 and 'sources.tsv' in a and 'README.md' in a
   t04 = pd.read_csv(tmp_path / 'a' / 'tables' / 'T04_flip_rates.csv')
   assert list(t04.contrast[:3]) == ['HW(V5,V6)', 'HW(V6,G)', 'HW(G,C)']
   assert t04.set_index('contrast').loc['HW(V5,V6)', 'top-1 flip (%)'] == '18.0 [14.3, 21.7]'

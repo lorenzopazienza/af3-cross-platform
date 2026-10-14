@@ -56,6 +56,16 @@ not_run = "stop rule"; stop_rule.json in the session says which run (and
 size) stopped the plan, why, and which completed last. Under the rule the
 stopping run is the measurement's result, not a plan failure: exit status 0.
 
+manifest (optional, a path from the repository root, default inputs/manifest.csv):
+the frozen-input manifest the plan's targets come from (for example
+inputs/ppi/manifest.csv); it overrides --manifest, is passed to every harness
+run, and cloud/af3_run.sh checks and uploads the inputs it lists. Without the
+key nothing changes.
+
+save_embeddings (optional, true or false, default false): every harness run passes
+--save_embeddings (harness/run_af3.py), so AlphaFold3 writes its final trunk
+embeddings; recorded in session.json. Without the key nothing changes.
+
 --describe prints the expanded plan as JSON and runs nothing; cloud/af3_run.sh
 uses it on the laptop to choose uploads and to size the VM's lifetime.
 --upload_uri gs://FOLDER (optional, the session's folder in the results
@@ -108,6 +118,11 @@ def expand(plan_path, platform, manifest_path):
   if platform not in PLATFORMS:
     raise SystemExit(f'--platform must be one of {", ".join(PLATFORMS)}')
   plan = read_configs(pathlib.Path(plan_path))
+  plan_manifest = plan.get('manifest')
+  if plan_manifest:
+    if pathlib.Path(plan_manifest).is_absolute() or '..' in pathlib.Path(plan_manifest).parts:
+      raise SystemExit(f'plan: manifest must be a path inside the repository, not {plan_manifest!r}')
+    manifest_path = REPO / plan_manifest
   with open(manifest_path) as f:
     manifest = {r['pdb_id']: r for r in csv.DictReader(f)}
 
@@ -177,6 +192,13 @@ def expand(plan_path, platform, manifest_path):
     extra['buckets'] = buckets
   if stop_rule != 'none':
     extra['stop_rule'] = stop_rule
+  save_embeddings = str(per_platform(plan.get('save_embeddings', 'false'), platform)).lower()
+  if save_embeddings not in ('true', 'false'):
+    raise SystemExit(f'plan: save_embeddings must be true or false, not {save_embeddings!r}')
+  if save_embeddings == 'true':
+    extra['save_embeddings'] = True
+  if plan_manifest:
+    extra['manifest'] = plan_manifest
   return {
       'plan': str(pathlib.Path(plan_path)), 'platform': platform,
       'description': plan.get('description', ''), 'label': plan.get('label', 'measurement'),
@@ -279,7 +301,7 @@ def main():
     cmd = [sys.executable, str(REPO / 'harness' / 'run_af3.py'),
            '--config', run['config'], '--targets', ','.join(desc['targets']),
            '--seeds', str(run['seed']), '--session', f'{args.session}/{run["run"]}',
-           '--label', desc['label'], '--manifest', args.manifest, '--model_dir', args.model_dir,
+           '--label', desc['label'], '--manifest', desc.get('manifest', args.manifest), '--model_dir', args.model_dir,
            '--timeout_min', str(desc['run_timeout_min']), '--order', 'tokens',
            '--entry', '--log_compiles']
     if run['cache'] == 'warm':
@@ -294,6 +316,8 @@ def main():
       cmd += ['--num_diffusion_samples', str(desc['num_diffusion_samples'])]
     if run.get('buckets'):
       cmd += ['--buckets', str(run['buckets'])]
+    if desc.get('save_embeddings'):
+      cmd += ['--save_embeddings']
     if args.upload_uri:
       cmd += ['--upload_uri', f'{args.upload_uri.rstrip("/")}/{run["run"]}']
     print(f'>> [{i}/{len(desc["runs"])}] {run["run"]}: {len(desc["targets"])} targets', flush=True)

@@ -4,8 +4,13 @@
 # (cloud/vm_device_check.sh); fake AlphaFold3 install.
 set -euo pipefail
 OUT=$1; ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-echo ">> setup: inputs against inputs/manifest.csv"
-python3 "$ROOT/harness/verify_inputs.py" --targets "$TARGETS" || exit 3
+MANIFEST=inputs/manifest.csv
+if [ -n "${PLAN:-}" ]; then
+  MANIFEST=$(cd "$ROOT" && python3 harness/run_plan.py --plan "$PLAN" --platform "$PLATFORM" --describe \
+    | python3 -c "import json,sys; print(json.load(sys.stdin).get('manifest', 'inputs/manifest.csv'))") || exit 3
+fi
+echo ">> setup: inputs against $MANIFEST"
+python3 "$ROOT/harness/verify_inputs.py" --targets "$TARGETS" --manifest "$MANIFEST" || exit 3
 echo ">> setup: fake install of AlphaFold3 (test double)"
 sleep "${FAKE_SETUP_S:-0.5}"
 mkdir -p "$ROOT/third_party/alphafold3/.venv/bin"

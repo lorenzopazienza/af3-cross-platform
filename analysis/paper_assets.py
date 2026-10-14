@@ -323,45 +323,59 @@ def t17_audit(out):
               'default (glycan sets, no bondedAtomPairs); CCD of 2026-10-08')
 
 
-def memlimit_records():
-  """[(arm, size, run.json record)] of every memory-limit session in results/af3/ (label memlimit)."""
-  out = []
-  code = {('v5e', 'tpu_xla'): 'V5', ('v6e', 'tpu_xla'): 'V6', ('l4', 'l4_xla'): 'G', ('l4', 'l4_triton'): 'GT'}
-  for sj in sorted(AF3.glob('*/*/session.json')):
-    try:
-      s = json.loads(sj.read_text())
-    except ValueError:
-      continue
-    if s.get('label') != 'memlimit':
-      continue
-    platform = next((p for p in ('v5e', 'v6e', 'l4') if f'_{p}_' in sj.parent.parent.name), None)
-    for rj in sorted(sj.parent.glob('*/run.json')):
-      SOURCES.add(rj)
-      r = json.loads(rj.read_text())
-      size = (r.get('af3_buckets') or [None])[0]
-      out.append((code.get((platform, s.get('config_name')), s.get('config_name')), size, r))
-  return out
-
-
 def t18_memlimit(out):
-  recs = memlimit_records()
-  if not recs:
-    t = pd.DataFrame({'arm': ['V5', 'V6', 'G', 'GT'], 'largest completed size': ['pending'] * 4,
+  """T18 (per arm) and T18b (per process) from analysis/memlimit.py; placeholders while no memory-limit session
+  exists. Returns the per-process table (empty without sessions)."""
+  import memlimit
+  t = memlimit.process_table(AF3, PRIMARY / 'samples.csv')
+  ml = t[t.source == 'memlimit'] if len(t) else t
+  for sess in sorted(set(ml.session)) if len(ml) else []:
+    SOURCES.update(p for p in (AF3 / sess).glob('*/*/run.json'))
+  if ml.empty:
+    s = pd.DataFrame({'arm': ['V5', 'V6', 'G', 'GT'], 'largest completed size': ['pending'] * 4,
                       'stopping size': ['pending'] * 4, 'cause': ['memory-limit runs not yet run'] * 4})
   else:
+    sm = memlimit.summary(t).set_index('arm')
     rows = []
-    for arm in ['V5', 'V6', 'G', 'GT']:
-      rs = sorted(((s, r) for a, s, r in recs if a == arm and s), key=lambda x: x[0])
-      ok = [s for s, r in rs if r['exit_code'] == 0 and not r.get('failure')]
-      bad = [(s, r) for s, r in rs if r['exit_code'] != 0 or r.get('failure')]
-      rows.append({'arm': arm, 'largest completed size': max(ok) if ok else ('none' if rs else 'pending'),
-                   'stopping size': bad[0][0] if bad else ('none (all sizes ran)' if rs else 'pending'),
-                   'cause': f'{bad[0][1].get("failure")}: {bad[0][1].get("failure_detail")}' if bad else ''})
-    t = pd.DataFrame(rows)
-  write_table(out, 'T18_memlimit', t, 'Memory limit per chip (section 10, 2026-10-14): 7D5C padded with AlphaFold3\'s '
+    for arm in memlimit.ARMS:
+      if arm not in sm.index:
+        rows.append({'arm': arm, 'largest completed size': 'pending', 'stopping size': 'pending', 'cause': ''})
+        continue
+      r = sm.loc[arm]
+      stop = 'none (all sizes ran)' if pd.isna(r.stopping_size) else str(int(r.stopping_size))
+      err = '' if pd.isna(r.error_required_gib) else (
+          f'{r.error_required_gib:.2f} GiB required, {r.error_available_gib:.2f} available' if not pd.isna(r.error_available_gib)
+          else f'allocation of {r.error_required_gib:.2f} GiB failed; compiled peak + args '
+               f'{r.stopping_compiled_peak_plus_args_gib:.2f} GiB')
+      rows.append({'arm': arm,
+                   'largest completed size': 'none' if pd.isna(r.largest_completed_size) else str(int(r.largest_completed_size)),
+                   'stopping size': stop, 'cause': r.cause + (f': {err}' if err else ''),
+                   'peak + args at largest completed (GiB)': f'{r.largest_completed_peak_plus_args_gib:.2f}',
+                   'device limit (GiB)': f'{r.device_limit_gib:.2f}',
+                   'wall at largest completed (s)': f'{r.largest_completed_wall_s:.0f}',
+                   'USD per structure at largest completed': f'{r.largest_completed_usd_per_structure:.3f}'})
+    s = pd.DataFrame(rows)
+  write_table(out, 'T18_memlimit', s, 'Memory limit per chip (section 10, 2026-10-14): 7D5C padded with AlphaFold3\'s '
               '--buckets; the largest size that completed and the size that stopped the measurement, with its cause'
-              + ('' if recs else ' (placeholder: runs pending)'))
-  return recs
+              + ('' if len(ml) else ' (placeholder: runs pending)'))
+  if len(ml):
+    f2 = lambda x, nd=2: '' if pd.isna(x) else f'{x:.{nd}f}'  # noqa: E731
+    d = pd.DataFrame({'arm': t.arm.astype(str), 'size': t['size'].astype(int).astype(str) + np.where(t.source == 'memlimit', '', '*'),
+                      'exit': t.exit_code.astype(str) + np.where(t.failure != '', ' ' + t.failure, ''),
+                      'compiled peak + args (GiB)': t.compiled_peak_plus_args_gib.map(f2),
+                      'allocator peak in use (GiB)': t.alloc_peak_in_use_gib.map(f2),
+                      'device limit (GiB)': t.device_limit_gib.map(f2), 'compile (s)': t.compile_s.map(lambda x: f2(x, 0)),
+                      'inference (s)': t.inference_s.map(lambda x: f2(x, 0)), 'wall (s)': t.wall_s.map(lambda x: f2(x, 0)),
+                      'USD per structure': t.usd_per_structure_standard.map(lambda x: f2(x, 3)),
+                      'memory in the error (GiB)': [('' if pd.isna(a) else (f'{a:.2f} required of {b:.2f}' if not pd.isna(b)
+                                                                            else f'{a:.2f} allocation'))
+                                                    for a, b in zip(t.error_required_gib, t.error_available_gib)]})
+    write_table(out, 'T18b_memlimit_processes', d, 'Memory limit per chip, every process: compiled peak plus arguments '
+                '(XLA memory analysis), allocator peak in use, device limit, compile, inference and wall time, on-demand '
+                'cost per structure, and for the failed size the memory the error reports; * the main study\'s 7D5C '
+                'process at its 1,024-token bucket (fresh, r1, seed 1). On TPU the allocator counts arguments and '
+                'outputs, not the compiled program\'s temporaries')
+  return ml
 
 
 # ---------------------------------------------------------------- figures
@@ -493,17 +507,29 @@ def figures(out, contrasts, hwrc, q3, sample_pairs, cost, mem, sbs, cross, recs)
   ax.set_title('main study')
   ax.legend(frameon=False, fontsize=6, ncol=2)
   ax = axes[1]
-  if recs:
-    for arm in ['V5', 'V6', 'G', 'GT']:
-      pts = sorted((s, (r.get('memory') or {}).get('compiled_peak_memory_in_bytes'), r) for a, s, r in recs if a == arm and s)
-      ok = [(s, (m or 0) / GIB) for s, m, r in pts if r['exit_code'] == 0 and m]
-      if ok:
-        ax.plot(*zip(*ok), marker='o', ms=3, lw=1, label=arm)
-      for s, m, r in pts:
-        if r['exit_code'] != 0:
-          ax.axvline(s, lw=0.6, ls='--', color='0.5')
+  if len(recs):
+    import memlimit
+    t = memlimit.process_table(AF3, PRIMARY / 'samples.csv')
+    limits = {}
+    for arm in memlimit.ARMS:
+      g = t[t.arm == arm].sort_values('size')
+      ok = g[(g.exit_code == 0) & (g.failure == '')]
+      line, = ax.plot(ok['size'], ok.compiled_peak_gib, marker='o', ms=3, lw=1, label=arm)
+      main = ok[ok.source != 'memlimit']
+      ax.plot(main['size'], main.compiled_peak_gib, marker='o', ms=5, mfc='white', ls='', color=line.get_color())
+      for r in g[(g.exit_code != 0) | (g.failure != '')].itertuples():
+        y = r.error_required_gib if not pd.isna(r.error_available_gib) else r.compiled_peak_gib
+        ax.plot([ok['size'].iloc[-1], r.size], [ok.compiled_peak_gib.iloc[-1], y], ls=':', lw=1, color=line.get_color())
+        ax.plot([r.size], [y], marker='x', ms=6, ls='', color=line.get_color())
+      if g.device_limit_gib.notna().any():
+        limits[{'V5': 'v5e', 'V6': 'v6e'}.get(arm, 'L4')] = float(g.device_limit_gib.dropna().iloc[0])
+    for name, lim in sorted(limits.items()):
+      ax.axhline(lim, color='k', lw=0.6, ls='--')
+      ax.text(1000, lim, f' {name} {lim:.1f} GiB', fontsize=6, va='bottom')
+    ax.set_xticks([1024] + MEMLIMIT_SIZES[:5])
+    ax.tick_params(axis='x', labelsize=6)
     ax.legend(frameon=False, fontsize=6)
-    ax.set_title('memory limit (dashed: stopping size)')
+    ax.set_title('memory limit, 7D5C padded (x: failed size)')
   else:
     ax.text(0.5, 0.5, 'memory-limit runs pending\n(sizes 1280 to 5120, 7D5C)', ha='center', va='center',
             transform=ax.transAxes)
@@ -514,8 +540,9 @@ def figures(out, contrasts, hwrc, q3, sample_pairs, cost, mem, sbs, cross, recs)
   ax.set_xlabel('bucket size (tokens)')
   ax.set_ylabel('compiled peak (GiB)')
   fig.tight_layout()
-  save(fig, 'F8_memory', 'M7: device memory against token bucket in the main study, and the memory-limit '
-       'measurement' + ('' if recs else ' (placeholder panel until those runs exist)'))
+  save(fig, 'F8_memory', 'M7: device memory against token bucket in the main study (left), and the memory-limit '
+       'measurement (right: compiled peak per size, open circle the main study\'s 1,024 point, x the failed size at the '
+       'memory its error or its compiled program reports, dashed the device limits)' + ('' if len(recs) else ' (placeholder panel until those runs exist)'))
 
   s = sbs[sbs.section == 'success rate, r1']
   s = s[s.statistic == 'success_rate_overall_top1']

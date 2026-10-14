@@ -51,9 +51,9 @@ def main():
     bad += not ok
     print(f'  {pdb_id}: {"ok" if ok else "SHA-256 MISMATCH"} {digest[:16]}')
   if bad:
-    print(f'!! {bad} input(s) do not match inputs/manifest.csv; nothing will run.')
+    print(f'!! {bad} input(s) do not match {args.manifest}; nothing will run.')
     sys.exit(2)
-  print('   all inputs match inputs/manifest.csv')
+  print(f'   all inputs match {args.manifest}')
 
 
 if __name__ == '__main__':
