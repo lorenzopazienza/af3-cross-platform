@@ -145,7 +145,7 @@ def main(_):
     t = min(residues, 8)
     for s in seeds:
       d = os.path.join(out, f'seed-{s}_embeddings'); os.makedirs(d, exist_ok=True)
-      np.savez_compressed(os.path.join(d, f'{name}_embeddings.npz'),
+      np.savez_compressed(os.path.join(d, f'{name}_seed-{s}_embeddings.npz'),
                           single_embeddings=np.ones((t, 384), np.float16), pair_embeddings=np.ones((t, t, 128), np.float16))
   print('Done running 1 fold jobs.', flush=True)
 

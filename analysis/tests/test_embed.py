@@ -96,3 +96,25 @@ def test_versus_main_compares_outputs_byte_for_byte(tmp_path):
   v = vm.set_index('condition')
   assert v.loc['V6', 'differ'] == '7U3J_ranking_scores.csv' and not v.loc['V6', 'identical']
   assert v.loc['V5', 'identical'] is None                  # no main-study run of that condition in the table
+
+
+def test_embeddings_path_is_alphafold3s_name(tmp_path):
+  # third_party/alphafold3/run_alphafold.py writes seed-<S>_embeddings/<job>_seed-<S>_embeddings.npz.
+  assert embed.embeddings_path(tmp_path, '7U3J') == tmp_path / 'seed-1_embeddings' / '7U3J_seed-1_embeddings.npz'
+
+
+def test_summarise_per_pair():
+  import pandas as pd
+  pair = 'G r1 - G r2'
+  emb = pd.DataFrame([{'pair': pair, 'target': t, 'tokens': 10, 'single_rel_l2': v, 'single_token_max': v,
+                       'pair_rel_l2': v, 'pair_token_max': v, 'single_identical': v == 0, 'pair_identical': v == 0}
+                      for t, v in (('A', 0.0), ('B', 0.2), ('C', 0.4))])
+  st = pd.DataFrame([{'pair': pair, 'target': t, 'm4_ca_rmsd_median': v, 'm4_ligand_rmsd_median': v,
+                      'm5_ranking_score_median': v, 'samples_bit_identical': 5 if v == 0 else 0, 'same_top1': v < 0.3}
+                     for t, v in (('A', 0.0), ('B', 0.2), ('C', 0.4))])
+  s = embed.summarise(emb, st)
+  assert list(s.pair) == [pair]
+  r = s.iloc[0]
+  assert r.targets == 3 and r.single_rel_l2_median == 0.2 and r.pair_token_max_max == 0.4
+  assert r.single_identical_targets == 1 and r.pair_identical_targets == 1
+  assert r.samples_bit_identical == 5 and r.samples == 15 and r.same_top1_targets == 2

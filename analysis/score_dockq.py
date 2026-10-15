@@ -93,7 +93,7 @@ def collect(out):
     except ValueError:
       continue
     for cif in sorted(sj.parent.glob('*/af3_output/*/seed-*_sample-*/*_model.cif')):
-      target = cif.parts[-4]
+      target = cif.parts[-3]   # <run>/<T>/af3_output/<T>/seed-S_sample-K/<T>_..._model.cif
       t = targets.get(target)
       if t is None:
         continue

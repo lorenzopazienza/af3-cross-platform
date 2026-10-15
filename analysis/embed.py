@@ -6,7 +6,8 @@ descriptive, label embed).
 Sessions: every session in results/af3/ whose runs have label embed (harness/plans/embed/): the 10 pilot targets,
 seed 1, AlphaFold3's --save_embeddings, on V5, V6, G (r1 and r2) and Gd. Per target and for the pairs
 V5-V6, V6-G, G r1-G r2 and G-Gd (A the first-named):
-  single and pair embeddings (af3_output/<T>/seed-1_embeddings/<T>_embeddings.npz, float16, read as float64):
+  single and pair embeddings (af3_output/<T>/seed-1_embeddings/<T>_seed-1_embeddings.npz, AlphaFold3's name, float16,
+  read as float64):
     rel_l2       ||A - B|| / ||A|| over the whole array (Frobenius norm);
     token_max    the largest per-token relative difference: single, max_i ||a_i - b_i|| / ||a_i|| over tokens i
                  (384 channels); pair, max_ij ||a_ij - b_ij|| / ||a_ij|| over token pairs (i, j) (128 channels);
@@ -20,7 +21,11 @@ Bit-identity with the main study: for each process, its outputs against the main
 condition, repetition, target and seed (results/analysis/main_20261014/primary_v2/samples.csv): every sample's
 mmCIF (timestamp line masked, analysis/contrasts.masked), summary confidences and the ranking scores, byte for
 byte (saving embeddings may change compilation).
-Outputs in --out: embeddings.csv, structures.csv, versus_main.csv, report.md.
+Summary per pair (not specified by the row; descriptive): over the targets, the median and maximum of each
+measure, the number of targets whose single and pair embeddings are bit-identical, of bit-identical samples, and
+of targets with the same top-1 sample.
+Outputs in --out: embeddings.csv, structures.csv, summary.csv, versus_main.csv, report.md. --reuse reads
+embeddings.csv and structures.csv from --out instead of recomputing them.
 """
 import argparse
 import json
@@ -78,6 +83,11 @@ def compare_embeddings(ea, eb):
     out[f'{kind}_identical'] = bool(a.shape == b.shape and np.array_equal(a.view(np.uint16), b.view(np.uint16))) \
         if a.dtype == np.float16 and b.dtype == np.float16 else bool(np.array_equal(a, b))
   return out
+
+
+def embeddings_path(folder, target):
+  """AlphaFold3's embeddings file of one target and seed (run_alphafold.py: seed-<S>_embeddings/<job>_seed-<S>_)."""
+  return folder / f'seed-{SEED}_embeddings' / f'{target}_seed-{SEED}_embeddings.npz'
 
 
 def load_embeddings(path):
@@ -167,14 +177,38 @@ def analyse(procs):
       fa, fb = procs.get((*a, t)), procs.get((*b, t))
       if fa is None or fb is None:
         continue
-      ea = load_embeddings(fa / f'seed-{SEED}_embeddings' / f'{t}_embeddings.npz')
-      eb = load_embeddings(fb / f'seed-{SEED}_embeddings' / f'{t}_embeddings.npz')
+      ea, eb = load_embeddings(embeddings_path(fa, t)), load_embeddings(embeddings_path(fb, t))
       emb.append({'pair': name, 'target': t, 'tokens': ea['single_embeddings'].shape[0], **compare_embeddings(ea, eb)})
       st.append({'pair': name, 'target': t, **structures(fa, fb, t)})
   return pd.DataFrame(emb), pd.DataFrame(st)
 
 
-def report(emb, st, vm, out):
+MEASURES = ['single_rel_l2', 'single_token_max', 'pair_rel_l2', 'pair_token_max', 'm4_ca_rmsd_median',
+            'm4_ligand_rmsd_median', 'm5_ranking_score_median']
+
+
+def summarise(emb, st):
+  """One row per pair, in PAIRS order: median and maximum over targets of each measure, and counts."""
+  j = emb.merge(st, on=['pair', 'target'])
+  rows = []
+  for a, b in PAIRS:
+    g = j[j.pair == f'{a[0]} {a[1]} - {b[0]} {b[1]}']
+    if g.empty:
+      continue
+    row = {'pair': g.pair.iloc[0], 'targets': len(g)}
+    for m in MEASURES:
+      row[f'{m}_median'] = float(g[m].median())
+      row[f'{m}_max'] = float(g[m].max())
+    row['single_identical_targets'] = int(g.single_identical.astype(bool).sum())
+    row['pair_identical_targets'] = int(g.pair_identical.astype(bool).sum())
+    row['samples_bit_identical'] = int(g.samples_bit_identical.sum())
+    row['samples'] = len(g) * len(SAMPLES)
+    row['same_top1_targets'] = int(g.same_top1.astype(bool).sum())
+    rows.append(row)
+  return pd.DataFrame(rows)
+
+
+def report(emb, st, vm, out, summary=None):
   lines = ['# Follow-up 2: where the divergence arises', '', 'Section 10 row of 2026-10-14; descriptive. Code: '
            'analysis/embed.py.', '']
   if len(emb):
@@ -185,6 +219,15 @@ def report(emb, st, vm, out):
     lines += [f'| {r.pair} | {r.target} | {r.tokens} | {r.single_rel_l2:.3g} | {r.single_token_max:.3g} | '
               f'{r.pair_rel_l2:.3g} | {r.pair_token_max:.3g} | {r.m4_ca_rmsd_median:.3g} | {r.m4_ligand_rmsd_median:.3g} | '
               f'{r.m5_ranking_score_median:.3g} | {r.samples_bit_identical} | {r.same_top1} |' for r in j.itertuples()]
+  if summary is not None and len(summary):
+    lines += ['', '## Summary per pair (median over targets, maximum in brackets)', '',
+              '| pair | targets | single rel L2 | single token max | pair rel L2 | pair token max | M4 C-alpha | '
+              'M4 ligand | M5 score | identical single / pair | identical samples | same top-1 |',
+              '|---|---|---|---|---|---|---|---|---|---|---|---|']
+    f = lambda r, m: f'{getattr(r, m + "_median"):.3g} ({getattr(r, m + "_max"):.3g})'  # noqa: E731
+    lines += [f'| {r.pair} | {r.targets} | ' + ' | '.join(f(r, m) for m in MEASURES) +
+              f' | {r.single_identical_targets} / {r.pair_identical_targets} | {r.samples_bit_identical}/{r.samples} | '
+              f'{r.same_top1_targets}/{r.targets} |' for r in summary.itertuples()]
   if len(vm):
     lines += ['', '## Against the main study (same condition, repetition, target, seed)', '',
               f'{int(vm.identical.fillna(False).sum())}/{len(vm)} processes bit-identical to the main study.', '',
@@ -196,18 +239,24 @@ def report(emb, st, vm, out):
 def main():
   ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
   ap.add_argument('--out', default=str(REPO / 'results' / 'analysis' / 'embed'))
+  ap.add_argument('--reuse', action='store_true', help='read embeddings.csv and structures.csv from --out')
   args = ap.parse_args()
   out = pathlib.Path(args.out)
   out.mkdir(parents=True, exist_ok=True)
   procs = processes()
   if not procs:
     raise SystemExit('no embed session in results/af3/')
-  emb, st = analyse(procs)
+  if args.reuse:
+    emb, st = pd.read_csv(out / 'embeddings.csv'), pd.read_csv(out / 'structures.csv')
+  else:
+    emb, st = analyse(procs)
+  summary = summarise(emb, st) if len(emb) else pd.DataFrame()
   vm = versus_main(procs)
   emb.to_csv(out / 'embeddings.csv', index=False)
   st.to_csv(out / 'structures.csv', index=False)
   vm.to_csv(out / 'versus_main.csv', index=False)
-  report(emb, st, vm, out)
+  summary.to_csv(out / 'summary.csv', index=False)
+  report(emb, st, vm, out, summary)
   print((out / 'report.md').read_text())
   return 0
 
