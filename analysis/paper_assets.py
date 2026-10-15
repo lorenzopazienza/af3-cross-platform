@@ -9,12 +9,21 @@ the analysis environment. Inputs (read only; their SHA-256 go to sources.tsv):
   results/analysis/main_20261014/glycans/      side_by_side.csv, audit_posebusters_glycans.csv
   results/analysis/main_20261014/exploratory/  a_* to e_*.csv
   results/analysis/main_monitor_20261013/      cross_session.tsv (pilot2 r1 against main r1, strict)
-  results/af3/<session>/                       memory-limit sessions (label memlimit), when they exist
-  targets/posebusters_subset.csv, inputs/manifest.csv
-Outputs in --out: tables/T*.csv and T*.tex (booktabs tabular bodies with a caption comment), figures/F*.pdf and
-F*.png, sources.tsv, README.md (one line per asset). Deterministic: the same inputs give the same CSV and LaTeX
-bytes; PDF and PNG carry no date. The memory-limit table and figure are placeholders until memory-limit sessions
-exist in results/af3/.
+  results/af3/<session>/                       memory-limit sessions (label memlimit) and the follow-up 2 sessions
+                                               (label embed, process counts), when they exist
+  results/analysis/ppi_20261015/               follow-up 1 (analysis/ppi.py and score_dockq.py outputs)
+  results/analysis/embed_20261015/             follow-up 2 (analysis/embed.py outputs)
+  targets/posebusters_subset.csv, inputs/manifest.csv, inputs/ppi/manifest.csv
+Every source under results/af3/ must match the data freeze (results/freeze/manifest_sha256.tsv, identifier
+FREEZE_ID below); a mismatch or a file outside the freeze stops the script.
+Every asset carries its role as section 10 of notes/analysis_plan.md labels it (ROLES): design, primary and
+secondary (role per row), pre-specified (Q2, Q3), secondary, exploratory, post hoc, descriptive measurement (memory
+limit), follow-up.
+Outputs in --out: tables/T*.csv and T*.tex (booktabs tabular bodies with a caption and role comment),
+figures/F*.pdf and F*.png, sources.tsv, README.md (one line per asset, with its role). Deterministic: the same
+inputs give the same CSV and LaTeX bytes; PDF and PNG carry no date. The memory-limit table and figure are
+placeholders until memory-limit sessions exist in results/af3/; the follow-up assets are skipped while their
+analysis outputs do not exist.
 """
 import argparse
 import hashlib
@@ -33,14 +42,65 @@ PRIMARY = MAIN / 'primary_v2'
 GLYCANS = MAIN / 'glycans'
 EXPLORATORY = MAIN / 'exploratory'
 CROSS = REPO / 'results' / 'analysis' / 'main_monitor_20261013' / 'cross_session.tsv'
+PPI = REPO / 'results' / 'analysis' / 'ppi_20261015'
+EMBED = REPO / 'results' / 'analysis' / 'embed_20261015'
+FREEZE = REPO / 'results' / 'freeze' / 'manifest_sha256.tsv'
+FREEZE_ID = '14e1fc4c12b6573de9389d9aba079d5fb5f30b290c9303f75c5de4f478b9d8f9'
+PPI_CONTRASTS = ['HW(V5,V6)', 'HW(V6,G)', 'RC(V6)', 'RC(G)']
+PPI_COLUMNS = ['V5r1', 'V6r1', 'V6r2', 'Gr1', 'Gr2']
+EMBED_PAIRS = ['V5 r1 - V6 r1', 'V6 r1 - G r1', 'G r1 - G r2', 'G r1 - Gd r1']
 AF3 = REPO / 'results' / 'af3'
 ARMS = ['V5', 'V6', 'G', 'GT', 'Gd', 'V6h', 'Gh', 'C']
 PRIMARY_PAIRS = ['HW(V5,V6)', 'HW(V6,G)', 'HW(G,C)']
 EXPLORATORY_CONTRASTS = ['HW(V5,V6)', 'HW(V6,G)', 'HW(V6,GT)', 'RC(G)', 'DU', 'DET', 'PR(V6)', 'PR(G)', 'HWh(V6,G)']
 MEMLIMIT_SIZES = [1280, 1536, 2048, 2560, 3072, 3584, 4096, 4608, 5120]
 GIB = 2 ** 30
-ASSETS = {}   # name: one line on what it shows (README.md)
+ASSETS = {}   # name: (role, one line on what it shows) (README.md)
 SOURCES = set()
+# The role of every asset, as section 10 of notes/analysis_plan.md labels it. Q1 is the primary question (section 1);
+# Q2 and Q3 are pre-specified without that label. Tables whose rows have different roles carry a role column.
+PRIMARY_SECONDARY = 'primary and secondary (role column per row)'
+FOLLOW_UP_1 = 'follow-up 1 (outside the pre-registered study, section 10, 2026-10-14)'
+FOLLOW_UP_2 = 'follow-up 2 (outside the pre-registered study, descriptive, section 10, 2026-10-14)'
+MEMLIMIT_ROLE = 'descriptive measurement, outside every contrast (memory limit, section 10, 2026-10-14)'
+ROLES = {
+    'T01_platforms': 'design (main study, memory limit and follow-ups)',
+    'T02_targets': 'design (main study and follow-up 1)',
+    'T03_checks': 'primary (pre-specified checks)',
+    'T04_flip_rates': PRIMARY_SECONDARY, 'T05_hw_minus_rc': PRIMARY_SECONDARY, 'T06_m4_m5': PRIMARY_SECONDARY,
+    'T07a_q3_success': 'pre-specified (Q3)', 'T07b_q3_differences': 'pre-specified (Q3)',
+    'T08_glycans': 'as specified (1), with post hoc sensitivity analyses (2, 3) (section 10, 2026-10-14)',
+    'T09_cost': 'pre-specified (Q2, M6)', 'T10_memory': 'pre-specified (Q2, M7)',
+    'T11_cross_session': 'pre-specified check (section 10, 2026-10-13)',
+    'T12_cutoff_sensitivity': 'secondary (section 10, 2026-10-13)',
+    'T13_exploratory_margin': 'exploratory (section 10, 2026-10-14)',
+    'T14_exploratory_concentration': 'exploratory (section 10, 2026-10-14)',
+    'T15_exploratory_perturbation': 'exploratory (section 10, 2026-10-14)',
+    'T16a_exploratory_buckets': 'exploratory (section 10, 2026-10-14)',
+    'T16b_exploratory_flips_that_matter': 'exploratory (section 10, 2026-10-14)',
+    'T16c_exploratory_flips_list': 'exploratory (section 10, 2026-10-14)',
+    'T17_glycan_audit': 'post hoc (section 10, 2026-10-14)',
+    'T18_memlimit': MEMLIMIT_ROLE, 'T18b_memlimit_processes': MEMLIMIT_ROLE,
+    'T19a_ppi_success': FOLLOW_UP_1 + '; DockQ 0.49 rows secondary',
+    'T19b_ppi_contrasts': FOLLOW_UP_1 + '; main-study column as in T04 and T06',
+    'T19c_ppi_hw_minus_rc': FOLLOW_UP_1 + '; role column per row, DockQ 0.49 secondary',
+    'T19d_ppi_per_target': FOLLOW_UP_1,
+    'T19e_ppi_m3': FOLLOW_UP_1,
+    'T19f_ppi_exploratory_margin': FOLLOW_UP_1 + ', exploratory',
+    'T19g_ppi_exploratory_perturbation': FOLLOW_UP_1 + ', exploratory',
+    'T20a_embed_pairs': FOLLOW_UP_2, 'T20b_embed_per_target': FOLLOW_UP_2, 'T20c_embed_versus_main': FOLLOW_UP_2,
+    'F1_flip_rates': PRIMARY_SECONDARY.replace('role column per row', 'see T04'),
+    'F2_hw_minus_rc': PRIMARY_SECONDARY.replace('role column per row', 'see T05'),
+    'F3_m4_ligand_rmsd': 'primary and secondary (contrasts as in T04)',
+    'F4_q3': 'pre-specified (Q3)', 'F5_flip_vs_margin': 'exploratory (section 10, 2026-10-14)',
+    'F6_predicted_vs_observed': 'exploratory (section 10, 2026-10-14)', 'F7_cost': 'pre-specified (Q2, M6)',
+    'F8_memory': 'pre-specified (Q2, M7) (left); ' + MEMLIMIT_ROLE + ' (right)',
+    'F9_glycans': 'as specified, with post hoc sensitivity analyses (section 10, 2026-10-14)',
+    'F10_cross_session': 'pre-specified check (section 10, 2026-10-13)',
+    'F11_ppi_flip_rates': FOLLOW_UP_1 + '; main-study values as in T04',
+    'F12_ppi_dockq_per_target': FOLLOW_UP_1,
+    'F13_embed_trunk_vs_structure': FOLLOW_UP_2,
+}
 
 
 def read(path, **kw):
@@ -81,20 +141,40 @@ def write_table(out, name, df, caption):
   df.to_csv(d / f'{name}.csv', index=False, lineterminator='\n')
   cols = list(df.columns)
   align = ''.join('r' if i and pd.api.types.is_numeric_dtype(df[c]) else 'l' for i, c in enumerate(cols))
-  lines = [f'% {name}: {tex_escape(caption)}', f'% Generated by analysis/paper_assets.py; do not edit.',
+  role = ROLES[name]
+  lines = [f'% {name}: {tex_escape(caption)}', f'% Role: {tex_escape(role)}',
+           f'% Generated by analysis/paper_assets.py; do not edit.',
            f'\\begin{{tabular}}{{{align}}}', r'\toprule', ' & '.join(tex_escape(c) for c in cols) + r' \\', r'\midrule']
   for row in df.itertuples(index=False):
     lines.append(' & '.join('' if (isinstance(v, float) and math.isnan(v)) else tex_escape(v) for v in row) + r' \\')
   lines += [r'\bottomrule', r'\end{tabular}', '']
   (d / f'{name}.tex').write_text('\n'.join(lines))
-  ASSETS[f'tables/{name}'] = caption
+  ASSETS[f'tables/{name}'] = (role, caption)
 
 
 # ---------------------------------------------------------------- tables
 
+def followup_process_counts():
+  """{experiment: {arm: AlphaFold3 processes}} of the memory-limit, ppi and embed runs (empty where absent)."""
+  import memlimit
+  out = {'memory-limit': {}, 'ppi': {}, 'embed': {}}
+  t = memlimit.process_table(AF3, PRIMARY / 'samples.csv')
+  if len(t):
+    out['memory-limit'] = t[t.source == 'memlimit'].groupby('arm').size().to_dict()
+  if (PPI / 'samples_dockq.csv').exists():
+    d = read(PPI / 'samples_dockq.csv', low_memory=False)
+    out['ppi'] = d.drop_duplicates(['session', 'target']).groupby('platform').size().to_dict()
+  import embed
+  procs = embed.processes(AF3)
+  for (cond, _, target), folder in procs.items():
+    out['embed'][cond] = out['embed'].get(cond, 0) + 1
+    SOURCES.update([folder.parent.parent / 'run.json', folder.parent.parent.parent / 'session.json'])
+  return out
+
+
 def t01_platforms(out, samples, prices):
   code_platform = {'V5': 'v5e', 'V6': 'v6e', 'V6h': 'v6e', 'G': 'l4', 'GT': 'l4', 'Gd': 'l4', 'Gh': 'l4', 'C': 'cpu'}
-  rows = []
+  rows, counts = [], followup_process_counts()
   for arm in ARMS:
     g = samples[samples.platform == arm]
     if g.empty:
@@ -103,10 +183,13 @@ def t01_platforms(out, samples, prices):
     p = prices[(prices.platform == code_platform[arm]) & (prices.provisioning == 'standard')]
     rows.append({'arm': arm, 'device': first('device_kind'), 'machine type': first('machine_type'),
                  'config': first('config'), 'attention': first('attention'), 'matmul precision': first('matmul_precision'),
-                 'jax': first('jax'), 'libtpu': first('libtpu') or '-', 'processes': int(g.drop_duplicates(['session', 'run', 'target']).shape[0]),
+                 'jax': first('jax'), 'libtpu': first('libtpu') or '-',
+                 'main processes': int(g.drop_duplicates(['session', 'run', 'target']).shape[0]),
+                 **{f'{k} processes': int(v.get(arm, 0)) for k, v in counts.items()},
                  'on-demand USD/h': ';'.join(f'{v:.3f}' for v in sorted(p.usd_per_hour.unique()))})
-  write_table(out, 'T01_platforms', pd.DataFrame(rows), 'Arms of the main study: hardware, configuration, software, '
-              'AlphaFold3 processes and on-demand list price')
+  write_table(out, 'T01_platforms', pd.DataFrame(rows), 'Arms of the main study, the memory-limit measurement and the '
+              'two follow-ups: hardware, configuration, software, AlphaFold3 processes per experiment and on-demand list '
+              'price (every run on demand, official weights, the same software stack)')
 
 
 def t02_targets(out):
@@ -117,11 +200,17 @@ def t02_targets(out):
   t = subset.pivot_table(index='bucket', columns='released', values='pdb_id', aggfunc='count', fill_value=0)
   t['targets'] = t.sum(axis=1)
   t['pilot'] = subset.groupby('bucket').pilot.apply(lambda s: int((s == 'yes').sum()))
+  ppi_path = REPO / 'inputs' / 'ppi' / 'manifest.csv'
+  if ppi_path.exists():
+    ppi = read(ppi_path)
+    t['ppi targets'] = ppi.groupby('bucket').size().reindex(t.index, fill_value=0)
+    t['ppi, shallow alignment'] = ppi[ppi.paired_rows <= 9].groupby('bucket').size().reindex(t.index, fill_value=0)
   t = t.reset_index().rename(columns={'bucket': 'token bucket'})
   total = {c: int(t[c].sum()) if c != 'token bucket' else 'all' for c in t.columns}
   t = pd.concat([t, pd.DataFrame([total])], ignore_index=True)
   write_table(out, 'T02_targets', t, 'The 60 PoseBusters targets by AlphaFold3 token bucket and by release relative '
-              'to the training cutoff (2021-09-30); pilot targets')
+              'to the training cutoff (2021-09-30); pilot targets; follow-up 1: the 30 protein-protein targets (all '
+              'released 2021-10-01 or later) by bucket, and those with a shallow alignment (at most 9 paired MSA rows)')
 
 
 def t03_checks(out, checks):
@@ -333,13 +422,13 @@ def t18_memlimit(out):
     SOURCES.update(p for p in (AF3 / sess).glob('*/*/run.json'))
   if ml.empty:
     s = pd.DataFrame({'arm': ['V5', 'V6', 'G', 'GT'], 'largest completed size': ['pending'] * 4,
-                      'stopping size': ['pending'] * 4, 'cause': ['memory-limit runs not yet run'] * 4})
+                      'first failing size': ['pending'] * 4, 'cause': ['memory-limit runs not yet run'] * 4})
   else:
     sm = memlimit.summary(t).set_index('arm')
     rows = []
     for arm in memlimit.ARMS:
       if arm not in sm.index:
-        rows.append({'arm': arm, 'largest completed size': 'pending', 'stopping size': 'pending', 'cause': ''})
+        rows.append({'arm': arm, 'largest completed size': 'pending', 'first failing size': 'pending', 'cause': ''})
         continue
       r = sm.loc[arm]
       stop = 'none (all sizes ran)' if pd.isna(r.stopping_size) else str(int(r.stopping_size))
@@ -349,14 +438,15 @@ def t18_memlimit(out):
                f'{r.stopping_compiled_peak_plus_args_gib:.2f} GiB')
       rows.append({'arm': arm,
                    'largest completed size': 'none' if pd.isna(r.largest_completed_size) else str(int(r.largest_completed_size)),
-                   'stopping size': stop, 'cause': r.cause + (f': {err}' if err else ''),
+                   'first failing size': stop, 'cause': r.cause + (f': {err}' if err else ''),
                    'peak + args at largest completed (GiB)': f'{r.largest_completed_peak_plus_args_gib:.2f}',
                    'device limit (GiB)': f'{r.device_limit_gib:.2f}',
                    'wall at largest completed (s)': f'{r.largest_completed_wall_s:.0f}',
                    'USD per structure at largest completed': f'{r.largest_completed_usd_per_structure:.3f}'})
     s = pd.DataFrame(rows)
   write_table(out, 'T18_memlimit', s, 'Memory limit per chip (section 10, 2026-10-14): 7D5C padded with AlphaFold3\'s '
-              '--buckets; the largest size that completed and the size that stopped the measurement, with its cause'
+              '--buckets; the largest size that completed and the first size that failed (the stop rule), with its cause, '
+              'memory against the device limit, and time and cost at the largest completed size (every size: T18b)'
               + ('' if len(ml) else ' (placeholder: runs pending)'))
   if len(ml):
     f2 = lambda x, nd=2: '' if pd.isna(x) else f'{x:.{nd}f}'  # noqa: E731
@@ -378,9 +468,173 @@ def t18_memlimit(out):
   return ml
 
 
+# ---------------------------------------------------------------- follow-ups
+
+PCT_STATS = ('flip', 'overall_flip', 'bit_identical')
+
+
+def fmt_stat(statistic, e, lo, hi):
+  return pct_ci(e, lo, hi) if statistic.startswith(PCT_STATS) else num_ci(e, lo, hi)
+
+
+def t19_ppi(out, main_contrasts, main_hwrc):
+  """Follow-up 1 tables from results/analysis/ppi_20261015 (analysis/ppi.py). False when the outputs are absent."""
+  if not (PPI / 'contrasts.csv').exists():
+    return False
+  sr = read(PPI / 'success_rates.csv')
+  rows = []
+  for (thr, stat), g in sr.groupby(['threshold', 'statistic'], sort=False):
+    row = {'DockQ threshold': f'{thr:.2f}' + ('' if thr < 0.3 else ' (secondary)'),
+           'top-1': 'overall (5 seeds)' if stat.endswith('overall_top1') else 'per seed'}
+    for c, rep in (('V5', 'r1'), ('V6', 'r1'), ('V6', 'r2'), ('G', 'r1'), ('G', 'r2')):
+      r = g[(g.condition == c) & (g.repetition == rep)]
+      row[f'{c} {rep} (%)'] = pct_ci(*r.iloc[0][['estimate', 'ci_low', 'ci_high']]) if len(r) else ''
+    rows.append(row)
+  write_table(out, 'T19a_ppi_success', pd.DataFrame(rows), 'Follow-up 1 (30 protein-protein complexes): success rate '
+              '(DockQ 2.1.3 against the deposited first assembly) of the overall top-1 and of the top-1 per seed, per '
+              'condition and repetition, 95% target bootstrap intervals')
+  con, con49, ov = read(PPI / 'contrasts.csv'), read(PPI / 'contrasts_049.csv'), read(PPI / 'overall_top1.csv')
+  stats = [('flip_top1', con, 'top-1 flip per seed (%)'), ('overall_flip_top1', ov, 'top-1 flip, overall top-1 (%)'),
+           ('flip_success', con, 'success flip per seed, DockQ 0.23 (%)'),
+           ('flip_success', con49, 'success flip per seed, DockQ 0.49, secondary (%)'),
+           ('overall_flip_success', ov, 'success flip, overall top-1 (%)'),
+           ('flip_matters', con, 'flips that matter, DockQ 0.23 (%)'),
+           ('m4_ca_rmsd_global_median', con, 'M4 C-alpha RMSD median (angstrom)'),
+           ('m4_ca_rmsd_global_p90', con, 'M4 C-alpha RMSD 90th percentile (angstrom)'),
+           ('m5_ranking_score_median', con, 'M5 ranking score median'), ('m5_iptm_median', con, 'M5 ipTM median'),
+           ('bit_identical_fraction', con, 'bit-identical sample pairs (%)')]
+  rows = []
+  for c in PPI_CONTRASTS:
+    role = con[con.contrast == c].role.iloc[0]
+    for st, src, label in stats:
+      r = src[(src.contrast == c) & (src.statistic == st)]
+      # The main study has no overall top-1 flips and no second success threshold: no main-study value there.
+      m = main_contrasts[(main_contrasts.contrast == c) & (main_contrasts.statistic == st)] if src is con else r.iloc[:0]
+      rows.append({'contrast': c, 'role in the main study': role, 'statistic': label,
+                   'ppi, 30 targets': fmt_stat(st, *r.iloc[0][['estimate', 'ci_low', 'ci_high']]) if len(r) else '',
+                   'main study, 60 targets': fmt_stat(st, *m.iloc[0][['estimate', 'ci_low', 'ci_high']]) if len(m) else ''})
+  write_table(out, 'T19b_ppi_contrasts', pd.DataFrame(rows), 'Follow-up 1: contrasts with 95% target bootstrap '
+              'intervals next to the main study\'s values (success there is M1 on protein-ligand targets; M4 there is '
+              'the protein C-alpha RMSD, here both chains of the complex; overall top-1 flips were not computed in the '
+              'main study)')
+  rows = []
+  for thr, h in (('0.23', read(PPI / 'hw_minus_rc.csv')), ('0.49 (secondary)', read(PPI / 'hw_minus_rc_049.csv'))):
+    for (hw, rc, ref), g in h.groupby(['hardware', 'recompilation', 'reference'], sort=False):
+      row = {'DockQ threshold': thr, 'hardware pair': hw, 'recompilation': rc, 'reference': ref}
+      for st in ['flip_top1', 'flip_success', 'flip_matters']:
+        r = g[g.statistic == st].iloc[0]
+        row[st.replace('_', ' ') + ' (pp)'] = pct_ci(r.estimate, r.ci_low, r.ci_high)
+      m = main_hwrc[(main_hwrc.hardware == hw) & (main_hwrc.recompilation == rc) & (main_hwrc.statistic == 'flip_top1')]
+      row['main study, top-1 flip (pp)'] = pct_ci(*m.iloc[0][['estimate', 'ci_low', 'ci_high']]) if len(m) else ''
+      rows.append(row)
+  write_table(out, 'T19c_ppi_hw_minus_rc', pd.DataFrame(rows), 'Follow-up 1: hardware minus recompilation '
+              '(percentage points, same resampled targets, 95% intervals). V5 runs r1 only, so HW(V5,V6) is given '
+              'against RC(V6) only, labelled secondary as RC(Q) in the main study (section 10, 2026-10-15)')
+  pt = read(PPI / 'per_target.csv')
+  t = pd.DataFrame({'target': pt.target, 'tokens': pt.tokens, 'paired MSA rows': pt.paired_rows,
+                    'shallow alignment': np.where(pt.shallow.astype(str) == 'True', 'yes', '')})
+  for c in PPI_COLUMNS:
+    t[f'{c[:-2]} {c[-2:]}'] = pt[f'{c}_top1_dockq'].map(lambda x: f'{x:.3f}')
+  for c in PPI_CONTRASTS:
+    t[f'{c} flips'] = pt[f'{c}_seed_flips'].astype(str) + np.where(pt[f'{c}_success_flips'] > 0,
+                                                                    ' (' + pt[f'{c}_success_flips'].astype(str) + ' success)', '')
+  write_table(out, 'T19d_ppi_per_target', t, 'Follow-up 1, per target: DockQ of the overall top-1 per condition and '
+              'repetition, and the number of seeds (of 5) whose top-1 flips in each contrast, with success flips in '
+              'brackets; in draw order')
+  m3 = read(PPI / 'm3.csv')
+  t = pd.DataFrame({'condition': m3.condition, 'repetition': m3.repetition, 'seed units': m3.seed_units,
+                    'median': m3['median'].map(lambda x: f'{x:.2g}'), 'Q1': m3.q1.map(lambda x: f'{x:.2g}'),
+                    'Q3': m3.q3.map(lambda x: f'{x:.2g}'), 'minimum': m3['min'].map(lambda x: f'{x:.2g}'),
+                    'zero margins': m3.zero_margins})
+  order = {'V5': 0, 'V6': 1, 'G': 2}
+  t = t.sort_values(['condition', 'repetition'], key=lambda s: s.map(order) if s.name == 'condition' else s)
+  write_table(out, 'T19e_ppi_m3', t, 'Follow-up 1: M3 margin (top-1 minus top-2 ranking score within a seed) per '
+              'condition and repetition')
+  qa, la = read(PPI / 'exploratory_a_quintiles.csv'), read(PPI / 'exploratory_a_logistic.csv')
+  main_la = read(EXPLORATORY / 'a_logistic.csv')
+  rows = []
+  for c in PPI_CONTRASTS:
+    q = qa[qa.contrast == c].sort_values('quintile')
+    f = la[la.contrast == c].iloc[0]
+    row = {'contrast': c}
+    row.update({f'Q{int(r.quintile)} (%)': pct_ci(r.flip_rate, r.ci_low, r.ci_high) for r in q.itertuples()})
+    row['odds ratio per tenfold margin'] = num_ci(f.odds_ratio_per_tenfold_margin, f.odds_ratio_ci_low,
+                                                  f.odds_ratio_ci_high, '{:.2f}')
+    m = main_la[main_la.contrast == c]
+    row['main study odds ratio'] = num_ci(*m.iloc[0][['odds_ratio_per_tenfold_margin', 'odds_ratio_ci_low',
+                                                       'odds_ratio_ci_high']], '{:.2f}') if len(m) else ''
+    rows.append(row)
+  write_table(out, 'T19f_ppi_exploratory_margin', pd.DataFrame(rows), 'Follow-up 1, exploratory (a): per-seed top-1 '
+              'flip rate by quintile of the first condition\'s M3 margin, and the logistic regression on log10 margin, '
+              'next to the main study\'s odds ratio (RC(V6) has no flip, so no fit)')
+  cp, main_cp = read(PPI / 'exploratory_c.csv'), read(EXPLORATORY / 'c_perturbation.csv')
+  rows = []
+  for r in cp.itertuples():
+    m = main_cp[main_cp.contrast == r.contrast]
+    rows.append({'contrast': r.contrast,
+                 'median abs score difference': num_ci(r.median_abs_score_difference, r.delta_ci_low, r.delta_ci_high, '{:.2g}'),
+                 'median margin': num_ci(r.median_margin, r.mu_ci_low, r.mu_ci_high, '{:.2g}'),
+                 'predicted flip rate (%)': pct_ci(r.predicted_flip_rate, r.predicted_ci_low, r.predicted_ci_high),
+                 'observed flip rate (%)': pct_ci(r.observed_flip_rate, r.observed_ci_low, r.observed_ci_high),
+                 'main study predicted / observed (%)': f'{pct(m.predicted_flip_rate.iloc[0])} / {pct(m.observed_flip_rate.iloc[0])}'
+                 if len(m) else ''})
+  write_table(out, 'T19g_ppi_exploratory_perturbation', pd.DataFrame(rows), 'Follow-up 1, exploratory (c): '
+              'perturbation size against margin and the flip rate the two-sample model predicts (no free parameter), '
+              'next to the main study\'s predicted and observed rates')
+  return True
+
+
+def t20_embed(out, main_pairs_sample):
+  """Follow-up 2 tables from results/analysis/embed_20261015 (analysis/embed.py). False when absent."""
+  if not (EMBED / 'summary.csv').exists():
+    return False
+  sm = read(EMBED / 'summary.csv')
+  g3 = lambda x: f'{x:.3g}'  # noqa: E731
+  mm = lambda r, m: f'{g3(getattr(r, m + "_median"))} ({g3(getattr(r, m + "_max"))})'  # noqa: E731
+  t = pd.DataFrame([{'pair': r.pair, 'targets': r.targets, 'single rel L2': mm(r, 'single_rel_l2'),
+                     'pair rel L2': mm(r, 'pair_rel_l2'), 'M4 C-alpha (angstrom)': mm(r, 'm4_ca_rmsd_median'),
+                     'M4 ligand (angstrom)': mm(r, 'm4_ligand_rmsd_median'), 'M5 ranking score': mm(r, 'm5_ranking_score_median'),
+                     'targets with identical single / pair embeddings': f'{r.single_identical_targets} / {r.pair_identical_targets}',
+                     'bit-identical samples': f'{r.samples_bit_identical}/{r.samples}',
+                     'same top-1': f'{r.same_top1_targets}/{r.targets}'} for r in sm.itertuples()])
+  write_table(out, 'T20a_embed_pairs', t, 'Follow-up 2 (10 pilot targets, seed 1): divergence of the final trunk '
+              'embeddings (relative L2, float16 read as float64) against divergence after diffusion (M4, M5 of the '
+              'same samples), per pair: median over targets (maximum in brackets). The per-token-pair maximum is in '
+              'embeddings.csv and not read (it divides by near-zero pair vectors)')
+  e, st = read(EMBED / 'embeddings.csv'), read(EMBED / 'structures.csv')
+  j = e.merge(st, on=['pair', 'target'])
+  t = pd.DataFrame({'pair': j.pair, 'target': j.target, 'tokens': j.tokens, 'single rel L2': j.single_rel_l2.map(g3),
+                    'pair rel L2': j.pair_rel_l2.map(g3), 'M4 C-alpha median (angstrom)': j.m4_ca_rmsd_median.map(g3),
+                    'M4 ligand median (angstrom)': j.m4_ligand_rmsd_median.map(g3),
+                    'M5 ranking score median': j.m5_ranking_score_median.map(g3),
+                    'bit-identical samples': j.samples_bit_identical.astype(str) + '/5',
+                    'same top-1': np.where(j.same_top1.astype(str) == 'True', 'yes', 'no')})
+  write_table(out, 'T20b_embed_per_target', t, 'Follow-up 2, per pair and target: trunk embedding divergence and '
+              'the divergence of the same samples after diffusion')
+  vm = read(EMBED / 'versus_main.csv')
+  pilot = sorted(vm.target.unique())
+  rc = main_pairs_sample[main_pairs_sample.target.isin(pilot) & (main_pairs_sample.seed_a.astype(str) == '1')]
+  rows = []
+  for (c, rep), g in vm.groupby(['condition', 'repetition'], sort=False):
+    h = rc[rc.contrast == f'RC({c})']
+    same = h.groupby('target').bit_identical.apply(lambda s: bool(s.astype(str).eq('True').all())) if len(h) else pd.Series(dtype=bool)
+    rows.append({'condition': c, 'repetition': rep, 'processes': len(g),
+                 'bit-identical to the main study': int(g.identical.astype(str).eq('True').sum()),
+                 'main study r1 against r2, targets with identical coordinates': f'{int(same.sum())}/{len(same)}' if len(same) else ''})
+  order = {'V5': 0, 'V6': 1, 'G': 2, 'Gd': 3}
+  t = pd.DataFrame(rows).sort_values(['condition', 'repetition'], key=lambda s: s.map(order) if s.name == 'condition' else s)
+  write_table(out, 'T20c_embed_versus_main', t, 'Follow-up 2: processes whose outputs (masked mmCIF, summary '
+              'confidences, ranking scores) are bit-identical to the main study\'s run of the same condition, '
+              'repetition, target and seed, next to the main study\'s own r1 against r2 reproducibility on the same '
+              'targets and seed (RC sample pairs, coordinates). G is not reproducible run to run, so its mismatches '
+              'do not show an effect of --save_embeddings')
+  return True
+
+
 # ---------------------------------------------------------------- figures
 
-def figures(out, contrasts, hwrc, q3, sample_pairs, cost, mem, sbs, cross, recs):
+def figure_saver(out):
+  """(pyplot, save): deterministic PDF and PNG (no dates), each figure registered with its role."""
   import matplotlib
   matplotlib.use('Agg')
   import matplotlib.pyplot as plt
@@ -393,7 +647,12 @@ def figures(out, contrasts, hwrc, q3, sample_pairs, cost, mem, sbs, cross, recs)
     fig.savefig(d / f'{name}.pdf', metadata={'CreationDate': None, 'ModDate': None, 'Producer': None})
     fig.savefig(d / f'{name}.png', dpi=200, metadata={'Software': None})
     plt.close(fig)
-    ASSETS[f'figures/{name}'] = what
+    ASSETS[f'figures/{name}'] = (ROLES[name], what)
+  return plt, save
+
+
+def figures(out, contrasts, hwrc, q3, sample_pairs, cost, mem, sbs, cross, recs):
+  plt, save = figure_saver(out)
 
   def forest(ax, df, label_col, title):
     y = np.arange(len(df))[::-1]
@@ -570,6 +829,97 @@ def figures(out, contrasts, hwrc, q3, sample_pairs, cost, mem, sbs, cross, recs)
        'between pilot2 and the main study')
 
 
+def figures_followups(out, main_contrasts, have_ppi, have_embed):
+  plt, save = figure_saver(out)
+  if have_ppi:
+    con, ov = read(PPI / 'contrasts.csv'), read(PPI / 'overall_top1.csv')
+    fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.9), sharey=True)
+    y = np.arange(len(PPI_CONTRASTS))[::-1]
+    for ax, st, title in zip(axes, ['flip_top1', 'flip_success'], ['top-1 flip per seed (%)', 'success flip per seed (%)']):
+      for src, dy, marker, label in ((main_contrasts, 0.15, 'o', 'main study (60 protein-ligand targets)'),
+                                     (con, -0.15, 's', 'follow-up 1 (30 protein-protein targets)')):
+        g = src[src.statistic == st].set_index('contrast').reindex(PPI_CONTRASTS)
+        ax.errorbar(100 * g.estimate, y + dy, xerr=[100 * (g.estimate - g.ci_low), 100 * (g.ci_high - g.estimate)],
+                    fmt=marker, ms=3.5, elinewidth=0.8, capsize=2, label=label,
+                    mfc='white' if marker == 's' else None)
+      ax.set_yticks(y, PPI_CONTRASTS)
+      ax.axvline(0, color='0.6', lw=0.6)
+      ax.set_title(title)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, frameon=False, fontsize=6, loc='upper center', ncol=2)
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    save(fig, 'F11_ppi_flip_rates', 'Follow-up 1 against the main study: per-seed top-1 and success flip rates per '
+         'contrast, 95% target bootstrap intervals (success: DockQ 0.23 in the follow-up, M1 in the main study)')
+    pt = read(PPI / 'per_target.csv')
+    d = read(PPI / 'samples_dockq.csv', low_memory=False)
+    fig, ax = plt.subplots(figsize=(7.2, 2.8))
+    x = np.arange(len(pt))
+    rng = d.groupby('target').DockQ.agg(['min', 'max']).reindex(pt.target)
+    ax.vlines(x, rng['min'], rng['max'], color='0.85', lw=3, label='range over every sample of every condition')
+    for i, (c, marker) in enumerate(zip(PPI_COLUMNS, ['o', 's', 'D', '^', 'v'])):
+      ax.plot(x + (i - 2) * 0.12, pt[f'{c}_top1_dockq'], marker=marker, ls='', ms=3, label=f'{c[:-2]} {c[-2:]} overall top-1',
+              mfc='white' if c.endswith('r2') else None)
+    for thr, label in ((0.23, 'success 0.23'), (0.49, 'secondary 0.49')):
+      ax.axhline(thr, color='k', lw=0.6, ls=':' if thr < 0.3 else '--')
+      ax.text(len(pt) - 0.5, thr, label, fontsize=6, va='bottom', ha='right')
+    ax.set_xticks(x, [t + ('*' if str(s) == 'True' else '') for t, s in zip(pt.target, pt.shallow)], rotation=90, fontsize=6)
+    ax.set_xlim(-0.6, len(pt) - 0.4)
+    ax.set_ylim(0, 1)
+    ax.set_ylabel('DockQ')
+    ax.legend(frameon=False, fontsize=5.5, ncol=3, loc='lower left')
+    fig.tight_layout()
+    save(fig, 'F12_ppi_dockq_per_target', 'Follow-up 1, per target (draw order; * shallow alignment): DockQ of the '
+         'overall top-1 per condition and repetition, over the range of all samples, with the 0.23 and 0.49 thresholds')
+  if have_embed:
+    e, st = read(EMBED / 'embeddings.csv'), read(EMBED / 'structures.csv')
+    j = e.merge(st, on=['pair', 'target'])
+    floor = 3e-3   # bit-identical trunk outputs (relative L2 0) are drawn here, open
+    fig, ax = plt.subplots(figsize=(3.8, 3.2))
+    for pair, marker in zip(EMBED_PAIRS, ['o', 's', '^', 'D']):
+      g = j[j.pair == pair]
+      zero = g.pair_rel_l2 == 0
+      line, = ax.plot(g.pair_rel_l2[~zero], np.maximum(g.m4_ca_rmsd_median[~zero], 1e-4), marker=marker,
+                      ls='', ms=3.5, label=pair)
+      if zero.any():
+        ax.plot(np.full(int(zero.sum()), floor), np.maximum(g.m4_ca_rmsd_median[zero], 1e-4), marker=marker, ls='', ms=3.5,
+                mfc='white', color=line.get_color())
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.axvline(4.5e-3, color='0.7', lw=0.6, ls=':')
+    import matplotlib.ticker as mticker
+    ax.xaxis.set_minor_formatter(mticker.NullFormatter())
+    ax.set_xticks([floor, 0.01, 0.02, 0.05], ['identical', '0.01', '0.02', '0.05'])
+    ax.set_xlabel('trunk pair embedding, relative L2')
+    ax.set_ylabel('M4 C-alpha RMSD, sample median (angstrom)')
+    ax.legend(frameon=False, fontsize=6)
+    fig.tight_layout()
+    save(fig, 'F13_embed_trunk_vs_structure', 'Follow-up 2: divergence of the final trunk pair embedding against '
+         'the C-alpha divergence of the same samples after diffusion, per target and pair (bit-identical trunk '
+         'outputs drawn open at the left, labelled identical)')
+
+
+def asset_key(name):
+  """tables before figures, then by number (T2 before T10), then by suffix."""
+  kind, base = name.split('/')
+  m = re.match(r'[TF](\d+)(.*)', base)
+  return (kind != 'tables', int(m.group(1)), m.group(2))
+
+
+def check_freeze(rows):
+  """The sources under results/af3/ must be in the data freeze with the same SHA-256; returns their paths."""
+  if hashlib.sha256(FREEZE.read_bytes()).hexdigest() != FREEZE_ID:
+    raise SystemExit(f'{FREEZE} is not freeze {FREEZE_ID}')
+  frozen = {}
+  for line in FREEZE.read_text().splitlines()[1:]:
+    session, path, _, sha, _ = line.split('\t')
+    frozen[f'results/af3/{session}/{path}'] = sha
+  bad = [p for p, h in rows if p.startswith('results/af3/') and frozen.get(p) != h]
+  if bad:
+    raise SystemExit(f'{len(bad)} source(s) under results/af3/ differ from freeze {FREEZE_ID[:12]} or are not in it: '
+                     + ', '.join(bad[:5]))
+  return {p for p, _ in rows if p.startswith('results/af3/')}
+
+
 def main():
   ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
   ap.add_argument('--out', default=str(REPO / 'results' / 'paper_assets'))
@@ -599,14 +949,24 @@ def main():
   t13_t16_exploratory(out)
   t17_audit(out)
   recs = t18_memlimit(out)
+  pairs_sample = read(c / 'pairs_sample.csv')
+  have_ppi = t19_ppi(out, contrasts, hwrc)
+  have_embed = t20_embed(out, pairs_sample)
   if not args.tables_only:
-    figures(out, contrasts, hwrc, q3, read(c / 'pairs_sample.csv'), cost, mem, sbs, cross, recs)
+    figures(out, contrasts, hwrc, q3, pairs_sample, cost, mem, sbs, cross, recs)
+    figures_followups(out, contrasts, have_ppi, have_embed)
   rows = sorted((str(p.relative_to(REPO)), hashlib.sha256(p.read_bytes()).hexdigest()) for p in SOURCES)
-  (out / 'sources.tsv').write_text('path\tsha256\n' + ''.join(f'{p}\t{h}\n' for p, h in rows))
+  frozen = check_freeze(rows)
+  (out / 'sources.tsv').write_text('path\tsha256\tin_freeze\n' + ''.join(
+      f'{p}\t{h}\t{"yes" if p in frozen else "no (derived analysis output or repository file)"}\n' for p, h in rows))
   lines = ['# Paper assets', '', 'Generated by analysis/paper_assets.py from the frozen analysis outputs (sources.tsv '
            'lists every input with its SHA-256). Regenerate: '
-           '`analysis/figures/.venv/bin/python analysis/paper_assets.py`.', '']
-  lines += [f'- `{k}`: {v}' for k, v in sorted(ASSETS.items())]
+           '`analysis/figures/.venv/bin/python analysis/paper_assets.py`.', '',
+           f'Data freeze: `{FREEZE_ID}` (SHA-256 of results/freeze/manifest_sha256.tsv). Every source under '
+           f'results/af3/ ({len(frozen)} files) matches it byte for byte; the other sources are analysis outputs '
+           'derived from those sessions, and repository files.', '',
+           'Each line: asset, [role as section 10 of notes/analysis_plan.md labels it], what it shows.', '']
+  lines += [f'- `{k}` [{role}]: {v}' for k, (role, v) in sorted(ASSETS.items(), key=lambda kv: asset_key(kv[0]))]
   (out / 'README.md').write_text('\n'.join(lines) + '\n')
   print(f'>> {sum(k.startswith("tables/") for k in ASSETS)} tables, {sum(k.startswith("figures/") for k in ASSETS)} '
         f'figures, {len(rows)} sources; {out}')

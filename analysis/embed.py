@@ -247,7 +247,9 @@ def main():
   if not procs:
     raise SystemExit('no embed session in results/af3/')
   if args.reuse:
-    emb, st = pd.read_csv(out / 'embeddings.csv'), pd.read_csv(out / 'structures.csv')
+    # round_trip: the floats read back exactly, so --reuse rewrites the same bytes as a full run
+    emb = pd.read_csv(out / 'embeddings.csv', float_precision='round_trip')
+    st = pd.read_csv(out / 'structures.csv', float_precision='round_trip')
   else:
     emb, st = analyse(procs)
   summary = summarise(emb, st) if len(emb) else pd.DataFrame()
