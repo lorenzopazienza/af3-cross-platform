@@ -39,7 +39,7 @@ PLAN
 for i in 01 02 03 04 05 06; do mkplan t_l4_$i l4 l4_xla 7U3J 1 1 none 30; done
 for i in 01 02 03; do mkplan t_v5_$i v5e tpu_xla 7U3J 1 1 none 30; done
 mkplan t_cpu_01 cpu cpu_xla 7U3J 1 1 none 30
-for i in 01 02 03 04 05; do mkplan t_a100_$i a100 a100_xla 7U3J 1 1 none 30; done
+for i in 01 02 03 04 05 06; do mkplan t_a100_$i a100 a100_xla 7U3J 1 1 none 30; done
 mkplan t_cpuonly cpu cpu_xla 7U3J 1 1 none 30
 
 many() {   # NAME PARTS_FILE [VAR=value ...]: the wrapper with the stub launcher; output, rc and events in state_many_NAME
@@ -211,10 +211,20 @@ check "a100: every launcher got MACHINE_TYPE=a2-ultragpu-1g" \
 check "a100: at most MAX_A100=3 at a time, and 3 reached" '[ "$(maxconc a100 a100)" = 3 ]'
 check "a100: at most 2 at a time in us-central1, and 2 reached" '[ "$(regconc a100 us-central1)" = 2 ]'
 check "a100: at most 1 at a time in europe-west4" '[ "$(regconc a100 europe-west4)" = 1 ]'
-check "a100: unpinned parts get one region's zones (us-central1-a us-central1-c, or europe-west4-a)" \
-  '! grep "^start.* a100 t_a100_0[1-4] " "$WORK/state_many_a100/events" | grep -v -e "ZONES=us-central1-a us-central1-c PROV" -e "ZONES=europe-west4-a PROV" | grep -q .'
+check "a100: unpinned parts get one region's zones (us-central1, us-east5, europe-west4 or us-east4)" \
+  '! grep "^start.* a100 t_a100_0[1-4] " "$WORK/state_many_a100/events" | grep -v -e "ZONES=us-central1-a us-central1-c PROV" -e "ZONES=us-east5-a us-east5-b PROV" -e "ZONES=europe-west4-a PROV" -e "ZONES=us-east4-c PROV" | grep -q .'
 check "a100: the pinned part kept its ZONES=europe-west4-a" \
   'grep "^start.* a100 t_a100_05 " "$WORK/state_many_a100/events" | grep -q "ZONES=europe-west4-a PROV.* ZR=europe-west4"'
+P5="$WORK/parts_a100_five.txt"
+for i in 01 02 03 04 05 06; do echo "a100 harness/plans/t/t_a100_$i.yaml SPOT=0"; done > "$P5"
+fresh; many a100_five "$P5" YES=1 MAX_A100=5 A100_MACHINE_TYPE=a2-ultragpu-1g STUB_SLEEP=12
+check "a100 x6, MAX_A100=5: exit 0, every part once, 5 at a time" \
+  '[ "$(rc a100_five)" = 0 ] && [ "$(grep -c "^start [0-9.]* a100 " "$WORK/state_many_a100_five/events")" = 6 ] && [ "$(maxconc a100_five a100)" = 5 ]'
+check "a100 x6, MAX_A100=5: regional caps reached and kept (us-central1 2, us-east5 1, europe-west4 1, us-east4 1)" \
+  '[ "$(regconc a100_five us-central1)" = 2 ] && [ "$(regconc a100_five us-east5)" = 1 ] && [ "$(regconc a100_five europe-west4)" = 1 ] && [ "$(regconc a100_five us-east4)" = 1 ]'
+fresh; many a100_six "$P5" YES=1 MAX_A100=6 A100_MACHINE_TYPE=a2-ultragpu-1g
+check "a100: MAX_A100=6 is refused (the regional caps add up to 5)" \
+  '[ "$(rc a100_six)" = 2 ] && [ "$(starts a100_six)" = 0 ] && grep -q "above the regional A100 caps" "$WORK/state_many_a100_six/out"'
 fresh; many a100_nomt "$P" YES=1 MAX_A100=3
 check "a100: refused without A100_MACHINE_TYPE, nothing started" \
   '[ "$(rc a100_nomt)" = 2 ] && [ "$(starts a100_nomt)" = 0 ] && grep -q "A100 parts need A100_MACHINE_TYPE" "$WORK/state_many_a100_nomt/out"'
@@ -256,11 +266,11 @@ check "e2e: no fake VM left in any launch (all deleted or never created)" '! ls 
 check "e2e: wrapper exit 1 (one part failed)" '[ "$(rc e2e)" = 1 ]'
 check "e2e: weights URI never printed in any log" '! grep -rq private-weights "$(ls -d "$R"/results/af3/.many/2*/ | tail -1)"'
 
-echo "======== part 2b: the three A100 smoke tests (results/parts_a100_smoke.txt), real launcher, MAX_A100=3"
+echo "======== part 2b: the three A100 smoke tests (results/parts_a100_smoke.txt), real launcher, MAX_A100=5"
 if [ -f "$REPO/results/parts_a100_smoke.txt" ]; then
   fresh; rm -rf "$WORK/many_state"; mkdir -p "$WORK/many_state"
   S="$WORK/state_many_smoke"; rm -rf "$S"; mkdir -p "$S"
-  (cd "$R" && fake_env "$S" PARTS="$REPO/results/parts_a100_smoke.txt" YES=1 ALLOW_OTHER_LAUNCHERS=1 MAX_A100=3 \
+  (cd "$R" && fake_env "$S" PARTS="$REPO/results/parts_a100_smoke.txt" YES=1 ALLOW_OTHER_LAUNCHERS=1 MAX_A100=5 \
     A100_MACHINE_TYPE=a2-ultragpu-1g STAGGER_S=2 POLL_S=1 FAKE_RUN_S=15 LAUNCHER="$MANY/e2e_launcher.sh" \
     WEIGHTS_GCS_URI=gs://private-weights/af3.bin.zst RESULTS_GCS_URI=gs://followup-results/study \
     /bin/bash cloud/af3_run_many.sh > "$S/out" 2>&1); echo $? > "$S/rc"
@@ -271,8 +281,8 @@ if [ -f "$REPO/results/parts_a100_smoke.txt" ]; then
     '[ "$(for f in "$R"/results/af3/2*_a100_a100_smoke*/*/session.json; do python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d[\"label\"], d[\"config_name\"])" "$f"; done | sort | tr "\n" " ")" = "smoke a100_triton smoke a100_xla smoke a100_xla_highest " ]'
   check "smoke: every VM a2-ultragpu-1g on demand with --maintenance-policy=TERMINATE" \
     '[ "$(cat "$WORK"/many_state/a100_smoke*/create_args | tr " " "\n" | grep -c -e "^--machine-type=a2-ultragpu-1g$")" = 3 ] && [ "$(cat "$WORK"/many_state/a100_smoke*/create_args | tr " " "\n" | grep -c -e "^--provisioning-model=STANDARD$")" = 3 ] && [ "$(cat "$WORK"/many_state/a100_smoke*/create_args | tr " " "\n" | grep -c -e "^--maintenance-policy=TERMINATE$")" = 3 ]'
-  check "smoke: three at once within the regional caps (2 in us-central1, 1 in europe-west4)" \
-    '[ "$(cat "$WORK"/many_state/a100_smoke*/created_zone | grep -c "^us-central1-")" = 2 ] && [ "$(cat "$WORK"/many_state/a100_smoke*/created_zone | grep -c "^europe-west4-a$")" = 1 ]'
+  check "smoke: three at once within the regional caps (2 in us-central1, then 1 in us-east5, the next cheapest)" \
+    '[ "$(cat "$WORK"/many_state/a100_smoke*/created_zone | grep -c "^us-central1-")" = 2 ] && [ "$(cat "$WORK"/many_state/a100_smoke*/created_zone | grep -c "^us-east5-")" = 1 ]'
   check "smoke: no fake VM left" '! ls "$WORK"/many_state/*/created > /dev/null 2>&1'
 else
   echo "  (no results/parts_a100_smoke.txt: part 2b skipped)"

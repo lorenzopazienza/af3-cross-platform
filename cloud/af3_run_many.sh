@@ -20,11 +20,13 @@
 # A100 parts (follow-up 3, notes/analysis_plan.md section 10, rows of 2026-10-16): every one gets
 # MACHINE_TYPE=$A100_MACHINE_TYPE (required when the file has A100 parts; the launcher takes a2-ultragpu-1g only),
 # so one run of this script never mixes A100 machine types; a per-part MACHINE_TYPE is refused, and so is a
-# MACHINE_TYPE in this shell (it would reach every launcher). Besides MAX_A100, at most A100_REGION_CAPS run per
-# region ("region:N ...", default "us-central1:2 europe-west4:1", the regional NVIDIA_A100_80GB_GPUS quota of
-# 2026-10-16): a part is started only when a region has a free slot, and gets that region's zones
-# (A100_REGION_ZONES, default "us-central1:us-central1-a,us-central1-c europe-west4:europe-west4-a", the zones
-# that offer a2-ultragpu-1g) unless its line sets ZONE or ZONES of one listed region (then that region's cap).
+# MACHINE_TYPE in this shell (it would reach every launcher). Besides MAX_A100 (at most the sum of the regional
+# caps, 5), at most A100_REGION_CAPS run per region ("region:N ...", default "us-central1:2 us-east5:1
+# europe-west4:1 us-east4:1", the regional NVIDIA_A100_80GB_GPUS quota of 2026-10-16, cheapest region first): a
+# part is started only when a region has a free slot (the first in that order), and gets that region's zones
+# (A100_REGION_ZONES, default "us-central1:us-central1-a,us-central1-c us-east5:us-east5-a,us-east5-b
+# europe-west4:europe-west4-a us-east4:us-east4-c", the zones that offer a2-ultragpu-1g) unless its line sets
+# ZONE or ZONES of one listed region (then that region's cap).
 #
 # Settings: MAX_L4 (8: GPUS_ALL_REGIONS), MAX_A100 (1), MAX_V5E (1), MAX_V6E (1), MAX_CPU (4) launchers at a time;
 # STAGGER_S (5) seconds between two launches (session and VM names carry the launch second);
@@ -69,8 +71,8 @@ LAUNCHER="${LAUNCHER:-cloud/af3_run.sh}"
 [ -f "$LAUNCHER" ] || die "No launcher: $LAUNCHER"
 MAX_L4="${MAX_L4:-8}" MAX_A100="${MAX_A100:-1}" MAX_V5E="${MAX_V5E:-1}" MAX_V6E="${MAX_V6E:-1}" MAX_CPU="${MAX_CPU:-4}"
 A100_MACHINE_TYPE="${A100_MACHINE_TYPE:-}"
-A100_REGION_CAPS="${A100_REGION_CAPS:-us-central1:2 europe-west4:1}"
-A100_REGION_ZONES="${A100_REGION_ZONES:-us-central1:us-central1-a,us-central1-c europe-west4:europe-west4-a}"
+A100_REGION_CAPS="${A100_REGION_CAPS:-us-central1:2 us-east5:1 europe-west4:1 us-east4:1}"
+A100_REGION_ZONES="${A100_REGION_ZONES:-us-central1:us-central1-a,us-central1-c us-east5:us-east5-a,us-east5-b europe-west4:europe-west4-a us-east4:us-east4-c}"
 [ -z "${MACHINE_TYPE:-}" ] || die "MACHINE_TYPE is set in this shell and would reach every launcher; unset it (A100 parts take A100_MACHINE_TYPE)."
 STAGGER_S="${STAGGER_S:-5}" POLL_S="${POLL_S:-15}" MAX_ATTEMPTS="${MAX_ATTEMPTS:-1}" RETRY_WAIT_S="${RETRY_WAIT_S:-600}"
 ALLOW_RELAUNCH="${ALLOW_RELAUNCH:-}"
@@ -79,9 +81,12 @@ for v in MAX_L4 MAX_A100 MAX_V5E MAX_V6E MAX_CPU STAGGER_S POLL_S MAX_ATTEMPTS R
   echo "$x" | grep -Eq '^[0-9]+$' || die "$v must be a whole number (got '$x')."
 done
 [ "$MAX_ATTEMPTS" -ge 1 ] || die "MAX_ATTEMPTS must be 1 or more."
+A100_CAP_SUM=0
 for rc in $A100_REGION_CAPS; do
   echo "$rc" | grep -Eq '^[a-z]+-[a-z]+[0-9]+:[0-9]+$' || die "A100_REGION_CAPS: '$rc' is not region:N."
+  A100_CAP_SUM=$((A100_CAP_SUM + ${rc#*:}))
 done
+[ "$MAX_A100" -le "$A100_CAP_SUM" ] || die "MAX_A100=$MAX_A100 is above the regional A100 caps ($A100_REGION_CAPS: $A100_CAP_SUM in all)."
 # A100 regions: the cap of one, the zones of one (comma list), the region of a zone.
 a100_cap() { local rc; for rc in $A100_REGION_CAPS; do [ "${rc%%:*}" = "$1" ] && { echo "${rc#*:}"; return 0; }; done; return 1; }
 a100_zones() { local rz; for rz in $A100_REGION_ZONES; do [ "${rz%%:*}" = "$1" ] && { echo "${rz#*:}"; return 0; }; done; return 1; }

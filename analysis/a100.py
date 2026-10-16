@@ -20,10 +20,11 @@ DU(A) (A against AT, as DU is G against GT); PR(A) (A against Ah), HWh(V6,A) (V6
 against C), read with the rule of section 11; HW minus RC for HW(G,A) and HW(V6,A) against the RC of each of the
 two conditions (RC(G) and RC(V6) from the main study's seed pairs, RC(A) from the follow-up); Q3 with A and AT added
 to the main study's conditions (V5, V6, G, GT, C; Ah stays out, as V6h and Gh do).
-M6: cost per structure at the a2-ultragpu-1g list prices of both regions (us-central1 and europe-west4; on demand,
-Spot and Flex-start; cloud/prices.csv), whatever the zone a run used; M7: memory per bucket (analysis/cost.py).
+M6: cost per structure at the a2-ultragpu-1g list prices of every region with A100 80 GB quota (the regions of
+cloud/prices.csv: us-central1, us-east5, europe-west4, us-east4; on demand, Spot and Flex-start), whatever the zone
+a run used; M7: memory per bucket (analysis/cost.py).
 Outputs in --out: checks.csv, counts.csv, contrasts.csv, hw_minus_rc.csv, q3.csv, pairs_seed.csv, pairs_sample.csv,
-cost_per_process.csv, cost_both_regions.csv, memory.csv, report.md.
+cost_per_process.csv, cost_both_regions.csv (every region, despite the name), memory.csv, report.md.
 """
 import argparse
 import csv
@@ -42,7 +43,7 @@ import followup34 as f34  # noqa: E402
 
 MACHINE_TYPE = 'a2-ultragpu-1g'
 A_ARMS = ['A', 'Ah', 'AT']
-REGIONS = ['us-central1', 'europe-west4']
+
 CHECK2_SPECS = [('W(A)', 'W', ('A', 'r1'), ('A', 'w'), True)]
 SPECS = [('RC(A)', 'RC', ('A', 'r1'), ('A', 'r2'), True), ('SD(A)', 'SD', ('A', 'r1'), ('A', 'r1'), True),
          ('HW(G,A)', 'HW', ('G', 'r1'), ('A', 'r1'), False), ('HW(V6,A)', 'HW', ('V6', 'r1'), ('A', 'r1'), False),
@@ -69,8 +70,14 @@ def q3(ok, args):
   return contrasts.q3(ok[ok.condition.isin(Q3_CONDITIONS)], args)
 
 
+def regions(a100_prices):
+  """The regions with an a2-ultragpu-1g price, in order of on-demand price."""
+  return sorted({r for r, _ in a100_prices}, key=lambda r: (a100_prices.get((r, 'standard'), float('inf')), r))
+
+
 def both_regions(c, a100_prices):
   """Per process: cost per structure at each region's a2-ultragpu-1g price, and the median per arm and bucket."""
+  REGIONS = regions(a100_prices)
   rows = []
   for r in c.itertuples():
     row = {'session': r.session, 'platform': r.platform, 'target': r.target, 'bucket': r.bucket,
@@ -105,6 +112,7 @@ def analyse(ok, args, primary_dir):
 
 
 def report(out, checks, con, hwrc, q3rows, q3answer, med, m, args):
+  REGIONS = [c.rsplit('_', 1)[1] for c in (med.columns if med is not None else []) if c.startswith('usd_per_structure_standard_')]
   L = ['# Follow-up 3: the A100 arms', '',
        'notes/analysis_plan.md section 10, rows of 2026-10-16; follow-up outside the pre-registered study. Machine '
        f'type {MACHINE_TYPE} (one A100 80 GB). Code: analysis/a100.py (bootstrap {args.replicates} replicates, seed '
@@ -123,9 +131,9 @@ def report(out, checks, con, hwrc, q3rows, q3answer, med, m, args):
         'estimate | 95% CI |', '|---|---|---|---|---|---|']
   L += [f'| {r.n_seeds} | {r.condition} | {r.statistic} | {r.n_targets} | {f34.pct(r.estimate)} | {f34.pct(r.ci_low)} to '
         f'{f34.pct(r.ci_high)} |' for r in q3rows.itertuples()]
-  L += ['', '## M6: median USD per structure at the list prices of both regions', '',
+  L += ['', '## M6: median USD per structure at the list prices of every A100 region', '',
         '| arm | bucket | warm | wall s | ' + ' | '.join(f'{p} {g}' for g in REGIONS for p in cost.PROVISIONING) + ' |',
-        '|---|---|---|---|' + '---|' * 6]
+        '|---|---|---|---|' + '---|' * (3 * len(REGIONS))]
   for r in med.to_dict('records'):   # records: the region columns hold a "-", which itertuples would rename
     L.append(f'| {r["platform"]} | {r["bucket"]} | {r["warm"]} | {f34.num(r["wall_per_structure_s"])} | ' + ' | '.join(
         f34.num(r[f'usd_per_structure_{p}_{g}']) for g in REGIONS for p in cost.PROVISIONING) + ' |')

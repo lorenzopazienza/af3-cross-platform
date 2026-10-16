@@ -31,9 +31,9 @@
 # no VM before the next one. PLATFORM=l4 without ZONE or ZONES uses
 # L4_DEFAULT_ZONES below (every Europe and US zone with nvidia-l4 per
 # `gcloud compute accelerator-types list --filter="name=nvidia-l4"`, 2026-10-09).
-# PLATFORM=a100 without ZONE or ZONES uses A100_DEFAULT_ZONES below (the us-central1 and europe-west4 zones
-# that offer a2-ultragpu-1g; cloud/af3_run_many.sh gives each A100 part the zones of one region, to keep
-# within the regional quota). ZONE=z alone means that one zone.
+# PLATFORM=a100 without ZONE or ZONES uses A100_DEFAULT_ZONES below (the zones of the four regions with
+# NVIDIA_A100_80GB_GPUS quota that offer a2-ultragpu-1g, cheapest region first; cloud/af3_run_many.sh gives each
+# A100 part the zones of one region, to keep within the regional quota). ZONE=z alone means that one zone.
 #
 # Overrides: PROJECT ZONE ZONES MACHINE_TYPE SPOT PROVISIONING (spot, standard, or
 # flex_start for l4 and a100; flex_start or standard for v6e; wins over SPOT) IMAGE_PROJECT IMAGE_FAMILY RUNTIME
@@ -217,10 +217,11 @@ us-west1-a us-west1-b us-west1-c us-west4-a us-west4-c"
     [ -n "${MACHINE_TYPE:-}" ] || die "PLATFORM=a100 needs MACHINE_TYPE=a2-ultragpu-1g (the follow-up 3 machine type; no default)."
     [ "$MACHINE_TYPE" = "a2-ultragpu-1g" ] \
       || die "PLATFORM=a100 takes a2-ultragpu-1g only (one A100 80 GB, section 10, 2026-10-16), not $MACHINE_TYPE."
-    # The us-central1 and europe-west4 zones that offer a2-ultragpu-1g (regional quota NVIDIA_A100_80GB_GPUS:
-    # 2 in us-central1, 1 in europe-west4), per `gcloud compute machine-types list --filter="name=a2-ultragpu-1g"`
-    # and `gcloud compute accelerator-types list --filter="name=nvidia-a100-80gb"`, 2026-10-16.
-    A100_DEFAULT_ZONES="us-central1-a us-central1-c europe-west4-a"
+    # The zones that offer a2-ultragpu-1g in the regions with NVIDIA_A100_80GB_GPUS quota (us-central1 2,
+    # us-east5 1, europe-west4 1, us-east4 1; the last two regions approved later on 2026-10-16), per
+    # `gcloud compute machine-types list --filter="name=a2-ultragpu-1g"` and `gcloud compute accelerator-types list
+    # --filter="name=nvidia-a100-80gb"`, 2026-10-16; regions in order of on-demand price (cloud/prices.csv).
+    A100_DEFAULT_ZONES="us-central1-a us-central1-c us-east5-a us-east5-b europe-west4-a us-east4-c"
     if [ -z "${ZONES:-}" ] && [ -z "${ZONE:-}" ]; then ZONES=$A100_DEFAULT_ZONES; fi
     ZONE="${ZONE:-us-central1-a}"
     for z in $(echo ${ZONES:-$ZONE}); do

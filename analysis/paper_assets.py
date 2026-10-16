@@ -687,9 +687,10 @@ def t22_a100(out, d):
   t = pd.DataFrame({'arm': c.platform, 'bucket': c.bucket.astype(int), 'warm': c.warm,
                     'median wall per structure (s)': c.wall_per_structure_s.round(0),
                     **{f'USD, {p.replace("_", "-")}, {g}': c[f'usd_per_structure_{p}_{g}'].round(3)
-                       for g in ('us-central1', 'europe-west4') for p in ('standard', 'spot', 'flex_start')}})
+                       for g in [x.rsplit('_', 1)[1] for x in c.columns if x.startswith('usd_per_structure_standard_')]
+                       for p in ('standard', 'spot', 'flex_start')}})
   write_table(out, 'T22d_a100_cost', t, 'Follow-up 3: M6, median cost per structure at the a2-ultragpu-1g list prices '
-              'of both regions')
+              'of every region with A100 80 GB quota')
   return con
 
 

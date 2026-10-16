@@ -166,6 +166,9 @@ def test_a100_contrasts_and_both_region_prices(tmp_path):
   assert per.iloc[0]['usd_per_structure_standard_us-central1'] == pytest.approx(5.027702)
   assert per.iloc[0]['usd_per_structure_standard_europe-west4'] == pytest.approx(5.535713)
   assert not np.isnan(per.iloc[0]['usd_per_structure_flex_start_europe-west4'])
+  assert per.iloc[0]['usd_per_structure_standard_us-east4'] == pytest.approx(5.662527)
+  assert per.iloc[0]['usd_per_structure_standard_us-east5'] == pytest.approx(5.523819)
+  assert a100.regions(a100.a100_price_table()) == ['us-central1', 'us-east5', 'europe-west4', 'us-east4']
 
 
 def test_follow_up_codes_labels_and_prices(tmp_path):
