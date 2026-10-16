@@ -91,11 +91,14 @@ def sha256(path):
 
 
 def platform_of(kind, attention, matmul_precision=None, config_name=None):
-  """Condition code: section 3's platform code, Gd for config l4_xla_det, "h" for the section 11 arms (highest)."""
+  """Condition code: section 3's platform code, Gd for config l4_xla_det, "h" for the section 11 arms (highest);
+  follow-up 3 (section 10, 2026-10-16): A and AT for the A100 (xla and triton attention), Ah with highest."""
   if config_name in CODE_BY_CONFIG:
     code = CODE_BY_CONFIG[config_name]
   elif 'L4' in kind:
     code = 'GT' if attention == 'triton' else 'G'
+  elif 'A100' in kind:
+    code = 'AT' if attention == 'triton' else 'A'
   else:
     code = PLATFORM_BY_KIND.get(kind, kind)
   if not matmul_precision:

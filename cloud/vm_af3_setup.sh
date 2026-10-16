@@ -5,7 +5,7 @@
 # called), sets up JAX for the platform, runs build_data, puts the weights in
 # place (cloud/vm_af3_weights.sh) and checks that JAX sees the right device.
 #
-#   PLATFORM=cpu|l4|v5e|v6e WEIGHTS=random|gcs TARGETS=ID,ID bash cloud/vm_af3_setup.sh OUT
+#   PLATFORM=cpu|l4|a100|v5e|v6e WEIGHTS=random|gcs TARGETS=ID,ID bash cloud/vm_af3_setup.sh OUT
 #
 # JAX per platform: TPU swaps AlphaFold3's CUDA JAX for jax/jaxlib 0.10.2 with
 # libtpu LIBTPU_VERSION (default 0.0.43.2; cloud/vm_tpu_stack.sh explains why
@@ -63,7 +63,7 @@ case "$PLATFORM" in
   v5e | v6e)
     step "swap CUDA JAX for jax/jaxlib 0.10.2 with libtpu ${LIBTPU_VERSION:-0.0.43.2}"
     PY="$PY" LIBTPU_VERSION="${LIBTPU_VERSION:-0.0.43.2}" bash "$ROOT/cloud/vm_tpu_stack.sh" ;;
-  l4)
+  l4 | a100)
     step "NVIDIA driver (from the image); AlphaFold3's pinned CUDA JAX is kept"
     nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader ;;
   cpu)

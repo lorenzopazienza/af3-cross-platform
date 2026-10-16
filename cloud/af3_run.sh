@@ -14,11 +14,14 @@
 # cpu       Compute Engine   n2-highmem-16 (Ice Lake)      Spot (SPOT=0: on-demand)
 # l4        Compute Engine   g2-standard-8 (1 x L4)        Spot (SPOT=0: on-demand,
 #                                                          PROVISIONING=flex_start: Flex-start)
+# a100      Compute Engine   none: MACHINE_TYPE must be    as l4 (follow-up 3 runs on demand,
+#                            a2-ultragpu-1g (1 x A100      SPOT=0; Spot A100 80 GB quota is 0)
+#                            80 GB)
 # v5e       legacy TPU API   v5litepod-1                   Spot (SPOT=0: on-demand)
 # v6e       Compute Engine   ct6e-standard-1t              Flex-start (PROVISIONING=standard:
 #                                                          on-demand)
 #
-# Zones: ZONES="z1 z2 ..." (Compute Engine platforms: cpu, l4, v6e) tries each
+# Zones: ZONES="z1 z2 ..." (Compute Engine platforms: cpu, l4, a100, v6e) tries each
 # zone in order and keeps the first VM that is created. A stockout or capacity
 # error (seen when the create call fails at once, or later in the insert
 # operation, also when the VM goes STAGING, STOPPING, then disappears) moves on
@@ -28,16 +31,18 @@
 # no VM before the next one. PLATFORM=l4 without ZONE or ZONES uses
 # L4_DEFAULT_ZONES below (every Europe and US zone with nvidia-l4 per
 # `gcloud compute accelerator-types list --filter="name=nvidia-l4"`, 2026-10-09).
-# ZONE=z alone means that one zone.
+# PLATFORM=a100 without ZONE or ZONES uses A100_DEFAULT_ZONES below (the us-central1 and europe-west4 zones
+# that offer a2-ultragpu-1g; cloud/af3_run_many.sh gives each A100 part the zones of one region, to keep
+# within the regional quota). ZONE=z alone means that one zone.
 #
 # Overrides: PROJECT ZONE ZONES MACHINE_TYPE SPOT PROVISIONING (spot, standard, or
-# flex_start for l4; flex_start or standard for v6e; wins over SPOT) IMAGE_PROJECT IMAGE_FAMILY RUNTIME
+# flex_start for l4 and a100; flex_start or standard for v6e; wins over SPOT) IMAGE_PROJECT IMAGE_FAMILY RUNTIME
 # (v5e) BOOT_DISK_SIZE MIN_CPU_PLATFORM (cpu) REQUEST_VALID_FOR (Flex-start
 # queue, 90s to 2h, default 2h) DETACHED_DEADLINE_MIN MAX_RUN_DURATION WEIGHTS
 # (random or gcs; default: the plan's) WEIGHTS_GCS_URI (gcs only; never
 # printed) VM_NAME YES=1 (no prompt).
 #
-# Flex-start (v6e, and l4 with PROVISIONING=flex_start): the create request
+# Flex-start (v6e, and l4 or a100 with PROVISIONING=flex_start): the create request
 # queues up to REQUEST_VALID_FOR and is not billed while queued; the VM gets
 # --max-run-duration and --instance-termination-action=DELETE like every
 # Compute Engine VM here. Flags as documented in `gcloud compute instances
@@ -62,7 +67,7 @@
 # 0.0.43.2; LIBTPU_VERSION=0.0.42.1 for the version jax[tpu]==0.10.2 pins;
 # cloud/vm_tpu_stack.sh explains the choice). A plan with a "libtpu" list sets
 # it instead (its first version; the others follow on the same VM); a
-# LIBTPU_VERSION that disagrees with that list is refused. Ignored on cpu and l4.
+# LIBTPU_VERSION that disagrees with that list is refused. Ignored on cpu, l4 and a100.
 #
 # Comparison: if the plan names a compare_reference and that folder exists on
 # the laptop, the fetched session is compared with it at the end, bit for bit
@@ -128,7 +133,7 @@ RESUME=0 RESUME_LEGACY=0 RESUME_NOTE=""
 if [ -n "${RESUME_VM:-}" ]; then
   RESUME=1
   [ -n "${SESSION:-}" ] || die "RESUME_VM needs SESSION=<session folder name, as under results/af3/>."
-  echo "$SESSION" | grep -Eq '^[0-9]{8}T[0-9]{6}Z_(cpu|l4|v5e|v6e)_[a-z0-9_-]+$' || die "Not a session name: SESSION='$SESSION'."
+  echo "$SESSION" | grep -Eq '^[0-9]{8}T[0-9]{6}Z_(cpu|l4|a100|v5e|v6e)_[a-z0-9_-]+$' || die "Not a session name: SESSION='$SESSION'."
   REC="$(git rev-parse --show-toplevel)/results/af3/.launcher/$SESSION/launch_record.txt"
   rec() { sed -n "s/^$1=//p" "$REC" | tail -1; }
   if [ -f "$REC" ]; then
@@ -162,7 +167,7 @@ if [ -n "${RESUME_VM:-}" ]; then
   unset ZONES
   VM_NAME=$RESUME_VM
 fi
-: "${PLATFORM:?set PLATFORM to cpu, l4, v5e or v6e}"
+: "${PLATFORM:?set PLATFORM to cpu, l4, a100, v5e or v6e}"
 command -v gcloud > /dev/null || die "gcloud not found."
 command -v python3 > /dev/null || die "python3 not found."
 
@@ -205,6 +210,25 @@ us-west1-a us-west1-b us-west1-c us-west4-a us-west4-c"
       g2-standard-4 | g2-standard-8 | g2-standard-12 | g2-standard-16 | g2-standard-32) ;;
       *) die "PLATFORM=l4 takes a single-L4 type (g2-standard-4/8/12/16/32), not $MACHINE_TYPE." ;;
     esac ;;
+  a100)
+    VM_API=gce
+    # Follow-up 3 (notes/analysis_plan.md section 10, rows of 2026-10-16): one machine type for every A100 run,
+    # a2-ultragpu-1g (one A100 80 GB); a2-highgpu-1g (A100 40 GB) is not used. No default: the launch names it.
+    [ -n "${MACHINE_TYPE:-}" ] || die "PLATFORM=a100 needs MACHINE_TYPE=a2-ultragpu-1g (the follow-up 3 machine type; no default)."
+    [ "$MACHINE_TYPE" = "a2-ultragpu-1g" ] \
+      || die "PLATFORM=a100 takes a2-ultragpu-1g only (one A100 80 GB, section 10, 2026-10-16), not $MACHINE_TYPE."
+    # The us-central1 and europe-west4 zones that offer a2-ultragpu-1g (regional quota NVIDIA_A100_80GB_GPUS:
+    # 2 in us-central1, 1 in europe-west4), per `gcloud compute machine-types list --filter="name=a2-ultragpu-1g"`
+    # and `gcloud compute accelerator-types list --filter="name=nvidia-a100-80gb"`, 2026-10-16.
+    A100_DEFAULT_ZONES="us-central1-a us-central1-c europe-west4-a"
+    if [ -z "${ZONES:-}" ] && [ -z "${ZONE:-}" ]; then ZONES=$A100_DEFAULT_ZONES; fi
+    ZONE="${ZONE:-us-central1-a}"
+    for z in $(echo ${ZONES:-$ZONE}); do
+      case " $A100_DEFAULT_ZONES " in *" $z "*) ;; *) die "PLATFORM=a100: $z is not one of the zones with a2-ultragpu-1g quota ($A100_DEFAULT_ZONES)." ;; esac
+    done
+    IMAGE_PROJECT="${IMAGE_PROJECT:-ubuntu-os-accelerator-images}"
+    IMAGE_FAMILY="${IMAGE_FAMILY:-ubuntu-accelerator-2204-amd64-with-nvidia-580}"
+    BOOT_DISK_TYPE=pd-balanced ;;
   v5e)
     VM_API=tpu
     MACHINE_TYPE="${MACHINE_TYPE:-v5litepod-1}"
@@ -218,7 +242,7 @@ us-west1-a us-west1-b us-west1-c us-west4-a us-west4-c"
     IMAGE_PROJECT="${IMAGE_PROJECT:-ubuntu-os-accelerator-images}"
     IMAGE_FAMILY="${IMAGE_FAMILY:-ubuntu-accel-2204-amd64-tpu-v5e-v5p-v6e}"
     [ "$MACHINE_TYPE" = "ct6e-standard-1t" ] || die "PLATFORM=v6e takes ct6e-standard-1t only (single chip), not $MACHINE_TYPE." ;;
-  *) die "PLATFORM must be cpu, l4, v5e or v6e." ;;
+  *) die "PLATFORM must be cpu, l4, a100, v5e or v6e." ;;
 esac
 MIN_CPU_PLATFORM="${MIN_CPU_PLATFORM-$MIN_CPU_PLATFORM_DEFAULT}"
 case "${PROVISIONING:-}" in
@@ -229,8 +253,8 @@ case "${PROVISIONING:-}" in
     esac ;;
   flex_start)
     case "$PLATFORM" in
-      l4 | v6e) ;;
-      *) die "PROVISIONING=flex_start is supported here for PLATFORM=l4 and v6e only." ;;
+      l4 | a100 | v6e) ;;
+      *) die "PROVISIONING=flex_start is supported here for PLATFORM=l4, a100 and v6e only." ;;
     esac ;;
   standard) ;;
   spot)
@@ -248,7 +272,7 @@ set -- $ZONES
 ZONE_COUNT=$#
 ZONE=$1
 if [ "$VM_API" = "tpu" ] && [ "$ZONE_COUNT" -gt 1 ]; then
-  die "ZONES with more than one zone is supported for the Compute Engine platforms (cpu, l4, v6e), not v5e."
+  die "ZONES with more than one zone is supported for the Compute Engine platforms (cpu, l4, a100, v6e), not v5e."
 fi
 REGION="${ZONE%-*}"
 REGIONS=$(for z in $ZONES; do echo "${z%-*}"; done | awk '!seen[$0]++' | tr '\n' ' ')

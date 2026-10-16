@@ -45,7 +45,8 @@ import numpy as np
 import pandas as pd
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-PRICE_KEY = {'V5': 'v5e', 'V6': 'v6e', 'V6h': 'v6e', 'G': 'l4', 'GT': 'l4', 'Gh': 'l4', 'Gd': 'l4', 'C': 'cpu'}
+PRICE_KEY = {'V5': 'v5e', 'V6': 'v6e', 'V6h': 'v6e', 'G': 'l4', 'GT': 'l4', 'Gh': 'l4', 'Gd': 'l4', 'C': 'cpu',
+             'A': 'a100', 'AT': 'a100', 'Ah': 'a100'}   # A100 arms of follow-up 3 (a2-ultragpu-1g)
 PROVISIONING = ['standard', 'spot', 'flex_start']
 FALLBACK_REGION = 'europe-west4'
 GIB = 1024 ** 3
@@ -155,7 +156,7 @@ def memory_table(p):
     peak_args = (g.compiled_peak_bytes + g.compiled_args_bytes).max()
     limit = g.device_bytes_limit.max()
     reserved = g.alloc_peak_reserved_bytes.max()
-    if plat in ('G', 'GT', 'Gh', 'Gd') and reserved == 0:
+    if plat in ('G', 'GT', 'Gh', 'Gd', 'A', 'AT', 'Ah') and reserved == 0:
       reserved = np.nan  # the CUDA allocator preallocates its pool and reports no reservation
     rows.append({'platform': plat, 'bucket': int(bucket), 'processes': len(g), 'succeeded': len(ok),
                  'max_tokens_run': ok.num_tokens.max() if len(ok) else np.nan,
@@ -238,8 +239,10 @@ def main():
   c.to_csv(out / 'cost_per_process.csv', index=False)
   s.to_csv(out / 'cost_summary.csv', index=False)
   m.to_csv(out / 'memory.csv', index=False)
+  # The price rows of the platforms in this table only (cloud/prices.csv also holds platforms other analyses use).
+  used = {PRICE_KEY.get(x) for x in c.platform.dropna().unique()}
   pd.DataFrame([{'platform': k[0], 'region': k[1], 'provisioning': k[2], 'usd_per_hour': v[0], 'read_on': v[1]}
-                for k, v in sorted(prices.items())]).to_csv(out / 'prices_used.csv', index=False)
+                for k, v in sorted(prices.items()) if k[0] in used]).to_csv(out / 'prices_used.csv', index=False)
   report(c, s, m, args, out)
   print(f'>> {len(c)} processes; report: {out / "report.md"}', flush=True)
   return 0

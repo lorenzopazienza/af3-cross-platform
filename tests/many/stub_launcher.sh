@@ -16,7 +16,9 @@ session="${stamp}_${PLATFORM}_${name}"
 echo "   session: results/af3/$session/   VM: af3-run-$PLATFORM-x"
 mkdir -p "results/af3/.launcher/$session"
 echo "SESSION=$session" > "results/af3/.launcher/$session/launch_record.txt"
-echo "start $(python3 -c "import time; print(time.time())") $PLATFORM $name $$ YES=${YES:-} ZONE=${ZONE:-} EXTRA=${SPOT:-} ZONES=${ZONES:-} PROV=${PROVISIONING:-}" >> "$STUB_EVENTS"
+# MT and ZR (the machine type and the region of the zones given) last, one token each (ZONES holds spaces).
+zr=$(echo ${ZONES:-${ZONE:-}} | awk '{print $1}' | sed 's/-[a-z]$//')
+echo "start $(python3 -c "import time; print(time.time())") $PLATFORM $name $$ YES=${YES:-} ZONE=${ZONE:-} EXTRA=${SPOT:-} ZONES=${ZONES:-} PROV=${PROVISIONING:-} MT=${MACHINE_TYPE:-} ZR=${zr:-}" >> "$STUB_EVENTS"
 if [ "$mode" = novm ]; then
   echo "!! No zone had capacity for g2-standard-8 (standard). Tried, in order: a b"
   echo "end $(python3 -c "import time; print(time.time())") $PLATFORM $name $$" >> "$STUB_EVENTS"

@@ -89,7 +89,7 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / 'harness'))
 from run_af3 import read_configs, upload  # noqa: E402
 
-PLATFORMS = ('cpu', 'l4', 'v5e', 'v6e')
+PLATFORMS = ('cpu', 'l4', 'a100', 'v5e', 'v6e')
 
 
 def as_list(value):

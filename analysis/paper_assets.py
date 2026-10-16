@@ -100,6 +100,15 @@ ROLES = {
     'F11_ppi_flip_rates': FOLLOW_UP_1 + '; main-study values as in T04',
     'F12_ppi_dockq_per_target': FOLLOW_UP_1,
     'F13_embed_trunk_vs_structure': FOLLOW_UP_2,
+    # Follow-ups 3 and 4 (section 10, 2026-10-16), written only with --followups34 once their analyses exist.
+    'T21a_cpu60_contrasts': 'follow-up 4 (outside the pre-registered study, section 10, 2026-10-16); role column per row',
+    'T21b_cpu60_six_vs_sixty': 'follow-up 4 (outside the pre-registered study, section 10, 2026-10-16); main-study column as in T04',
+    'T21c_cpu60_cost_memory': 'follow-up 4 (outside the pre-registered study, section 10, 2026-10-16)',
+    'T22a_a100_checks': 'follow-up 3 (outside the pre-registered study, section 10, 2026-10-16); checks before any result',
+    'T22b_a100_contrasts': 'follow-up 3 (outside the pre-registered study, section 10, 2026-10-16); role column per row',
+    'T22c_a100_hw_minus_rc': 'follow-up 3 (outside the pre-registered study, section 10, 2026-10-16)',
+    'T22d_a100_cost': 'follow-up 3 (outside the pre-registered study, section 10, 2026-10-16)',
+    'F14_a100_flip_rates': 'follow-up 3 (outside the pre-registered study, section 10, 2026-10-16)',
 }
 
 
@@ -631,6 +640,59 @@ def t20_embed(out, main_pairs_sample):
   return True
 
 
+def t21_cpu60(out, d):
+  """Follow-up 4 tables from an analysis/cpu60.py output folder."""
+  con = read(d / 'contrasts.csv')
+  t = wide_stats(con, ['flip_top1', 'flip_success', 'flip_matters', 'bit_identical_fraction'], pct_ci)
+  t.columns = ['contrast', 'role', 'targets', 'top-1 flip (%)', 'success flip (%)', 'flips that matter (%)',
+               'bit-identical samples (%)']
+  write_table(out, 'T21a_cpu60_contrasts', t, 'Follow-up 4 (C on every target): flip rates of the contrasts with C '
+              'on the 60 targets, 95% target bootstrap intervals')
+  six = read(d / 'six_vs_sixty.csv')
+  t = pd.DataFrame({'contrast': six.contrast, 'statistic': six.statistic,
+                    '60 targets': [fmt_stat(r.statistic, r.new_estimate, r.new_ci_low, r.new_ci_high) for r in six.itertuples()],
+                    'main study, 6 targets': [fmt_stat(r.statistic, r.main_estimate, r.main_ci_low, r.main_ci_high)
+                                              for r in six.itertuples()]})
+  write_table(out, 'T21b_cpu60_six_vs_sixty', t, 'Follow-up 4: each contrast on the 60 targets next to its value on the '
+              'main study\'s 6 C targets, which stays as specified')
+  s, m = read(d / 'cost_summary.csv'), read(d / 'memory.csv').set_index('bucket')
+  t = pd.DataFrame({'bucket': s.bucket.astype(int), 'processes': s.processes, 'median wall (s)': s.median_wall_s.round(0),
+                    'USD per structure, on demand': s.median_usd_per_structure_standard.round(3),
+                    'USD per structure, Spot': s.median_usd_per_structure_spot.round(3),
+                    'max RSS (GiB)': s.bucket.map(m.max_rss_gib).round(1)})
+  write_table(out, 'T21c_cpu60_cost_memory', t, 'Follow-up 4: M6 and M7 for C at every token bucket (n2-highmem-16)')
+  return con
+
+
+def t22_a100(out, d):
+  """Follow-up 3 tables from an analysis/a100.py output folder."""
+  write_table(out, 'T22a_a100_checks', read(d / 'checks.csv').fillna(''), 'Follow-up 3: checks before any result '
+              '(machine type, exit codes, check 2 of A)')
+  con = read(d / 'contrasts.csv')
+  t = wide_stats(con, ['flip_top1', 'flip_success', 'flip_matters', 'bit_identical_fraction'], pct_ci)
+  t.columns = ['contrast', 'role', 'targets', 'top-1 flip (%)', 'success flip (%)', 'flips that matter (%)',
+               'bit-identical samples (%)']
+  write_table(out, 'T22b_a100_contrasts', t, 'Follow-up 3 (A100 80 GB, a2-ultragpu-1g): flip rates per contrast, 95% '
+              'target bootstrap intervals')
+  rows = []
+  for (h, rc, ref), g in read(d / 'hw_minus_rc.csv').groupby(['hardware', 'recompilation', 'reference'], sort=False):
+    row = {'hardware pair': h, 'recompilation': rc, 'reference': ref}
+    for st in ['flip_top1', 'flip_success', 'flip_matters']:
+      r = g[g.statistic == st].iloc[0]
+      row[st.replace('_', ' ') + ' (pp)'] = pct_ci(r.estimate, r.ci_low, r.ci_high)
+    rows.append(row)
+  write_table(out, 'T22c_a100_hw_minus_rc', pd.DataFrame(rows), 'Follow-up 3: HW minus RC for HW(G,A) and HW(V6,A), '
+              'against the RC of each condition (percentage points, 95% intervals)')
+  c = read(d / 'cost_both_regions.csv')
+  t = pd.DataFrame({'arm': c.platform, 'bucket': c.bucket.astype(int), 'warm': c.warm,
+                    'median wall per structure (s)': c.wall_per_structure_s.round(0),
+                    **{f'USD, {p.replace("_", "-")}, {g}': c[f'usd_per_structure_{p}_{g}'].round(3)
+                       for g in ('us-central1', 'europe-west4') for p in ('standard', 'spot', 'flex_start')}})
+  write_table(out, 'T22d_a100_cost', t, 'Follow-up 3: M6, median cost per structure at the a2-ultragpu-1g list prices '
+              'of both regions')
+  return con
+
+
 # ---------------------------------------------------------------- figures
 
 def figure_saver(out):
@@ -829,6 +891,23 @@ def figures(out, contrasts, hwrc, q3, sample_pairs, cost, mem, sbs, cross, recs)
        'between pilot2 and the main study')
 
 
+def figure_a100(out, con, main_contrasts):
+  plt, save = figure_saver(out)
+  names = [c for c in ['HW(G,A)', 'HW(V6,A)', 'HW(V5,A)', 'HW(A,C)', 'RC(A)', 'DU(A)', 'PR(A)'] if c in set(con.contrast)]
+  fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.0), sharey=True)
+  y = np.arange(len(names))[::-1]
+  for ax, st, title in zip(axes, ['flip_top1', 'flip_success'], ['top-1 flip per seed (%)', 'success flip per seed (%)']):
+    g = con[con.statistic == st].set_index('contrast').reindex(names)
+    ax.errorbar(100 * g.estimate, y, xerr=[100 * (g.estimate - g.ci_low), 100 * (g.ci_high - g.estimate)], fmt='o',
+                ms=3.5, elinewidth=0.8, capsize=2, color='k')
+    ax.set_yticks(y, names)
+    ax.axvline(0, color='0.6', lw=0.6)
+    ax.set_title(title)
+  fig.tight_layout()
+  save(fig, 'F14_a100_flip_rates', 'Follow-up 3: per-seed top-1 and success flip rates of the A100 contrasts, 95% '
+       'target bootstrap intervals')
+
+
 def figures_followups(out, main_contrasts, have_ppi, have_embed):
   plt, save = figure_saver(out)
   if have_ppi:
@@ -924,6 +1003,10 @@ def main():
   ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
   ap.add_argument('--out', default=str(REPO / 'results' / 'paper_assets'))
   ap.add_argument('--tables_only', action='store_true')
+  ap.add_argument('--followups34', action='store_true', help='add the follow-up 3 and 4 assets (off until their '
+                  'analyses exist; with it off, the other assets are unchanged)')
+  ap.add_argument('--cpu60_dir', help='analysis/cpu60.py output folder (with --followups34)')
+  ap.add_argument('--a100_dir', help='analysis/a100.py output folder (with --followups34)')
   args = ap.parse_args()
   out = pathlib.Path(args.out)
   out.mkdir(parents=True, exist_ok=True)
@@ -955,6 +1038,15 @@ def main():
   if not args.tables_only:
     figures(out, contrasts, hwrc, q3, pairs_sample, cost, mem, sbs, cross, recs)
     figures_followups(out, contrasts, have_ppi, have_embed)
+  if args.followups34:
+    if not (args.cpu60_dir or args.a100_dir):
+      raise SystemExit('--followups34 needs --cpu60_dir and/or --a100_dir')
+    if args.cpu60_dir:
+      t21_cpu60(out, REPO / args.cpu60_dir)
+    if args.a100_dir:
+      a_con = t22_a100(out, REPO / args.a100_dir)
+      if not args.tables_only:
+        figure_a100(out, a_con, contrasts)
   rows = sorted((str(p.relative_to(REPO)), hashlib.sha256(p.read_bytes()).hexdigest()) for p in SOURCES)
   frozen = check_freeze(rows)
   (out / 'sources.tsv').write_text('path\tsha256\tin_freeze\n' + ''.join(

@@ -92,6 +92,43 @@ l4_triton:
     XLA_PYTHON_CLIENT_PREALLOCATE: true
     XLA_CLIENT_MEM_FRACTION: 0.95
 
+# Follow-up 3 (notes/analysis_plan.md section 10, rows of 2026-10-16): the A100 arms A, Ah and AT on
+# a2-ultragpu-1g (one A100 80 GB, compute capability 8.0). Their env is identical to l4_xla, l4_xla_highest and
+# l4_triton: AlphaFold3's docs/performance.md and docker/Dockerfile (v3.0.4) set the same three values for the
+# A100 80 GB (--xla_gpu_enable_triton_gemm=false, preallocation, memory fraction 0.95); unified memory and
+# pair-transition sharding are for inputs above 5,120 tokens or the 40 GB card, and every target here has at most
+# 1,024 tokens. Only the descriptions differ.
+a100_xla:
+  description: NVIDIA A100 80 GB (compute capability 8.0), XLA attention (A arm)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+
+a100_xla_highest:
+  description: NVIDIA A100 80 GB, XLA attention, float32 matmuls at highest precision (Ah arm)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+    JAX_DEFAULT_MATMUL_PRECISION: highest
+
+a100_triton:
+  description: NVIDIA A100 80 GB, Triton flash attention (the AlphaFold3 GPU default; AT arm)
+  jax_backend: gpu
+  flash_attention_implementation: triton
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+
 t4_xla:
   description: NVIDIA T4 (compute capability 7.5), XLA attention, 7.x XLA flag
   jax_backend: gpu

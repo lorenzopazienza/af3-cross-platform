@@ -138,3 +138,42 @@ def test_freeze_check_refuses_a_changed_session_file(tmp_path, monkeypatch):
   monkeypatch.setattr(pa, 'FREEZE_ID', '0' * 64)
   with pytest.raises(SystemExit, match='is not freeze'):
     pa.check_freeze([])
+
+
+def _stat_rows(names):
+  return pd.DataFrame([{'contrast': n, 'kind': 'HW', 'role': 'secondary pair', 'statistic': st, 'n': 10, 'n_targets': 5,
+                        'estimate': 0.2, 'ci_low': 0.1, 'ci_high': 0.3, 'note': ''}
+                       for n in names for st in ('flip_top1', 'flip_success', 'flip_matters', 'bit_identical_fraction')])
+
+
+def test_followup34_assets_from_synthetic_outputs(tmp_path):
+  c, a, out = tmp_path / 'cpu60', tmp_path / 'a100', tmp_path / 'out'
+  c.mkdir(); a.mkdir()
+  _stat_rows(['HW(G,C)', 'SD(C)']).to_csv(c / 'contrasts.csv', index=False)
+  pd.DataFrame([{'contrast': 'HW(G,C)', 'statistic': 'flip_top1', 'new_n_targets': 60, 'new_estimate': 0.2,
+                 'new_ci_low': 0.1, 'new_ci_high': 0.3, 'main_n_targets': 6, 'main_estimate': 0.25, 'main_ci_low': 0.0,
+                 'main_ci_high': 0.5}]).to_csv(c / 'six_vs_sixty.csv', index=False)
+  pd.DataFrame([{'platform': 'C', 'bucket': 512, 'cache': 'fresh', 'processes': 4, 'median_wall_s': 3950.0,
+                 'median_usd_per_structure_standard': 1.2, 'median_usd_per_structure_spot': 0.35}]).to_csv(
+      c / 'cost_summary.csv', index=False)
+  pd.DataFrame([{'platform': 'C', 'bucket': 512, 'max_rss_gib': 40.0}]).to_csv(c / 'memory.csv', index=False)
+  pd.DataFrame([{'check': '1 exit codes (a100)', 'condition': 'A', 'value': '4/4', 'detail': 'pass'}]).to_csv(
+      a / 'checks.csv', index=False)
+  _stat_rows(['HW(G,A)', 'RC(A)']).to_csv(a / 'contrasts.csv', index=False)
+  pd.DataFrame([{'hardware': 'HW(G,A)', 'recompilation': rc, 'reference': ref, 'role': 'secondary pair',
+                 'statistic': st, 'n_targets': 5, 'estimate': 0.1, 'ci_low': 0.0, 'ci_high': 0.2}
+                for rc, ref in (('RC(G)', 'RC(P)'), ('RC(A)', 'RC(Q), secondary'))
+                for st in ('flip_top1', 'flip_success', 'flip_matters')]).to_csv(a / 'hw_minus_rc.csv', index=False)
+  pd.DataFrame([{'platform': 'A', 'bucket': 512, 'warm': False, 'wall_per_structure_s': 105.0,
+                 **{f'usd_per_structure_{p}_{g}': 0.15 for g in ('us-central1', 'europe-west4')
+                    for p in ('standard', 'spot', 'flex_start')}}]).to_csv(a / 'cost_both_regions.csv', index=False)
+  pa.t21_cpu60(out, c)
+  pa.t22_a100(out, a)
+  names = sorted(p.stem for p in (out / 'tables').glob('*.csv'))
+  assert names == ['T21a_cpu60_contrasts', 'T21b_cpu60_six_vs_sixty', 'T21c_cpu60_cost_memory', 'T22a_a100_checks',
+                   'T22b_a100_contrasts', 'T22c_a100_hw_minus_rc', 'T22d_a100_cost']
+  assert all(pa.ASSETS[f'tables/{n}'][0] == pa.ROLES[n] for n in names)
+  six = pd.read_csv(out / 'tables' / 'T21b_cpu60_six_vs_sixty.csv')
+  assert six.iloc[0]['main study, 6 targets'] == '25.0 [0.0, 50.0]'
+  cost = pd.read_csv(out / 'tables' / 'T22d_a100_cost.csv')
+  assert 'USD, standard, us-central1' in cost.columns and 'USD, flex-start, europe-west4' in cost.columns
