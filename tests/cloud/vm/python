@@ -53,6 +53,7 @@ if [ "${1:-}" = "-" ] && [ "$FAKE_PLATFORM" != "cpu" ]; then
   exit 0
 fi
 case "${1:-}" in
+  *featurise_only.py) shift; exec python3 "$FAKE_KIT/vm/featurise_only.py" "$@" ;;
   *make_random_params.py)
     out=$3; mkdir -p "$(dirname "$out")"; head -c 2048 /dev/urandom > "$out"
     echo "schema:      $PWD/docs/model_parameters.md (405 tensors)"; echo "seed:        0"

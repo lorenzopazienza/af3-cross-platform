@@ -1,0 +1,33 @@
+# Follow-up 5 (notes/analysis_plan.md section 10, row of 2026-10-18; label feat): AlphaFold3's featurisation only,
+# on a host of the Intel Cascade Lake family.
+# Arms on this family: G, GT, Gd, Gh (g2-standard-8, 8 vCPU) and A, Ah, AT (a2-ultragpu-1g, 12 vCPU): Intel Xeon @ 2.20GHz, Cascade Lake per the G2 and A2 series, ubuntu-accelerator-2204-amd64-with-nvidia-580, kernel 6.8.0-1070-gcp, glibc 2.35.
+# Host: c2-standard-8, min CPU platform Intel Cascade Lake, image ubuntu-os-accelerator-images/ubuntu-accelerator-2204-amd64-with-nvidia-580; C2 is the CPU-only series that is always Cascade Lake (N2 with min Cascade Lake may give Ice Lake); its CPU reads @ 3.10GHz, not 2.20GHz; 8 vCPU as G (A had 12); the arms' image family, no GPU attached.
+# Targets: the 60 PoseBusters and 30 follow-up 1 targets (inputs/feat/manifest.csv), seeds 1 to 5, one process per
+# target. CCD: the components.cif every pilot2 and main-study setup downloaded (SHA-256 f1bef735..., section 10,
+# rows of 2026-10-13 and 2026-10-14), uploaded from CCD_FILE and given to build_data. No weights.
+# Expected job: setup 40 min + featurisation 129 min (5 x the arms' seed-1 featurisation times on this
+# family, sum of per-target medians, 90 targets) + 30 min (process start, input parsing, arrays) = 199 min;
+# deadline = ceil(job min x 2.5 + 20) = 518 min; run_timeout_min 30 per target.
+
+description: follow-up 5, featurisation only, Intel Cascade Lake host
+label: feat
+weights: none
+featurise_only: true
+save_arrays: true
+manifest: inputs/feat/manifest.csv
+ccd_sha256: f1bef735f3d74171fb7e79af6b46fb1a3e753f6602f5b08ec90312013e33244b
+
+host:
+  machine_type: c2-standard-8
+  min_cpu_platform: Intel Cascade Lake
+  image_project: ubuntu-os-accelerator-images
+  image_family: ubuntu-accelerator-2204-amd64-with-nvidia-580
+
+targets:
+  default: all
+
+seeds: [1, 2, 3, 4, 5]
+run_timeout_min: 30
+
+deadline_min:
+  cpu: 518

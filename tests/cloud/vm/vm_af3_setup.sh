@@ -22,6 +22,13 @@ case "$PLATFORM" in
     PY="$ROOT/third_party/alphafold3/.venv/bin/python" LIBTPU_VERSION="${LIBTPU_VERSION:-0.0.43.2}" \
       bash "$ROOT/cloud/vm_tpu_stack.sh" || exit $? ;;
 esac
+if [ -n "${CCD_SHA256:-}" ]; then   # as cloud/vm_af3_setup.sh: the uploaded components.cif must be the plan's
+  echo ">> setup: CCD from ~/components.cif.zst"
+  mkdir -p "$HOME/ccd_plan" && zstd -d -q -f "$HOME/components.cif.zst" -o "$HOME/ccd_plan/components.cif" || exit 3
+  USED=$( (sha256sum "$HOME/ccd_plan/components.cif" 2> /dev/null || shasum -a 256 "$HOME/ccd_plan/components.cif") | cut -d' ' -f1)
+  [ "$USED" = "$CCD_SHA256" ] || { echo "!! the uploaded components.cif is not the plan's"; exit 3; }
+  printf '{"used_sha256": "%s"}\n' "$USED" > "$OUT/ccd.json"
+fi
 echo ">> setup: weights ($WEIGHTS)"
 WEIGHTS="$WEIGHTS" bash "$ROOT/cloud/vm_af3_weights.sh" "${AF3_WEIGHTS_DIR:-$HOME/af3_weights_run}" "$OUT" || exit 4
 echo ">> setup: devices and versions (real cloud/vm_device_check.sh)"

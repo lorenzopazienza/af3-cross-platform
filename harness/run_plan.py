@@ -66,6 +66,15 @@ save_embeddings (optional, true or false, default false): every harness run pass
 --save_embeddings (harness/run_af3.py), so AlphaFold3 writes its final trunk
 embeddings; recorded in session.json. Without the key nothing changes.
 
+featurise_only (optional, true or false, default false; follow-up 5, notes/analysis_plan.md section 10, row of
+2026-10-18): the plan runs AlphaFold3's featurisation only (harness/featurise_only.py: no model, no weights, no
+accelerator), one fresh process per target with every seed of the plan, into results/af3/<session>/featurise/.
+It must say weights: none and run on PLATFORM cpu; targets may be "all" (every row of the plan's manifest); it
+fixes its host (key host: machine_type, min_cpu_platform, image_project, image_family; cloud/af3_run.sh refuses a
+launch setting that disagrees); ccd_sha256 (optional) is the SHA-256 of the components.cif build_data must use
+(cloud/af3_run.sh uploads it from CCD_FILE); save_arrays: true keeps every model-input array (npz). plan_runs.jsonl
+gets one line per target. Without the key nothing changes.
+
 --describe prints the expanded plan as JSON and runs nothing; cloud/af3_run.sh
 uses it on the laptop to choose uploads and to size the VM's lifetime.
 --upload_uri gs://FOLDER (optional, the session's folder in the results
@@ -125,6 +134,11 @@ def expand(plan_path, platform, manifest_path):
     manifest_path = REPO / plan_manifest
   with open(manifest_path) as f:
     manifest = {r['pdb_id']: r for r in csv.DictReader(f)}
+  featurise_only = str(plan.get('featurise_only', 'false')).lower()
+  if featurise_only not in ('true', 'false'):
+    raise SystemExit(f'plan: featurise_only must be true or false, not {featurise_only!r}')
+  if featurise_only == 'true':
+    return expand_featurise(plan, plan_path, platform, manifest, plan_manifest)
 
   spec = as_list(per_platform(plan['targets'], platform))
   if spec == ['pilot']:
@@ -214,6 +228,78 @@ def expand(plan_path, platform, manifest_path):
   }
 
 
+HOST_KEYS = ('machine_type', 'min_cpu_platform', 'image_project', 'image_family')
+
+
+def expand_featurise(plan, plan_path, platform, manifest, plan_manifest):
+  """The description of a featurise_only plan (follow-up 5): every target, every seed, one process per target."""
+  if platform != 'cpu':
+    raise SystemExit(f'plan: a featurise_only plan runs on PLATFORM cpu (no accelerator), not {platform}')
+  if plan.get('weights') != 'none':
+    raise SystemExit('plan: a featurise_only plan takes weights: none (featurisation never loads them)')
+  spec = as_list(per_platform(plan['targets'], platform))
+  targets = sorted(manifest) if spec == ['all'] else spec
+  missing = [t for t in targets if t not in manifest]
+  if missing:
+    raise SystemExit(f'Targets not in the manifest: {missing}')
+  targets = sorted(targets, key=lambda t: (int(manifest[t]['num_tokens']), t))
+  seeds = [int(s) for s in as_list(plan['seeds'])]
+  host = plan.get('host')
+  if not isinstance(host, dict) or sorted(host) != sorted(HOST_KEYS) or not all(host.values()):
+    raise SystemExit(f'plan: a featurise_only plan fixes its host: host with {", ".join(HOST_KEYS)}')
+  if re.match(r'(a2|a3|a4|g2|g4|ct)', host['machine_type']) or 'tpu' in host['machine_type']:
+    raise SystemExit(f'plan: host machine_type must be CPU-only, not {host["machine_type"]}')
+  ccd = str(plan.get('ccd_sha256', 'none'))
+  if ccd != 'none' and not re.fullmatch(r'[0-9a-f]{64}', ccd):
+    raise SystemExit(f'plan: ccd_sha256 must be a SHA-256 (64 hex digits), not {ccd!r}')
+  save_arrays = str(plan.get('save_arrays', 'false')).lower()
+  if save_arrays not in ('true', 'false'):
+    raise SystemExit(f'plan: save_arrays must be true or false, not {save_arrays!r}')
+  out = {
+      'plan': str(pathlib.Path(plan_path)), 'platform': platform,
+      'description': plan.get('description', ''), 'label': plan.get('label', 'feat'), 'weights': 'none',
+      'targets': targets, 'tokens': {t: int(manifest[t]['num_tokens']) for t in targets},
+      'configs': [], 'seeds': seeds, 'fresh_reps': 1, 'warm_rerun_seed': None,
+      'num_recycles': None, 'num_diffusion_samples': None,
+      'run_timeout_min': float(plan.get('run_timeout_min', '60')),
+      'deadline_min': int(per_platform(plan['deadline_min'], platform)),
+      'libtpu': [], 'compare_reference': None,
+      'runs': [{'run': 'featurise', 'config': None, 'rep': 1, 'seed': None, 'seeds': seeds, 'cache': None}],
+      'processes': len(targets), 'featurise_only': True, 'host': dict(host), 'save_arrays': save_arrays == 'true',
+      'ccd_sha256': None if ccd == 'none' else ccd,
+  }
+  if plan_manifest:
+    out['manifest'] = plan_manifest
+  return out
+
+
+def run_featurise(desc, args, log):
+  """Runs harness/featurise_only.py once per target, in a fresh process; one plan_runs.jsonl line per target."""
+  out = REPO / 'results' / 'af3' / args.session / 'featurise'
+  failed = 0
+  for i, target in enumerate(desc['targets'], 1):
+    cmd = [str(AF3_PY), str(REPO / 'harness' / 'featurise_only.py'), '--manifest', desc.get('manifest', args.manifest),
+           '--targets', target, '--seeds', ','.join(map(str, desc['seeds'])), '--out', str(out)]
+    if desc['save_arrays']:
+      cmd.append('--save_arrays')
+    print(f'>> [{i}/{len(desc["targets"])}] featurise {target}: seeds {desc["seeds"]}', flush=True)
+    start = datetime.datetime.now(datetime.timezone.utc)
+    try:
+      rc, timed_out = subprocess.run(cmd, cwd=REPO, timeout=desc['run_timeout_min'] * 60).returncode, False
+    except subprocess.TimeoutExpired:
+      rc, timed_out = 124, True
+    failed += rc != 0
+    with open(log, 'a') as f:
+      f.write(json.dumps({'run': 'featurise', 'target': target, 'seeds': desc['seeds'],
+                          'start_utc': start.isoformat(timespec='seconds'),
+                          'seconds': round((datetime.datetime.now(datetime.timezone.utc) - start).total_seconds(), 1),
+                          'exit_code': rc, 'timed_out': timed_out, 'session': f'{args.session}/featurise'}) + '\n')
+    if args.upload_uri:
+      upload(log.parent, args.upload_uri.rstrip('/'))
+  print(f'>> Plan done: {len(desc["targets"]) - failed}/{len(desc["targets"])} targets featurised', flush=True)
+  return 1 if failed else 0
+
+
 AF3_PY = REPO / 'third_party' / 'alphafold3' / '.venv' / 'bin' / 'python'
 
 
@@ -284,6 +370,8 @@ def main():
 
   log = REPO / 'results' / 'af3' / args.session / 'plan_runs.jsonl'
   log.parent.mkdir(parents=True, exist_ok=True)
+  if desc.get('featurise_only'):
+    sys.exit(run_featurise(desc, args, log))
   failed, current = 0, None
   for i, run in enumerate(desc['runs'], 1):
     if run.get('libtpu') and run['libtpu'] != current:

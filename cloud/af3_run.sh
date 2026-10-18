@@ -42,6 +42,15 @@
 # (random or gcs; default: the plan's) WEIGHTS_GCS_URI (gcs only; never
 # printed) VM_NAME YES=1 (no prompt).
 #
+# Featurise-only plans (follow-up 5, notes/analysis_plan.md section 10, row of
+# 2026-10-18; plan key featurise_only, harness/run_plan.py): PLATFORM=cpu,
+# WEIGHTS=none (the only value they take: no weights and no weights URI reach
+# the VM), and the plan's host (machine type, min CPU platform, image) is used;
+# a MACHINE_TYPE, MIN_CPU_PLATFORM, IMAGE_PROJECT or IMAGE_FAMILY that
+# disagrees with it is refused. A plan with ccd_sha256 needs CCD_FILE, a local
+# components.cif with that SHA-256: it is uploaded (zstd) and build_data uses it
+# instead of the copy the AlphaFold3 build downloads (cloud/vm_af3_setup.sh).
+#
 # Flex-start (v6e, and l4 or a100 with PROVISIONING=flex_start): the create request
 # queues up to REQUEST_VALID_FOR and is not billed while queued; the VM gets
 # --max-run-duration and --instance-termination-action=DELETE like every
@@ -180,6 +189,19 @@ BOOT_DISK_SIZE="${BOOT_DISK_SIZE:-100GB}"
 BOOT_DISK_TYPE=""
 RUNTIME=""
 MIN_CPU_PLATFORM_DEFAULT=""
+# A featurise-only plan fixes its host (header); the launch settings must agree with it.
+PLAN_HOST=$(python3 "$(git rev-parse --show-toplevel)/harness/run_plan.py" --plan "$PLAN" --platform "$PLATFORM" --describe 2> /dev/null \
+  | python3 -c "import json,sys; h=json.load(sys.stdin).get('host') or {}; print('\n'.join(k + '=' + v for k, v in h.items()))" 2> /dev/null || true)
+if [ -n "$PLAN_HOST" ]; then
+  [ "$PLATFORM" = "cpu" ] || die "The plan $PLAN fixes a CPU-only host: PLATFORM=cpu, not $PLATFORM."
+  for kv in MACHINE_TYPE:machine_type MIN_CPU_PLATFORM:min_cpu_platform IMAGE_PROJECT:image_project IMAGE_FAMILY:image_family; do
+    var=${kv%%:*}
+    want=$(echo "$PLAN_HOST" | sed -n "s/^${kv#*:}=//p")
+    eval "have=\${$var:-}"
+    [ -z "$have" ] || [ "$have" = "$want" ] || die "$var=$have disagrees with the plan's host ($want, $PLAN)."
+    eval "$var=\$want"
+  done
+fi
 case "$PLATFORM" in
   cpu)
     VM_API=gce
@@ -302,14 +324,29 @@ MANIFEST=$(jget ".get('manifest', 'inputs/manifest.csv')")
 INPUT_FILES=$(python3 -c "import csv,sys; m={r['pdb_id']: r['input_path'] for r in csv.DictReader(open(sys.argv[1]))}; print(' '.join(m[t] for t in sys.argv[2].split(',') if t in m))" "$MANIFEST" "$TARGETS")
 PLAN_DEADLINE=$(jget "['deadline_min']")
 WEIGHTS="${WEIGHTS:-$PLAN_WEIGHTS}"
+PLAN_FEATURISE=$(jget ".get('featurise_only', False)")
+[ "$PLAN_FEATURISE" != "True" ] || [ "$WEIGHTS" = "none" ] \
+  || die "The plan $PLAN is featurise-only: WEIGHTS=none (no weights reach the VM), not $WEIGHTS."
 case "$WEIGHTS" in
+  none)
+    [ "$PLAN_FEATURISE" = "True" ] || die "WEIGHTS=none is for featurise-only plans; $PLAN runs the model."
+    [ -z "${WEIGHTS_GCS_URI:-}" ] || echo "   note: WEIGHTS=none, so WEIGHTS_GCS_URI is ignored (never uploaded)" ;;
   random) [ -z "${WEIGHTS_GCS_URI:-}" ] || echo "   note: WEIGHTS=random, so WEIGHTS_GCS_URI is ignored" ;;
   gcs)
     # Resume mode starts nothing, so it needs no weights URI.
     [ "$RESUME" = "1" ] || case "${WEIGHTS_GCS_URI:-}" in gs://?*/?*) ;; *) die "WEIGHTS=gcs needs WEIGHTS_GCS_URI=gs://BUCKET/OBJECT (a private bucket in $PROJECT)." ;; esac ;;
-  *) die "WEIGHTS must be random or gcs." ;;
+  *) die "WEIGHTS must be random or gcs (none for featurise-only plans)." ;;
 esac
 [ "$WEIGHTS" = "$PLAN_WEIGHTS" ] || echo "   note: the plan asks for weights=$PLAN_WEIGHTS; running with WEIGHTS=$WEIGHTS"
+# The CCD a plan fixes (ccd_sha256): a local components.cif with that SHA-256, uploaded to the VM.
+PLAN_CCD=$(jget ".get('ccd_sha256') or ''")
+if [ -n "$PLAN_CCD" ] && [ "$RESUME" != "1" ]; then
+  [ -n "${CCD_FILE:-}" ] && [ -f "$CCD_FILE" ] \
+    || die "The plan fixes the CCD (components.cif, SHA-256 $(echo "$PLAN_CCD" | cut -c1-12)...): set CCD_FILE to a local copy."
+  [ "$( (sha256sum "$CCD_FILE" 2> /dev/null || shasum -a 256 "$CCD_FILE") | cut -d' ' -f1)" = "$PLAN_CCD" ] \
+    || die "CCD_FILE ($CCD_FILE) is not the plan's components.cif (SHA-256 differs from $(echo "$PLAN_CCD" | cut -c1-12)...)."
+  command -v zstd > /dev/null || die "zstd not found (needed to upload CCD_FILE)."
+fi
 
 # TPU stack: libtpu version(s) and the comparison reference from the plan.
 PLAN_LIBTPU=$(jget "['libtpu']" | python3 -c "import ast,sys; print(' '.join(ast.literal_eval(sys.stdin.read())))")
@@ -462,7 +499,12 @@ else
   echo ">> Platform $PLATFORM: $MACHINE_TYPE${RUNTIME:+ (runtime $RUNTIME)}, zone $ZONE, provisioning $PROVISIONING"
 fi
 [ "$VM_API" = "tpu" ] || echo "   image $IMAGE_PROJECT/$IMAGE_FAMILY${MIN_CPU_PLATFORM:+, min CPU platform $MIN_CPU_PLATFORM}"
-if [ "$WEIGHTS" = "gcs" ]; then echo "   weights: gcs (copied on the VM from your bucket; URI not printed)"; else echo "   weights: random (generated on the VM)"; fi
+case "$WEIGHTS" in
+  gcs) echo "   weights: gcs (copied on the VM from your bucket; URI not printed)" ;;
+  none) echo "   weights: none (featurisation only; no weights reach the VM)" ;;
+  *) echo "   weights: random (generated on the VM)" ;;
+esac
+[ -z "$PLAN_CCD" ] || echo "   CCD: components.cif $(echo "$PLAN_CCD" | cut -c1-12)... from CCD_FILE, uploaded and given to build_data"
 if [ -n "$LIBTPU_VERSION" ]; then
   STACK_NOTE=""
   [ "$LIBTPU_VERSION" = "0.0.42.1" ] || STACK_NOTE=" (outside the 0.0.42.* that jax[tpu]==0.10.2 pins)"
@@ -792,6 +834,13 @@ tar czf "$TGZ" --exclude=__pycache__ $FILES
 vm_upload "$TGZ" af3_run.tgz
 rm -f "$TGZ"
 vm_ssh "mkdir -p ~/alphafold-on-tpu && tar xzf ~/af3_run.tgz -C ~/alphafold-on-tpu && rm -f ~/af3_run.tgz"
+if [ -n "$PLAN_CCD" ]; then
+  echo ">> Uploading the plan's CCD (components.cif $(echo "$PLAN_CCD" | cut -c1-12)..., zstd)"
+  CCD_ZST=$(mktemp -t af3-ccd.XXXXXX)
+  zstd -q -f -T0 "$CCD_FILE" -o "$CCD_ZST"
+  vm_upload "$CCD_ZST" components.cif.zst
+  rm -f "$CCD_ZST"
+fi
 if [ "$WEIGHTS" = "gcs" ]; then
   URI_FILE=$(mktemp -t af3-uri.XXXXXX)
   chmod 600 "$URI_FILE"
@@ -806,7 +855,7 @@ DETACHED_SCRIPT=cloud/vm_af3_job.sh
 DETACHED_LOG=job.log
 STARTED=1
 detached_start "$OUT_REL" \
-  "PLATFORM=$PLATFORM PLAN=$PLAN WEIGHTS=$WEIGHTS TARGETS=$TARGETS SESSION=$SESSION RESULTS_URI=$RESULTS_SESSION_URI LIBTPU_VERSION=$LIBTPU_VERSION" \
+  "PLATFORM=$PLATFORM PLAN=$PLAN WEIGHTS=$WEIGHTS TARGETS=$TARGETS SESSION=$SESSION RESULTS_URI=$RESULTS_SESSION_URI LIBTPU_VERSION=$LIBTPU_VERSION${PLAN_CCD:+ CCD_SHA256=$PLAN_CCD}" \
   || die "Could not start the job on the VM."
 record STARTED_UTC "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 detached_event "job: started on the VM"

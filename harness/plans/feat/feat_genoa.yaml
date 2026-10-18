@@ -1,0 +1,33 @@
+# Follow-up 5 (notes/analysis_plan.md section 10, row of 2026-10-18; label feat): AlphaFold3's featurisation only,
+# on a host of the AMD Genoa family.
+# Arms on this family: V6 and V6h (ct6e-standard-1t, AMD EPYC 9B14, 44 vCPU, ubuntu-accel-2204-amd64-tpu-v5e-v5p-v6e, kernel 6.8.0-1070-gcp, glibc 2.35).
+# Host: c3d-standard-30, min CPU platform AMD Genoa, image ubuntu-os-accelerator-images/ubuntu-accel-2204-amd64-tpu-v5e-v5p-v6e; the arm's image family; c3d has no 44-vCPU type: the nearest, 30.
+# Targets: the 60 PoseBusters and 30 follow-up 1 targets (inputs/feat/manifest.csv), seeds 1 to 5, one process per
+# target. CCD: the components.cif every pilot2 and main-study setup downloaded (SHA-256 f1bef735..., section 10,
+# rows of 2026-10-13 and 2026-10-14), uploaded from CCD_FILE and given to build_data. No weights.
+# Expected job: setup 30 min + featurisation 94 min (5 x the arms' seed-1 featurisation times on this
+# family, sum of per-target medians, 90 targets) + 30 min (process start, input parsing, arrays) = 154 min;
+# deadline = ceil(job min x 2.5 + 20) = 405 min; run_timeout_min 30 per target.
+
+description: follow-up 5, featurisation only, AMD Genoa host
+label: feat
+weights: none
+featurise_only: true
+save_arrays: true
+manifest: inputs/feat/manifest.csv
+ccd_sha256: f1bef735f3d74171fb7e79af6b46fb1a3e753f6602f5b08ec90312013e33244b
+
+host:
+  machine_type: c3d-standard-30
+  min_cpu_platform: AMD Genoa
+  image_project: ubuntu-os-accelerator-images
+  image_family: ubuntu-accel-2204-amd64-tpu-v5e-v5p-v6e
+
+targets:
+  default: all
+
+seeds: [1, 2, 3, 4, 5]
+run_timeout_min: 30
+
+deadline_min:
+  cpu: 405

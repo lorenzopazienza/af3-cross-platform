@@ -5,7 +5,11 @@
 # called), sets up JAX for the platform, runs build_data, puts the weights in
 # place (cloud/vm_af3_weights.sh) and checks that JAX sees the right device.
 #
-#   PLATFORM=cpu|l4|a100|v5e|v6e WEIGHTS=random|gcs TARGETS=ID,ID bash cloud/vm_af3_setup.sh OUT
+#   PLATFORM=cpu|l4|a100|v5e|v6e WEIGHTS=random|gcs|none TARGETS=ID,ID [CCD_SHA256=...] bash cloud/vm_af3_setup.sh OUT
+#
+# CCD_SHA256 (featurise-only plans of follow-up 5): build_data reads ~/components.cif.zst, uploaded by
+# cloud/af3_run.sh, which must have that SHA-256 once decompressed (exit 3 otherwise), instead of the
+# components.cif the AlphaFold3 build downloads; OUT/ccd.json records both SHA-256. Without it, nothing changes.
 #
 # JAX per platform: TPU swaps AlphaFold3's CUDA JAX for jax/jaxlib 0.10.2 with
 # libtpu LIBTPU_VERSION (default 0.0.43.2; cloud/vm_tpu_stack.sh explains why
@@ -69,6 +73,20 @@ case "$PLATFORM" in
   cpu)
     step "CPU: default install kept; cpu_xla runs with JAX_PLATFORMS=cpu" ;;
 esac
+
+if [ -n "${CCD_SHA256:-}" ]; then
+  step "CCD: the plan's components.cif ($(echo "$CCD_SHA256" | cut -c1-12)...), uploaded from the laptop"
+  CCD_DIR="$HOME/ccd_plan"
+  mkdir -p "$CCD_DIR"
+  zstd -d -q -f "$HOME/components.cif.zst" -o "$CCD_DIR/components.cif" && rm -f "$HOME/components.cif.zst" || exit 3
+  USED=$(sha256sum "$CCD_DIR/components.cif" | cut -d' ' -f1)
+  [ "$USED" = "$CCD_SHA256" ] || { echo "!! the uploaded components.cif has SHA-256 $USED, not the plan's"; exit 3; }
+  DOWNLOADED=$(find "$AF3/.venv" -path '*share/libcifpp/components.cif' -exec sha256sum {} \; | head -1 | cut -d' ' -f1)
+  printf '{"used_sha256": "%s", "used_bytes": %s, "downloaded_by_build_sha256": "%s"}\n' \
+    "$USED" "$(wc -c < "$CCD_DIR/components.cif" | tr -d ' ')" "${DOWNLOADED:-none}" > "$OUT/ccd.json"
+  echo "   build_data reads $CCD_DIR/components.cif (LIBCIFPP_DATA_DIR); the build downloaded ${DOWNLOADED:-nothing}"
+  export LIBCIFPP_DATA_DIR="$CCD_DIR"
+fi
 
 step "build_data"
 "$AF3/.venv/bin/build_data"

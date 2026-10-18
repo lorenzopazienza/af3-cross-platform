@@ -5,12 +5,15 @@
 #
 #   WEIGHTS=random bash cloud/vm_af3_weights.sh DEST OUT
 #   WEIGHTS=gcs bash cloud/vm_af3_weights.sh DEST OUT
+#   WEIGHTS=none bash cloud/vm_af3_weights.sh DEST OUT
 #
 # random  generated on the VM by af3_tpu/make_random_params.py (seed 0).
 # gcs     copied from the private bucket object whose gs:// URI is in
 #         WEIGHTS_URI_FILE (default ~/.af3_weights_uri, uploaded by
 #         cloud/af3_run.sh). The URI, the destination path and gcloud's own
 #         output are never printed, and the URI file is deleted once read.
+# none    featurise-only plans (follow-up 5): no weights; a weights URI file on
+#         the VM is an error (it is deleted unread); OUT/weights.json says none.
 set -euo pipefail
 DEST=${1:?destination folder} OUT=${2:?output folder}
 : "${WEIGHTS:?random or gcs}"
@@ -22,6 +25,13 @@ die() { echo "!! $*" >&2; exit 4; }
 case "$DEST" in "$ROOT" | "$ROOT"/*) die "the weights folder must be outside the repository checkout" ;; esac
 mkdir -p "$DEST" && chmod 700 "$DEST"
 [ -z "$(ls -A "$DEST")" ] || die "the weights folder is not empty"
+
+if [ "$WEIGHTS" = "none" ]; then
+  if [ -e "$WEIGHTS_URI_FILE" ]; then rm -f "$WEIGHTS_URI_FILE"; die "WEIGHTS=none, but a weights URI was uploaded"; fi
+  echo "   weights (none): featurisation only, no weights on this VM"
+  printf '{"mode": "none", "file": null, "bytes": null, "sha256": null}\n' > "$OUT/weights.json"
+  exit 0
+fi
 
 case "$WEIGHTS" in
   random)
@@ -37,7 +47,7 @@ case "$WEIGHTS" in
           "check that the VM's service account can read the object"
     fi
     unset URI ;;
-  *) die "WEIGHTS must be random or gcs" ;;
+  *) die "WEIGHTS must be random, gcs or none" ;;
 esac
 
 COUNT=$(find "$DEST" -maxdepth 1 -type f | wc -l | tr -d ' ')
