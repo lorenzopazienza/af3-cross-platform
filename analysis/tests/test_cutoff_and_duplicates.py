@@ -188,3 +188,29 @@ def test_collect_main_drops_and_lists_excluded_sessions(tmp_path, monkeypatch):
   assert len(samples) == 2      # the kept session's two processes (one row each, no models); four with the duplicate
   ex = pd.read_csv(out / 'excluded_sessions.csv')
   assert list(ex.session) == [dup.name] and list(ex.kept_session) == ['20261013T180000Z_l4_main_gt_04']
+
+
+def test_collect_sessions_file_keeps_only_the_listed_sessions(tmp_path, monkeypatch):
+  # Follow-ups 3 and 4 (section 10, 2026-10-18): a preempted session can hold a finished process; only the sessions
+  # the section 10 rows list enter the analysis.
+  root = tmp_path / 'af3'
+  kept = session(root, '20261017T112545Z_cpu_cpu60_7nu0', finished='2026-10-17T20:00:00Z')
+  session(root, '20261016T230421Z_cpu_cpu60_7nu0', codes=(0,))                    # preempted: no final status
+  listed = tmp_path / 'sessions.txt'
+  listed.write_text(f'# comment\n{kept.name}   # relaunch\n\n')
+  out = tmp_path / 'out'
+  monkeypatch.setattr(sys, 'argv', ['collect.py', '--root', str(root), '--out', str(out), '--no_m1',
+                                    '--sessions', str(listed)])
+  assert collect.main() == 0
+  samples = pd.read_csv(out / 'samples.csv')
+  assert len(samples) == 2      # the listed session's two processes; three with the preempted one
+  listed.write_text(f'{kept.name}\n20261018T000000Z_cpu_cpu60_none\n')
+  with pytest.raises(SystemExit, match='cpu60_none'):
+    collect.main()
+
+
+def test_a100_sessions_form_parts_for_the_duplicate_rule(tmp_path):
+  a = session(tmp_path, '20261017T113303Z_a100_a100_a_04', finished='2026-10-17T15:00:00Z')
+  b = session(tmp_path, '20261017T120000Z_a100_a100_a_04', finished='2026-10-17T16:00:00Z')
+  kept, excluded = collect.resolve_duplicate_sessions(collect.run_folders([tmp_path]))
+  assert {f.parent for f in kept} == {a} and [e['session'] for e in excluded] == [b.name]

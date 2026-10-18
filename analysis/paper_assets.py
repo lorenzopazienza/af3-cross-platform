@@ -46,6 +46,10 @@ PPI = REPO / 'results' / 'analysis' / 'ppi_20261015'
 EMBED = REPO / 'results' / 'analysis' / 'embed_20261015'
 FREEZE = REPO / 'results' / 'freeze' / 'manifest_sha256.tsv'
 FREEZE_ID = '14e1fc4c12b6573de9389d9aba079d5fb5f30b290c9303f75c5de4f478b9d8f9'
+# The freeze extended to follow-ups 3 and 4 (2026-10-18; freeze 14e1fc4c's rows unchanged plus the 66 cpu60 and a100
+# sessions), named in README.md only with --followups34.
+FREEZE34 = REPO / 'results' / 'freeze' / 'followups34_20261018' / 'manifest_sha256.tsv'
+FREEZE34_ID = 'fc297328ae079155da0f9e2ac0781b5d207f75e1fafd8d5ccfd7f5f7a8edd9c8'
 PPI_CONTRASTS = ['HW(V5,V6)', 'HW(V6,G)', 'RC(V6)', 'RC(G)']
 PPI_COLUMNS = ['V5r1', 'V6r1', 'V6r2', 'Gr1', 'Gr2']
 EMBED_PAIRS = ['V5 r1 - V6 r1', 'V6 r1 - G r1', 'G r1 - G r2', 'G r1 - Gd r1']
@@ -1059,6 +1063,12 @@ def main():
            f'results/af3/ ({len(frozen)} files) matches it byte for byte; the other sources are analysis outputs '
            'derived from those sessions, and repository files.', '',
            'Each line: asset, [role as section 10 of notes/analysis_plan.md labels it], what it shows.', '']
+  if args.followups34:
+    if hashlib.sha256(FREEZE34.read_bytes()).hexdigest() != FREEZE34_ID:
+      raise SystemExit(f'{FREEZE34} is not freeze {FREEZE34_ID}')
+    lines[-2:-2] = [f'Follow-ups 3 and 4 (T21, T22, F14): their analyses read the sessions of the extended data freeze '
+                    f'`{FREEZE34_ID}` (SHA-256 of {FREEZE34.relative_to(REPO)}), which holds every file of freeze '
+                    f'`{FREEZE_ID[:8]}` unchanged and the 66 cpu60 and a100 sessions.', '']
   lines += [f'- `{k}` [{role}]: {v}' for k, (role, v) in sorted(ASSETS.items(), key=lambda kv: asset_key(kv[0]))]
   (out / 'README.md').write_text('\n'.join(lines) + '\n')
   print(f'>> {sum(k.startswith("tables/") for k in ASSETS)} tables, {sum(k.startswith("figures/") for k in ASSETS)} '

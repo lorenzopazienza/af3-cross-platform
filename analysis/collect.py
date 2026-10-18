@@ -1,13 +1,16 @@
 """Builds the tidy per-sample table of all AlphaFold3 runs (notes/analysis_plan.md, sections 4 and 6).
 
     analysis/.venv/bin/python analysis/collect.py [--root results/af3] [--root COPY_OF_BUCKET/af3] \\
-        [--out results/analysis/<name>] [--labels pilot2] [--jobs 4] [--no_m1]
+        [--out results/analysis/<name>] [--labels pilot2] [--sessions FILE] [--jobs 4] [--no_m1]
 
 Walks every harness run folder (one with session.json and runs.jsonl) under
 the roots: results/af3/ by default, or a local copy of the results bucket
 (gcloud storage rsync gs://BUCKET/af3 DIR; this script reads local files
 only); with --labels, only the harness runs whose session.json label is one
-of them (the repeated pilot: --labels pilot2). One row per (platform,
+of them (the repeated pilot: --labels pilot2); with --sessions, only the sessions named in that file (one
+session folder name per line, # starts a comment; a listed session without a harness run is an error), as the
+section 10 rows list them (follow-ups 3 and 4: a preempted session can hold a finished process but enters no
+analysis). One row per (platform,
 attention, libtpu, target, seed, repetition, sample), with:
   - condition: platform code (V5, V6, G, GT, C; plan section 3), attention,
     libtpu version and build label, device kind, zone and machine type, and
@@ -151,7 +154,7 @@ def run_folders(roots, labels=None):
           yield ses.parent
 
 
-SESSION_NAME = re.compile(r'^\d{8}T\d{6}Z_(cpu|l4|v5e|v6e)_(.+)$')
+SESSION_NAME = re.compile(r'^\d{8}T\d{6}Z_(cpu|l4|v5e|v6e|a100)_(.+)$')
 
 
 def session_status(session_dir):
@@ -279,6 +282,7 @@ def main():
   ap.add_argument('--root', action='append', help='folder holding sessions (default results/af3)')
   ap.add_argument('--out', default='results/analysis/collect')
   ap.add_argument('--labels', help='comma-separated session labels to keep (default: all)')
+  ap.add_argument('--sessions', help='file of the session folder names to keep (default: every session)')
   ap.add_argument('--jobs', type=int, default=4)
   ap.add_argument('--no_m1', action='store_true', help='skip M1 (quick look)')
   args = ap.parse_args()
@@ -288,7 +292,14 @@ def main():
   manifest = {r['pdb_id']: r for r in csv.DictReader(open(REPO / 'inputs' / 'manifest.csv'))}
 
   rows, todo = [], []
-  folders, excluded = resolve_duplicate_sessions(run_folders(roots, args.labels.split(',') if args.labels else None))
+  folders = list(run_folders(roots, args.labels.split(',') if args.labels else None))
+  if args.sessions:
+    keep = {l.split('#')[0].strip() for l in open(args.sessions).read().splitlines()} - {''}
+    missing = sorted(keep - {f.parent.name for f in folders})
+    if missing:
+      raise SystemExit(f'listed in {args.sessions} but without a harness run of these labels: {missing}')
+    folders = [f for f in folders if f.parent.name in keep]
+  folders, excluded = resolve_duplicate_sessions(folders)
   with open(out_dir / 'excluded_sessions.csv', 'w', newline='') as f:
     w = csv.DictWriter(f, fieldnames=['part', 'session', 'kept_session', 'fully_exit_0', 'completed_utc',
                                       'kept_completed_utc', 'reason'])
