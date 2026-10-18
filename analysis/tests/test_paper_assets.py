@@ -177,3 +177,25 @@ def test_followup34_assets_from_synthetic_outputs(tmp_path):
   assert six.iloc[0]['main study, 6 targets'] == '25.0 [0.0, 50.0]'
   cost = pd.read_csv(out / 'tables' / 'T22d_a100_cost.csv')
   assert 'USD, standard, us-central1' in cost.columns and 'USD, flex-start, europe-west4' in cost.columns
+
+
+def test_feat_table_from_synthetic_outputs(tmp_path):
+  d, out = tmp_path / 'feat', tmp_path / 'out'
+  d.mkdir()
+  assert pa.t23_feat(out, d) is False and not (out / 'tables').exists()        # no decision.json: skipped
+  pd.DataFrame([{'family': f, 'arms': a, 'machine_type': m, 'cpu': c, 'avx512f': x, 'vcpus': v}
+                for f, a, m, c, x, v in (('milan', 'V5', 'n2d-standard-32', 'AMD EPYC 7B13', False, 32),
+                                         ('icelake', 'C', 'n2-highmem-16', 'Intel Xeon', True, 16))]).to_csv(
+      d / 'hosts.csv', index=False)
+  (d / 'decision.json').write_text(json.dumps({
+      'branch': 'host excluded', 'units': 450,
+      'model_inputs': {'compared': 26550, 'identical': 26550, 'different': 0, 'units_with_a_difference': 0},
+      'host_side': {'compared': 2250, 'identical': 2249, 'different': 1, 'units_with_a_difference': 1}}))
+  assert pa.t23_feat(out, d) is True
+  t = pd.read_csv(out / 'tables' / 'T23_feat_hosts.csv', dtype=str, keep_default_na=False)
+  assert list(t['host family']) == ['milan', 'icelake', 'all four', 'all four']
+  assert list(t['AVX-512'][:2]) == ['no', 'yes'] and list(t.entries[2:]) == ['model inputs (decide)',
+                                                                               'host-side (reported apart)']
+  assert list(t.different[2:]) == ['0', '1'] and t.compared[2] == '26550'
+  assert pa.ASSETS['tables/T23_feat_hosts'][0] == pa.ROLES['T23_feat_hosts']
+  assert 'decision: host excluded' in pa.ASSETS['tables/T23_feat_hosts'][1]

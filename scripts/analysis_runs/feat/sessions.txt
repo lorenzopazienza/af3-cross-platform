@@ -1,0 +1,6 @@
+# Follow-up 5 (feat) sessions that enter the analysis (notes/analysis_plan.md section 10, row "Follow-up 5, launch"
+# of 2026-10-18): wrapper run 20261018T161637Z, one session per host family.
+20261018T161643Z_cpu_feat_milan
+20261018T161648Z_cpu_feat_genoa
+20261018T161653Z_cpu_feat_cascadelake
+20261018T161658Z_cpu_feat_icelake

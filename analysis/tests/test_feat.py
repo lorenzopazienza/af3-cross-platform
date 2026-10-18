@@ -19,16 +19,23 @@ def host(family, **over):
        'gce_machine_type': f'mt-{family}', 'cpuinfo': {'avx512f': family != 'milan'},
        'os_release': {'PRETTY_NAME': 'Ubuntu 22.04.5 LTS'},
        'packages': {'numpy': '2.4.1', 'rdkit': '2025.9.4', 'scipy': '1.17.0', 'alphafold3': f'3.0.5.dev0+g85c4d2050.d{family}'},
-       'ccd_pickles_sha256': {'ccd.pickle': 'aa', 'chemical_component_sets.pickle': 'bb'}}
+       # The pickles differ on every host, as on the VMs (not byte-reproducible); they are reported, not checked.
+       'ccd_pickles_sha256': {'ccd.pickle': f'aa{family}', 'chemical_component_sets.pickle': f'bb{family}'}}
   h.update(over)
   return h
 
 
-def session(root, family, stamp='20261019T000000Z', changed=None, drop=None, arrays=True, host_over=None):
-  """One feat session; changed = {(target, seed, feature)}: a different hash (and array) on this host."""
+CIF = 'f1bef735f3d74171fb7e79af6b46fb1a3e753f6602f5b08ec90312013e33244b'
+
+
+def session(root, family, stamp='20261019T000000Z', changed=None, drop=None, arrays=True, host_over=None, cif=CIF):
+  """One feat session; changed = {(target, seed, feature)}: a different hash (and array) on this host; cif: the
+  components.cif build_data read (ccd.json), None for no ccd.json."""
   name = f'{stamp}_cpu_feat_{family}'
   d = root / name / 'featurise'
   d.mkdir(parents=True)
+  if cif:
+    (root / name / 'ccd.json').write_text(json.dumps({'used_sha256': cif, 'used_bytes': 519231791}))
   (d / 'host.json').write_text(json.dumps(host(family, **(host_over or {}))))
   for t in TARGETS:
     (d / t).mkdir()
@@ -119,17 +126,19 @@ def test_model_input_and_host_side_differences_together_trigger_5b(tmp_path, mon
   assert pd.read_csv(out / 'differences.csv').host_groups.tolist() == ['milan | genoa+cascadelake+icelake'] * 2
 
 
-@pytest.mark.parametrize('case', ['missing_seed', 'two_sessions', 'ccd', 'numpy', 'input'])
+@pytest.mark.parametrize('case', ['missing_seed', 'two_sessions', 'ccd', 'no_ccd_json', 'numpy', 'input'])
 def test_a_failed_check_stops_before_any_comparison(tmp_path, monkeypatch, case):
   root = tmp_path / 'af3'
   names = []
   for f in feat.FAMILIES:
     over = {}
-    if case == 'ccd' and f == 'milan':
-      over['ccd_pickles_sha256'] = {'ccd.pickle': 'other'}
     if case == 'numpy' and f == 'genoa':
       over['packages'] = dict(host(f)['packages'], numpy='2.4.0')
-    names.append(session(root, f, drop=('T1', 2) if case == 'missing_seed' and f == 'icelake' else None, host_over=over))
+    cif = CIF
+    if f == 'milan' and case in ('ccd', 'no_ccd_json'):
+      cif = '3db18637' + CIF[8:] if case == 'ccd' else None
+    names.append(session(root, f, drop=('T1', 2) if case == 'missing_seed' and f == 'icelake' else None, host_over=over,
+                         cif=cif))
   if case == 'two_sessions':
     names.append(session(root, 'milan', stamp='20261019T010000Z'))
   if case == 'input':
@@ -149,3 +158,18 @@ def test_alphafold3_build_label_is_not_a_difference():
 def test_a_session_that_is_not_a_feat_session_is_refused(tmp_path):
   with pytest.raises(SystemExit, match='not a follow-up 5 session'):
     feat.load(tmp_path, ['20261019T000000Z_cpu_cpu60_7d5c'])
+
+
+def test_ccd_pickles_that_differ_are_reported_not_checked(tmp_path, monkeypatch):
+  # Section 10, "Follow-up 5, analysis stopped at a pre-specified check": the pickles build_data writes are not
+  # byte-reproducible; the check reads the components.cif every host's build_data read (ccd.json).
+  root = tmp_path / 'af3'
+  out = run(tmp_path, monkeypatch, [session(root, f) for f in feat.FAMILIES])
+  assert feat.main() == 0
+  chk = pd.read_csv(out / 'checks.csv')
+  assert (chk.detail == 'pass').all() and not chk.check.str.contains('pickle').any()
+  row = chk[chk.check.str.contains('components.cif')]
+  assert len(row) == 1 and row.value.iloc[0].count(CIF[:12]) == 4
+  h = pd.read_csv(out / 'hosts.csv')
+  assert list(h.components_cif_sha256) == [CIF] * 4
+  assert h.ccd_pickle_sha256.nunique() == 4 and h.chemical_component_sets_pickle_sha256.nunique() == 4

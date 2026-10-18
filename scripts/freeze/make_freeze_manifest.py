@@ -2,7 +2,7 @@
 results bucket.
 
     analysis/.venv/bin/python scripts/freeze/make_freeze_manifest.py --bucket gs://BUCKET [--out results/freeze]
-        [--followups34]
+        [--followups34] [--feat]
 
 Sessions: the 13 pilot2 sessions of results/analysis/pilot2_20261012/sessions_pilot2.txt, the pilot2 sessions
 excluded there, the 53 main sessions of results/analysis/main_20261014/sessions_main.txt, and the 4 memory-limit
@@ -14,7 +14,9 @@ cpu60: 49 in 20261016T230400Z, the 5 relaunches in 20261017T112542Z) and the fol
 20261017T112657Z, 2 Ah and 3 AT in 20261017T211156Z); preempted and smoke sessions are not frozen. Without it, the
 session list is the one of freeze 14e1fc4c (2026-10-15), unchanged. For the follow-up 3 and 4 sessions, a log the
 launcher appended to after the final upload (local copy longer) is also downloaded from the bucket (read only, to a
-temporary file) and must be a byte prefix of the local copy; otherwise it stays an unexplained MISMATCH.
+temporary file) and must be a byte prefix of the local copy; otherwise it stays an unexplained MISMATCH. With --feat
+(added 2026-10-18, implies --followups34), also the 4 follow-up 5 sessions (label feat) of wrapper run 20261018T161637Z
+(section 10, row "Follow-up 5, launch"), with the same prefix check.
 Local side: every file of each results/af3/<session>/ folder, with its size, SHA-256 (hashlib) and CRC32C
 (`gcloud storage hash --skip-md5`, computed on this machine). Bucket side: the object list of
 <bucket>/af3/<session>/ with size and CRC32C (`gcloud storage objects list`, read only); also every other session
@@ -44,6 +46,7 @@ MEMLIMIT_WRAPPER = AF3 / '.many' / '20261014T123400Z' / 'summary.txt'
 FOLLOWUP_WRAPPER = AF3 / '.many' / '20261014T223755Z' / 'summary.txt'
 FOLLOWUP34_WRAPPERS = [('cpu60', '20261016T230400Z'), ('cpu60', '20261017T112542Z'), ('a100', '20261017T112657Z'),
                        ('a100', '20261017T211156Z')]
+FEAT_WRAPPERS = [('feat', '20261018T161637Z')]
 FETCH_LIGHT = re.compile(r'(_data\.json|(?<!summary)_confidences\.json)$')
 # Session-level files the VM job or the launcher writes or appends to after the VM's final upload
 # (cloud/vm_af3_job.sh upload_out, cloud/vm_job_finish.sh, cloud/af3_run_many.sh): a later local copy.
@@ -51,7 +54,7 @@ AFTER_UPLOAD_LOCAL = re.compile(r'^(\.uploaded|\.wrapper_done|finish\.log|upload
 AFTER_UPLOAD_APPENDED = re.compile(r'^(job\.log|upload_final\.log)$')
 
 
-def sessions(followups34=False):
+def sessions(followups34=False, feat=False):
   out = [(s, 'pilot2') for s in (PILOT2 / 'sessions_pilot2.txt').read_text().split()]
   for line in (PILOT2 / 'sessions_excluded.txt').read_text().splitlines():
     s, _, why = line.partition('\t')
@@ -61,8 +64,8 @@ def sessions(followups34=False):
   out += [(m.group(1), 'memlimit') for m in re.finditer(r'ok: launcher exit 0, session (\S+)', MEMLIMIT_WRAPPER.read_text())]
   for m in re.finditer(r'ok: launcher exit 0, session (\S+)', FOLLOWUP_WRAPPER.read_text()):
     out.append((m.group(1), 'embed' if '_embed_' in m.group(1) else 'ppi'))
-  if followups34:
-    for kind, w in FOLLOWUP34_WRAPPERS:
+  if followups34 or feat:
+    for kind, w in FOLLOWUP34_WRAPPERS + (FEAT_WRAPPERS if feat else []):
       out += [(s, kind) for s in re.findall(r'ok: launcher exit 0, session (\S+)',
                                             (AF3 / '.many' / w / 'summary.txt').read_text())]
   return out
@@ -129,13 +132,14 @@ def main():
   ap.add_argument('--bucket', required=True, help='the results bucket, gs://NAME')
   ap.add_argument('--out', default=str(REPO / 'results' / 'freeze'))
   ap.add_argument('--followups34', action='store_true', help='also freeze the follow-up 3 and 4 sessions')
+  ap.add_argument('--feat', action='store_true', help='also freeze the follow-up 3, 4 and 5 sessions')
   args = ap.parse_args()
   out = pathlib.Path(args.out)
   out.mkdir(parents=True, exist_ok=True)
   started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
   rows_s, rows_m, rows_b, rows_c = [], [], [], []
   totals = {}
-  for session, kind in sessions(args.followups34):
+  for session, kind in sessions(args.followups34, args.feat):
     folder = AF3 / session
     local = sorted(p for p in folder.rglob('*') if p.is_file()) if folder.is_dir() else []
     crc = local_crc32c(folder) if local else {}
@@ -154,7 +158,7 @@ def main():
         status = 'same' if (l[0], l[1]) == (r[0], r[1]) else 'MISMATCH'
         note = '' if status == 'same' else f'local {l[0]} B {l[1]}, bucket {r[0]} B {r[1]}'
         if status != 'same' and AFTER_UPLOAD_APPENDED.match(rel) and l[0] > r[0]:
-          if kind not in ('cpu60', 'a100'):
+          if kind not in ('cpu60', 'a100', 'feat'):
             note = 'expected: appended after the final upload (local copy longer); ' + note
           elif bucket_copy_is_prefix(args.bucket, session, rel, folder / rel):
             note = ('expected: appended after the final upload (local copy longer, the bucket copy a byte prefix of '
@@ -188,7 +192,8 @@ def main():
   tsv('bucket_objects.tsv', ['session', 'path', 'bytes', 'crc32c'], rows_b)
   tsv('comparison.tsv', ['session', 'path', 'status', 'note'], rows_c)
   ours = {s for s, _, *_ in rows_s}
-  named = r'_(pilot|main|memlimit|embed|ppi|cpu60|a100)_?' if args.followups34 else r'_(pilot|main|memlimit|embed|ppi)_?'
+  named = (r'_(pilot|main|memlimit|embed|ppi|cpu60|a100|feat)_?' if args.feat else
+           r'_(pilot|main|memlimit|embed|ppi|cpu60|a100)_?' if args.followups34 else r'_(pilot|main|memlimit|embed|ppi)_?')
   others = [s for s in bucket_sessions(args.bucket) if s not in ours and re.search(named, s) and s >= '20261010T2']
   manifest_sha = sha256(out / 'manifest_sha256.tsv')
   lines = ['# Data freeze: pilot2, main-study, memory-limit and follow-up sessions', '',
@@ -196,8 +201,8 @@ def main():
            'the bucket). Bucket CRC32C from `gcloud storage objects list`, local CRC32C from `gcloud storage hash`.', '',
            f'Freeze identifier: SHA-256 of manifest_sha256.tsv = `{manifest_sha}`', '',
            '| sessions | local files | local bytes | bucket objects | bucket bytes |', '|---|---|---|---|---|']
-  for kind in ('pilot2', 'pilot2, excluded', 'main', 'memlimit', 'embed', 'ppi') + (('cpu60', 'a100') if args.followups34
-                                                                                  else ()):
+  for kind in ('pilot2', 'pilot2, excluded', 'main', 'memlimit', 'embed', 'ppi') + (
+      ('cpu60', 'a100') if args.followups34 or args.feat else ()) + (('feat',) if args.feat else ()):
     sel = [r for r in rows_s if (r[1].startswith('pilot2, excluded') if kind == 'pilot2, excluded' else r[1] == kind)]
     lines.append(f'| {kind}: {len(sel)} | {sum(r[3] for r in sel)} | {sum(r[4] for r in sel):,} | '
                  f'{sum(r[5] for r in sel)} | {sum(r[6] for r in sel):,} |')

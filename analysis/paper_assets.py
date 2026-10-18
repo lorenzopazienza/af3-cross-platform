@@ -50,6 +50,10 @@ FREEZE_ID = '14e1fc4c12b6573de9389d9aba079d5fb5f30b290c9303f75c5de4f478b9d8f9'
 # sessions), named in README.md only with --followups34.
 FREEZE34 = REPO / 'results' / 'freeze' / 'followups34_20261018' / 'manifest_sha256.tsv'
 FREEZE34_ID = 'fc297328ae079155da0f9e2ac0781b5d207f75e1fafd8d5ccfd7f5f7a8edd9c8'
+# The freeze extended to follow-up 5 (2026-10-18; freeze fc297328's rows unchanged plus the 4 feat sessions), named in
+# README.md only when T23 is written (--followups34 with --feat_dir).
+FREEZE_FEAT = REPO / 'results' / 'freeze' / 'feat_20261018' / 'manifest_sha256.tsv'
+FREEZE_FEAT_ID = 'a4fb532a2e3ba7a9e691fb35e43feeadd004497af0f6749ff0327039bc5d31bf'
 PPI_CONTRASTS = ['HW(V5,V6)', 'HW(V6,G)', 'RC(V6)', 'RC(G)']
 PPI_COLUMNS = ['V5r1', 'V6r1', 'V6r2', 'Gr1', 'Gr2']
 EMBED_PAIRS = ['V5 r1 - V6 r1', 'V6 r1 - G r1', 'G r1 - G r2', 'G r1 - Gd r1']
@@ -113,6 +117,9 @@ ROLES = {
     'T22c_a100_hw_minus_rc': 'follow-up 3 (outside the pre-registered study, section 10, 2026-10-16)',
     'T22d_a100_cost': 'follow-up 3 (outside the pre-registered study, section 10, 2026-10-16)',
     'F14_a100_flip_rates': 'follow-up 3 (outside the pre-registered study, section 10, 2026-10-16)',
+    # Follow-up 5 (section 10, 2026-10-18), written only with --followups34 and --feat_dir once its analysis exists.
+    'T23_feat_hosts': 'follow-up 5 (outside the pre-registered study, section 10, 2026-10-18); the decision reads the '
+                      'model inputs only',
 }
 
 
@@ -698,6 +705,30 @@ def t22_a100(out, d):
   return con
 
 
+def t23_feat(out, d):
+  """Follow-up 5 table from an analysis/feat.py output folder: the four hosts, then the counts of the comparison
+  (model inputs, which the decision reads, and host-side entries, reported apart). Skipped without decision.json
+  (the analysis stops before any comparison when a check fails). Returns whether it was written."""
+  if not (d / 'decision.json').is_file():
+    print(f'>> T23 skipped: no {d / "decision.json"} (follow-up 5 analysis not run, or stopped at a check)')
+    return False
+  SOURCES.add(d / 'decision.json')
+  dec = json.loads((d / 'decision.json').read_text())
+  h = read(d / 'hosts.csv')
+  rows = [{'host family': r.family, 'arms': r.arms, 'machine type': r.machine_type, 'CPU': r.cpu,
+           'AVX-512': 'yes' if str(r.avx512f) == 'True' else 'no', 'vCPUs': int(r.vcpus), 'entries': '', 'compared': '',
+           'identical': '', 'different': '', '(target, seed) with a difference': ''} for r in h.itertuples()]
+  for key, label in (('model_inputs', 'model inputs (decide)'), ('host_side', 'host-side (reported apart)')):
+    b = dec[key]
+    rows.append({'host family': 'all four', 'arms': '', 'machine type': '', 'CPU': '', 'AVX-512': '', 'vCPUs': '',
+                 'entries': label, 'compared': b['compared'], 'identical': b['identical'], 'different': b['different'],
+                 '(target, seed) with a difference': b['units_with_a_difference']})
+  t = pd.DataFrame(rows).astype(str)
+  write_table(out, 'T23_feat_hosts', t, f'Follow-up 5 (host-side featurisation): the four host families and the '
+              f'(target, seed, entry) identical or different across them; decision: {dec["branch"]}')
+  return True
+
+
 # ---------------------------------------------------------------- figures
 
 def figure_saver(out):
@@ -1012,6 +1043,7 @@ def main():
                   'analyses exist; with it off, the other assets are unchanged)')
   ap.add_argument('--cpu60_dir', help='analysis/cpu60.py output folder (with --followups34)')
   ap.add_argument('--a100_dir', help='analysis/a100.py output folder (with --followups34)')
+  ap.add_argument('--feat_dir', help='analysis/feat.py output folder (with --followups34)')
   args = ap.parse_args()
   out = pathlib.Path(args.out)
   out.mkdir(parents=True, exist_ok=True)
@@ -1044,14 +1076,15 @@ def main():
     figures(out, contrasts, hwrc, q3, pairs_sample, cost, mem, sbs, cross, recs)
     figures_followups(out, contrasts, have_ppi, have_embed)
   if args.followups34:
-    if not (args.cpu60_dir or args.a100_dir):
-      raise SystemExit('--followups34 needs --cpu60_dir and/or --a100_dir')
+    if not (args.cpu60_dir or args.a100_dir or args.feat_dir):
+      raise SystemExit('--followups34 needs --cpu60_dir, --a100_dir and/or --feat_dir')
     if args.cpu60_dir:
       t21_cpu60(out, REPO / args.cpu60_dir)
     if args.a100_dir:
       a_con = t22_a100(out, REPO / args.a100_dir)
       if not args.tables_only:
         figure_a100(out, a_con, contrasts)
+  have_feat = bool(args.followups34 and args.feat_dir) and t23_feat(out, REPO / args.feat_dir)
   rows = sorted((str(p.relative_to(REPO)), hashlib.sha256(p.read_bytes()).hexdigest()) for p in SOURCES)
   frozen = check_freeze(rows)
   (out / 'sources.tsv').write_text('path\tsha256\tin_freeze\n' + ''.join(
@@ -1069,6 +1102,12 @@ def main():
     lines[-2:-2] = [f'Follow-ups 3 and 4 (T21, T22, F14): their analyses read the sessions of the extended data freeze '
                     f'`{FREEZE34_ID}` (SHA-256 of {FREEZE34.relative_to(REPO)}), which holds every file of freeze '
                     f'`{FREEZE_ID[:8]}` unchanged and the 66 cpu60 and a100 sessions.', '']
+  if have_feat:
+    if hashlib.sha256(FREEZE_FEAT.read_bytes()).hexdigest() != FREEZE_FEAT_ID:
+      raise SystemExit(f'{FREEZE_FEAT} is not freeze {FREEZE_FEAT_ID}')
+    lines[-2:-2] = [f'Follow-up 5 (T23): its analysis reads the sessions of the data freeze `{FREEZE_FEAT_ID}` (SHA-256 of '
+                    f'{FREEZE_FEAT.relative_to(REPO)}), which holds every file of freeze `{FREEZE34_ID[:8]}` unchanged '
+                    f'and the 4 feat sessions.', '']
   lines += [f'- `{k}` [{role}]: {v}' for k, (role, v) in sorted(ASSETS.items(), key=lambda kv: asset_key(kv[0]))]
   (out / 'README.md').write_text('\n'.join(lines) + '\n')
   print(f'>> {sum(k.startswith("tables/") for k in ASSETS)} tables, {sum(k.startswith("figures/") for k in ASSETS)} '

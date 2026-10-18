@@ -8,8 +8,12 @@ Sessions: one per host family, named <stamp>_cpu_feat_<family> (milan, genoa, ca
 featurise/host.json and featurise/<target>/features.jsonl from harness/featurise_only.py.
 Checks, before any comparison (the analysis stops if one fails): exactly one session per family; every session
 has every (target, seed) of the plan (90 targets, seeds 1 to 5) once, without error; the per-seed input is the
-same on every host (run_input_sha256); the CCD pickles build_data wrote, the packages that featurise (numpy,
-rdkit, scipy) and Python are the same on every host; the AlphaFold3 version is the same apart from its local build
+same on every host (run_input_sha256); the components.cif build_data read (the session's ccd.json, checked on the
+VM against the plan's ccd_sha256; this check replaced a byte check of the CCD pickles before any feature
+comparison, section 10 row "Follow-up 5, analysis stopped at a pre-specified check"), the packages that featurise (numpy, rdkit, scipy) and Python are the same on
+every host; the SHA-256 of the CCD pickles build_data wrote is reported, not checked: the pickles are not
+byte-reproducible (their dictionaries and frozensets come out in hash-table order, which changes between
+processes; two builds from one components.cif on one machine give equal content and different bytes); the AlphaFold3 version is the same apart from its local build
 label (+g<commit>.d<date>).
 Comparison: for every (target, seed, feature), the SHA-256 on each host; identical when all four agree. Features
 are every entry of the featurised batch: the arrays the model receives (model_input true) and the host-side ones
@@ -70,7 +74,7 @@ def base_version(v):
   return str(v).split('+')[0] if v else v
 
 
-def checks(data, expected_units):
+def checks(data, expected_units, root=None):
   rows = []
 
   def add(check, value, ok, detail=''):
@@ -95,9 +99,11 @@ def checks(data, expected_units):
   diff_in = [k for k in units if len({one[f][2][k][0].get('run_input_sha256') for f in FAMILIES}) != 1]
   add('the same one-seed input on every host (run_input_sha256)', f'{len(units) - len(diff_in)}/{len(units)}',
       not diff_in, f'{diff_in[:3]}')
-  for label, get in [('CCD pickles build_data wrote (SHA-256)', lambda h: json.dumps(h.get('ccd_pickles_sha256'),
-                                                                                       sort_keys=True)),
-                     ('Python', lambda h: h.get('python')),
+  ccd = {f: json.loads((root / one[f][0] / 'ccd.json').read_text()).get('used_sha256')
+         if root is not None and (root / one[f][0] / 'ccd.json').is_file() else None for f in FAMILIES}
+  add('same on every host: components.cif build_data read (ccd.json)',
+      '; '.join(f'{f} {str(v)[:12]}' for f, v in ccd.items()), len(set(ccd.values())) == 1 and None not in ccd.values())
+  for label, get in [('Python', lambda h: h.get('python')),
                      *[(p, (lambda p: lambda h: (h.get('packages') or {}).get(p))(p)) for p in SAME_PACKAGES],
                      ('AlphaFold3 (without the local build label)',
                       lambda h: base_version((h.get('packages') or {}).get('alphafold3')))]:
@@ -107,11 +113,15 @@ def checks(data, expected_units):
   return rows
 
 
-def host_table(data):
+def host_table(data, root=None):
+  """One row per session; the CCD columns are reported, not checked (the pickles are not byte-reproducible)."""
   rows = []
   for f in FAMILIES:
     for s, h, _ in data.get(f, []):
       ci = h.get('cpuinfo') or {}
+      ccd_json = root / s / 'ccd.json' if root is not None else None
+      ccd = json.loads(ccd_json.read_text()) if ccd_json is not None and ccd_json.is_file() else {}
+      pk = h.get('ccd_pickles_sha256') or {}
       rows.append({'family': f, 'arms': ARMS[f], 'session': s, 'machine_type': h.get('gce_machine_type'),
                    'zone': h.get('gce_zone'), 'cpu_platform': h.get('gce_min_cpu_platform'), 'cpu': h.get('cpu'),
                    'cpu_family_model_stepping': '/'.join(str(ci.get(k, '')) for k in ('cpu family', 'model', 'stepping')),
@@ -119,7 +129,9 @@ def host_table(data):
                    'os': (h.get('os_release') or {}).get('PRETTY_NAME'), 'kernel': h.get('kernel'), 'glibc': h.get('glibc'),
                    'python': h.get('python'), **{p: (h.get('packages') or {}).get(p) for p in ('numpy', 'rdkit', 'alphafold3')},
                    'numpy_blas': (h.get('numpy_blas') or {}).get('name') if isinstance(h.get('numpy_blas'), dict)
-                   else h.get('numpy_blas')})
+                   else h.get('numpy_blas'),
+                   'components_cif_sha256': ccd.get('used_sha256'), 'ccd_pickle_sha256': pk.get('ccd.pickle'),
+                   'chemical_component_sets_pickle_sha256': pk.get('chemical_component_sets.pickle')})
   return pd.DataFrame(rows)
 
 
@@ -239,9 +251,9 @@ def main():
   out.mkdir(parents=True, exist_ok=True)
   root = pathlib.Path(args.root)
   data = load(root, read_sessions(args.sessions))
-  chk = checks(data, expected_units([int(s) for s in args.seeds.split(',')], args.manifest))
+  chk = checks(data, expected_units([int(s) for s in args.seeds.split(',')], args.manifest), root)
   pd.DataFrame(chk).to_csv(out / 'checks.csv', index=False)
-  hosts = host_table(data)
+  hosts = host_table(data, root)
   hosts.to_csv(out / 'hosts.csv', index=False)
   if any(r['detail'] != 'pass' for r in chk):
     report(out, chk, hosts, None, None, None)
