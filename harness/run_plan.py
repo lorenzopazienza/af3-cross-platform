@@ -66,6 +66,14 @@ save_embeddings (optional, true or false, default false): every harness run pass
 --save_embeddings (harness/run_af3.py), so AlphaFold3 writes its final trunk
 embeddings; recorded in session.json. Without the key nothing changes.
 
+rep_start (optional, default 1; follow-up 6, notes/analysis_plan.md section 10, row of 2026-10-19): the first
+fresh repetition, so a plan with rep_start: 2 and fresh_reps: 1 runs r2 only (rep2 in the run names), for an arm
+whose r2 is launched apart from its r1 (follow-up 6 launches Go r2 last). The warm rerun's source is always rep 1, so
+rep_start above 1 cannot be combined with warm_rerun_seed.
+
+launch_by and finish_by (optional, dates YYYY-MM-DD; follow-up 6 stop rules): cloud/af3_run.sh prints both and
+refuses to launch the plan after launch_by (UTC); a part not finished by finish_by is reported as incomplete.
+
 featurise_only (optional, true or false, default false; follow-up 5, notes/analysis_plan.md section 10, row of
 2026-10-18): the plan runs AlphaFold3's featurisation only (harness/featurise_only.py: no model, no weights, no
 accelerator), one fresh process per target with every seed of the plan, into results/af3/<session>/featurise/.
@@ -156,9 +164,14 @@ def expand(plan_path, platform, manifest_path):
   configs = as_list(per_platform(plan['configs'], platform))
   seeds = [int(s) for s in as_list(plan['seeds'])]
   reps = int(per_platform(plan.get('fresh_reps', '1'), platform))
+  rep_start = int(per_platform(plan.get('rep_start', '1'), platform))
+  if rep_start < 1:
+    raise SystemExit(f'plan: rep_start must be 1 or more, not {rep_start}')
   warm_seed = optional_int(per_platform(plan.get('warm_rerun_seed', 'none'), platform))
   if warm_seed is not None and warm_seed not in seeds:
     raise SystemExit(f'warm_rerun_seed {warm_seed} is not one of the seeds {seeds}')
+  if warm_seed is not None and rep_start != 1:
+    raise SystemExit('plan: rep_start above 1 cannot be combined with warm_rerun_seed (its source is rep 1)')
   warm_reps = int(per_platform(plan.get('warm_reruns', '1'), platform))
   if warm_reps < 1:
     raise SystemExit(f'warm_reruns must be 1 or more, not {warm_reps}')
@@ -188,7 +201,7 @@ def expand(plan_path, platform, manifest_path):
       name = f'{config}{tag}'
       for bucket in buckets or [None]:   # sizes in increasing order within each (libtpu, config)
         size = f'_bucket{bucket}' if bucket else ''
-        for rep in range(1, reps + 1):
+        for rep in range(rep_start, rep_start + reps):
           for seed in seeds:
             run = {'run': f'{name}{size}_rep{rep}_seed{seed}_fresh', 'config': config, 'rep': rep,
                    'seed': seed, 'cache': 'fresh', 'libtpu': version,
@@ -213,6 +226,13 @@ def expand(plan_path, platform, manifest_path):
     extra['save_embeddings'] = True
   if plan_manifest:
     extra['manifest'] = plan_manifest
+  if rep_start != 1:
+    extra['rep_start'] = rep_start
+  for key in ('launch_by', 'finish_by'):
+    if key in plan:
+      if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(plan[key])):
+        raise SystemExit(f'plan: {key} must be a date YYYY-MM-DD, not {plan[key]!r}')
+      extra[key] = str(plan[key])
   return {
       'plan': str(pathlib.Path(plan_path)), 'platform': platform,
       'description': plan.get('description', ''), 'label': plan.get('label', 'measurement'),

@@ -19,13 +19,14 @@ EXPECT_MEMLIMIT_CHECK = {'memlimit_v5e_oom', 'memlimit_v6e_oom', 'memlimit_g_all
 # Suite 8: these must also print "followup check: 0 problem(s)" (embeddings saved and fetched; ppi manifest used).
 EXPECT_FOLLOWUP_CHECK = {'embed_v6e', 'embed_g', 'ppi_manifest', 'ppi_real_g',
                          'a100_smoke', 'a100_zones', 'a100_east5', 'cpu60_part',   # suite 9: follow-ups 3 and 4
-                         'feat_part'}   # suite 10: follow-up 5
+                         'feat_part', 'refuse_msa_late'}   # suite 10: follow-up 5; suite 11: follow-up 6
 EXPECTED = {
     'embed_v6e': 0, 'embed_g': 0, 'ppi_manifest': 0, 'ppi_tampered': 1, 'ppi_real_g': 0,
     'a100_smoke': 0, 'a100_zones': 0, 'a100_east5': 0, 'a100_40gb': 5, 'refuse_a100_a2-highgpu-1g': 1,
     'refuse_a100_no_machine_type': 1, 'refuse_a100_zone': 1, 'cpu60_part': 0,
     'feat_part': 0, 'refuse_feat_machine_type': 1, 'refuse_feat_image': 1, 'refuse_feat_weights': 1,
     'refuse_feat_no_ccd': 1, 'refuse_feat_ccd_sha': 1, 'refuse_feat_platform': 1, 'refuse_feat_none_model_plan': 1,
+    'msa_dates': 0, 'msa_rep2': 0, 'refuse_msa_late': 1,
     'memlimit_v5e_oom': 0, 'memlimit_v6e_oom': 0, 'memlimit_g_all': 0, 'memlimit_gt_first': 0,
     'memlimit_v6e_timeout': 0,
     'probe_cpu': 0, 'probe_l4': 0, 'probe_v5e': 0, 'probe_v6e': 0, 'oom_v5e': 1, 'drop_v6e': 0,

@@ -51,6 +51,10 @@
 # components.cif with that SHA-256: it is uploaded (zstd) and build_data uses it
 # instead of the copy the AlphaFold3 build downloads (cloud/vm_af3_setup.sh).
 #
+# Plan dates (follow-up 6 stop rules, plan keys launch_by and finish_by): both are
+# printed; a new launch after launch_by (UTC date) is refused before anything is
+# created; a part not finished by finish_by is reported as incomplete.
+#
 # Flex-start (v6e, and l4 or a100 with PROVISIONING=flex_start): the create request
 # queues up to REQUEST_VALID_FOR and is not billed while queued; the VM gets
 # --max-run-duration and --instance-termination-action=DELETE like every
@@ -338,6 +342,11 @@ case "$WEIGHTS" in
   *) die "WEIGHTS must be random or gcs (none for featurise-only plans)." ;;
 esac
 [ "$WEIGHTS" = "$PLAN_WEIGHTS" ] || echo "   note: the plan asks for weights=$PLAN_WEIGHTS; running with WEIGHTS=$WEIGHTS"
+PLAN_LAUNCH_BY=$(jget ".get('launch_by') or ''")
+PLAN_FINISH_BY=$(jget ".get('finish_by') or ''")
+if [ -n "$PLAN_LAUNCH_BY" ] && [ "$RESUME" != "1" ] && [ "$(date -u +%Y-%m-%d)" \> "$PLAN_LAUNCH_BY" ]; then
+  die "The plan $PLAN may be launched only by $PLAN_LAUNCH_BY (today, UTC: $(date -u +%Y-%m-%d)); nothing was created."
+fi
 # The CCD a plan fixes (ccd_sha256): a local components.cif with that SHA-256, uploaded to the VM.
 PLAN_CCD=$(jget ".get('ccd_sha256') or ''")
 if [ -n "$PLAN_CCD" ] && [ "$RESUME" != "1" ]; then
@@ -505,6 +514,7 @@ case "$WEIGHTS" in
   *) echo "   weights: random (generated on the VM)" ;;
 esac
 [ -z "$PLAN_CCD" ] || echo "   CCD: components.cif $(echo "$PLAN_CCD" | cut -c1-12)... from CCD_FILE, uploaded and given to build_data"
+[ -z "$PLAN_LAUNCH_BY$PLAN_FINISH_BY" ] || echo "   dates: launch by ${PLAN_LAUNCH_BY:-any date}; a part not finished by ${PLAN_FINISH_BY:-any date} is reported as incomplete"
 if [ -n "$LIBTPU_VERSION" ]; then
   STACK_NOTE=""
   [ "$LIBTPU_VERSION" = "0.0.42.1" ] || STACK_NOTE=" (outside the 0.0.42.* that jax[tpu]==0.10.2 pins)"

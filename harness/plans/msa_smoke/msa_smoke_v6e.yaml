@@ -1,0 +1,26 @@
+# Follow-up 6 smoke test (label msa_smoke; an engineering check, never a finding or a contrast): AlphaFold3's README
+# example 2PV7 (not a study target), its _data.json from the setup check of section 10, 2026-10-20 (SHA-256
+# 6e8904a1..., copied by scripts/nas/ingest_official.py --smoke), run end to end on v6e with the settings of V6
+# (config tpu_xla), to check that a _data.json input with MSAs and templates runs on this stack. Seed 1, r1.
+# Deadline 60 min: setup and one process, about twice the main study's V6 overheads plus one process at bucket 1024.
+
+description: follow-up 6 smoke test, 2PV7 _data.json on v6e
+label: msa_smoke
+weights: gcs
+manifest: inputs/official_data/smoke_manifest.csv
+
+configs:
+  v6e: tpu_xla
+
+targets:
+  default: [2PV7]
+
+seeds: [1]
+fresh_reps: 1
+warm_rerun_seed: none
+num_recycles: default
+num_diffusion_samples: default
+run_timeout_min: 30
+
+deadline_min:
+  v6e: 60
