@@ -95,13 +95,16 @@ def sha256(path):
 
 def platform_of(kind, attention, matmul_precision=None, config_name=None):
   """Condition code: section 3's platform code, Gd for config l4_xla_det, "h" for the section 11 arms (highest);
-  follow-up 3 (section 10, 2026-10-16): A and AT for the A100 (xla and triton attention), Ah with highest."""
+  follow-up 3 (section 10, 2026-10-16): A and AT for the A100 (xla and triton attention), Ah with highest;
+  follow-up 9 (label h100): H for the H100 (xla attention), HT with triton."""
   if config_name in CODE_BY_CONFIG:
     code = CODE_BY_CONFIG[config_name]
   elif 'L4' in kind:
     code = 'GT' if attention == 'triton' else 'G'
   elif 'A100' in kind:
     code = 'AT' if attention == 'triton' else 'A'
+  elif 'H100' in kind:
+    code = 'HT' if attention == 'triton' else 'H'
   else:
     code = PLATFORM_BY_KIND.get(kind, kind)
   if not matmul_precision:
@@ -154,7 +157,7 @@ def run_folders(roots, labels=None):
           yield ses.parent
 
 
-SESSION_NAME = re.compile(r'^\d{8}T\d{6}Z_(cpu|l4|v5e|v6e|a100)_(.+)$')
+SESSION_NAME = re.compile(r'^\d{8}T\d{6}Z_(cpu|l4|v5e|v6e|a100|h100)_(.+)$')
 
 
 def session_status(session_dir):

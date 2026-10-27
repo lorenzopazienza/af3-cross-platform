@@ -7,7 +7,7 @@
 #   PARTS=harness/plans/main/parts_all.txt RESULTS_GCS_URI=gs://BUCKET WEIGHTS_GCS_URI=gs://BUCKET/af3.bin.zst \
 #     SPOT=0 bash cloud/af3_run_many.sh
 #
-# PARTS: one part per line, "PLATFORM PLAN [VAR=value ...]" (cpu, l4, a100, v5e or v6e; PLAN a plan file under
+# PARTS: one part per line, "PLATFORM PLAN [VAR=value ...]" (cpu, l4, a100, h100, v5e or v6e; PLAN a plan file under
 # harness/plans/); blank lines and # comments are ignored. Optional per-part variables, passed to that
 # launcher only: ZONE ZONES SPOT PROVISIONING REQUEST_VALID_FOR FETCH LIBTPU_VERSION (ZONES with commas,
 # ZONES=us-east4-a,us-east4-c, given to the launcher as its space-separated list). Every other setting
@@ -28,7 +28,7 @@
 # europe-west4:europe-west4-a us-east4:us-east4-c", the zones that offer a2-ultragpu-1g) unless its line sets
 # ZONE or ZONES of one listed region (then that region's cap).
 #
-# Settings: MAX_L4 (8: GPUS_ALL_REGIONS), MAX_A100 (1), MAX_V5E (1), MAX_V6E (1), MAX_CPU (4) launchers at a time;
+# Settings: MAX_L4 (8: GPUS_ALL_REGIONS), MAX_A100 (1), MAX_H100 (1), MAX_V5E (1), MAX_V6E (1), MAX_CPU (4) launchers at a time;
 # STAGGER_S (5) seconds between two launches (session and VM names carry the launch second);
 # POLL_S (15); MAX_ATTEMPTS (1) launches per part, a further attempt only when the previous one created no
 # VM (no capacity in any zone), after RETRY_WAIT_S (600); ALLOW_RELAUNCH ("" or a space-separated list of
@@ -69,14 +69,14 @@ cd "$ROOT" || die "cannot enter $ROOT"
 [ -f "$PARTS" ] || die "No parts file: $PARTS"
 LAUNCHER="${LAUNCHER:-cloud/af3_run.sh}"
 [ -f "$LAUNCHER" ] || die "No launcher: $LAUNCHER"
-MAX_L4="${MAX_L4:-8}" MAX_A100="${MAX_A100:-1}" MAX_V5E="${MAX_V5E:-1}" MAX_V6E="${MAX_V6E:-1}" MAX_CPU="${MAX_CPU:-4}"
+MAX_L4="${MAX_L4:-8}" MAX_A100="${MAX_A100:-1}" MAX_H100="${MAX_H100:-1}" MAX_V5E="${MAX_V5E:-1}" MAX_V6E="${MAX_V6E:-1}" MAX_CPU="${MAX_CPU:-4}"
 A100_MACHINE_TYPE="${A100_MACHINE_TYPE:-}"
 A100_REGION_CAPS="${A100_REGION_CAPS:-us-central1:2 us-east5:1 europe-west4:1 us-east4:1}"
 A100_REGION_ZONES="${A100_REGION_ZONES:-us-central1:us-central1-a,us-central1-c us-east5:us-east5-a,us-east5-b europe-west4:europe-west4-a us-east4:us-east4-c}"
 [ -z "${MACHINE_TYPE:-}" ] || die "MACHINE_TYPE is set in this shell and would reach every launcher; unset it (A100 parts take A100_MACHINE_TYPE)."
 STAGGER_S="${STAGGER_S:-5}" POLL_S="${POLL_S:-15}" MAX_ATTEMPTS="${MAX_ATTEMPTS:-1}" RETRY_WAIT_S="${RETRY_WAIT_S:-600}"
 ALLOW_RELAUNCH="${ALLOW_RELAUNCH:-}"
-for v in MAX_L4 MAX_A100 MAX_V5E MAX_V6E MAX_CPU STAGGER_S POLL_S MAX_ATTEMPTS RETRY_WAIT_S; do
+for v in MAX_L4 MAX_A100 MAX_H100 MAX_V5E MAX_V6E MAX_CPU STAGGER_S POLL_S MAX_ATTEMPTS RETRY_WAIT_S; do
   eval "x=\$$v"
   echo "$x" | grep -Eq '^[0-9]+$' || die "$v must be a whole number (got '$x')."
 done
@@ -92,7 +92,7 @@ a100_cap() { local rc; for rc in $A100_REGION_CAPS; do [ "${rc%%:*}" = "$1" ] &&
 a100_zones() { local rz; for rz in $A100_REGION_ZONES; do [ "${rz%%:*}" = "$1" ] && { echo "${rz#*:}"; return 0; }; done; return 1; }
 zone_region() { echo "${1%-*}"; }
 
-cap() { case "$1" in l4) echo "$MAX_L4" ;; a100) echo "$MAX_A100" ;; v5e) echo "$MAX_V5E" ;; v6e) echo "$MAX_V6E" ;; cpu) echo "$MAX_CPU" ;; esac; }
+cap() { case "$1" in l4) echo "$MAX_L4" ;; a100) echo "$MAX_A100" ;; h100) echo "$MAX_H100" ;; v5e) echo "$MAX_V5E" ;; v6e) echo "$MAX_V6E" ;; cpu) echo "$MAX_CPU" ;; esac; }
 # The launcher's own transformation of the plan file name (cloud/af3_run.sh, PLAN_NAME).
 plan_name() { basename "$1" .yaml | tr 'A-Z' 'a-z' | tr -c 'a-z0-9_\n-' '-'; }
 # Sessions of a part that created a VM (or were fetched): one per line.
@@ -135,7 +135,7 @@ while IFS= read -r line || [ -n "$line" ]; do
       *) echo "!! $plan: '$kv' is not a per-part setting this script passes on"; BAD=1 ;;
     esac
   done
-  case "$platform" in cpu | l4 | a100 | v5e | v6e) ;; *) echo "!! '$platform' is not a platform (cpu, l4, a100, v5e, v6e): $line"; BAD=1; continue ;; esac
+  case "$platform" in cpu | l4 | a100 | h100 | v5e | v6e) ;; *) echo "!! '$platform' is not a platform (cpu, l4, a100, h100, v5e, v6e): $line"; BAD=1; continue ;; esac
   pinned=""
   if [ "$platform" = a100 ]; then
     [ -n "$A100_MACHINE_TYPE" ] || { echo "!! $plan: A100 parts need A100_MACHINE_TYPE (a2-ultragpu-1g) in this shell"; BAD=1; continue; }
@@ -184,7 +184,7 @@ done < "$PARTS"
 parts_in_order() { for d in "$RUN_DIR"/parts/*/; do echo "$(cat "$d/order") $(basename "$d")"; done | sort -n | cut -d' ' -f2; }
 count_status() { local k c=0; for k in $(parts_in_order); do [ "$(cat "$RUN_DIR/parts/$k/status")" = "$1" ] && c=$((c + 1)); done; echo $c; }
 
-echo ">> Parts from $PARTS ($N): at most l4 $MAX_L4, a100 $MAX_A100, v5e $MAX_V5E, v6e $MAX_V6E, cpu $MAX_CPU at a time; up to $MAX_ATTEMPTS launch(es) per part"
+echo ">> Parts from $PARTS ($N): at most l4 $MAX_L4, a100 $MAX_A100, h100 $MAX_H100, v5e $MAX_V5E, v6e $MAX_V6E, cpu $MAX_CPU at a time; up to $MAX_ATTEMPTS launch(es) per part"
 if ls -d "$RUN_DIR"/parts/a100_* > /dev/null 2>&1; then
   echo "   a100: machine type $A100_MACHINE_TYPE for every part; per region at most $A100_REGION_CAPS; zones $A100_REGION_ZONES"
 fi

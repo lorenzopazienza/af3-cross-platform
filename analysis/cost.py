@@ -46,7 +46,8 @@ import pandas as pd
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 PRICE_KEY = {'V5': 'v5e', 'V6': 'v6e', 'V6h': 'v6e', 'G': 'l4', 'GT': 'l4', 'Gh': 'l4', 'Gd': 'l4', 'C': 'cpu',
-             'A': 'a100', 'AT': 'a100', 'Ah': 'a100'}   # A100 arms of follow-up 3 (a2-ultragpu-1g)
+             'A': 'a100', 'AT': 'a100', 'Ah': 'a100',    # A100 arms of follow-up 3 (a2-ultragpu-1g)
+             'H': 'h100', 'HT': 'h100'}                   # H100 arm of follow-up 9 (a3-highgpu-1g)
 PROVISIONING = ['standard', 'spot', 'flex_start']
 FALLBACK_REGION = 'europe-west4'
 GIB = 1024 ** 3
@@ -156,7 +157,7 @@ def memory_table(p):
     peak_args = (g.compiled_peak_bytes + g.compiled_args_bytes).max()
     limit = g.device_bytes_limit.max()
     reserved = g.alloc_peak_reserved_bytes.max()
-    if plat in ('G', 'GT', 'Gh', 'Gd', 'A', 'AT', 'Ah') and reserved == 0:
+    if plat in ('G', 'GT', 'Gh', 'Gd', 'A', 'AT', 'Ah', 'H', 'HT') and reserved == 0:
       reserved = np.nan  # the CUDA allocator preallocates its pool and reports no reservation
     rows.append({'platform': plat, 'bucket': int(bucket), 'processes': len(g), 'succeeded': len(ok),
                  'max_tokens_run': ok.num_tokens.max() if len(ok) else np.nan,

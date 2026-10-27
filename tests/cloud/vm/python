@@ -6,7 +6,9 @@
 # them). "-" (stdin script) is the device check: real python for
 # FAKE_PLATFORM=cpu, emulated otherwise. On TPU, the probe and the device
 # check write a libtpu log to AF3_TPU_LOG_DIR with the build label of the
-# installed libtpu (the real labels for 0.0.42.1 and 0.0.43.2).
+# installed libtpu (the real labels for 0.0.42.1 and 0.0.43.2). Other packages
+# (jax, jax-cuda12-plugin, jax-cuda12-pjrt; follow-up 7 stacks) answer from
+# fake_pkg_<name> (bin/uv writes it), 0.10.2 otherwise.
 VENV=$(cd "$(dirname "$0")/.." && pwd)
 echo "$(basename "$VENV") ${1:-} JAX_PLATFORMS=${JAX_PLATFORMS-<unset>}" >> "$FAKE_DIR/jax_platforms.log"
 case "${JAX_PLATFORMS:-}" in
@@ -14,7 +16,7 @@ case "${JAX_PLATFORMS:-}" in
     echo "RuntimeError: Unable to initialize backend 'rocm': Backend 'rocm' is not in the list of known backends: ['cpu', 'tpu', 'cuda']. (set JAX_PLATFORMS='' to automatically choose an available backend)" >&2
     exit 1 ;;
 esac
-case "$FAKE_PLATFORM" in cpu) b=cpu k=cpu ;; l4) b=gpu k="NVIDIA L4" ;; a100) b=gpu k="NVIDIA A100-SXM4-80GB" ;; v5e) b=tpu k="TPU v5 lite" ;; v6e) b=tpu k="TPU v6 lite" ;; esac
+case "$FAKE_PLATFORM" in cpu) b=cpu k=cpu ;; l4) b=gpu k="NVIDIA L4" ;; a100) b=gpu k="NVIDIA A100-SXM4-80GB" ;; h100) b=gpu k="NVIDIA H100 80GB HBM3" ;; v5e) b=tpu k="TPU v5 lite" ;; v6e) b=tpu k="TPU v6 lite" ;; esac
 libtpu=$(cat "$VENV/fake_libtpu" 2> /dev/null || true)
 fake_tpu_log() {
   [ "$b" = tpu ] && [ -n "${AF3_TPU_LOG_DIR:-}" ] || return 0
@@ -33,10 +35,11 @@ if [ "${1:-}" = "-c" ]; then
   case "$2" in
     *"version('libtpu')"*) [ -n "$libtpu" ] && { echo "$libtpu"; exit 0; }; exit 1 ;;
     *"version('jaxlib')"*) cat "$VENV/fake_jaxlib" 2> /dev/null || echo 0.10.2; exit 0 ;;
+    *"version('"*) n=${2#*version(\'}; n=${n%%\'*}; cat "$VENV/fake_pkg_$n" 2> /dev/null || echo 0.10.2; exit 0 ;;
   esac
   fake_tpu_log
   lt=null; [ -z "$libtpu" ] || lt="\"$libtpu\""
-  echo "{\"python\": \"3.12.6\", \"packages\": {\"jax\": \"0.10.2\", \"jaxlib\": \"$(cat "$VENV/fake_jaxlib" 2> /dev/null || echo 0.10.2)\", \"libtpu\": $lt}, \"default_backend\": \"$b\", \"devices\": [\"fake:0\"], \"device_kind\": \"$k\"}"
+  echo "{\"python\": \"3.12.6\", \"packages\": {\"jax\": \"$(cat "$VENV/fake_pkg_jax" 2> /dev/null || echo 0.10.2)\", \"jaxlib\": \"$(cat "$VENV/fake_jaxlib" 2> /dev/null || echo 0.10.2)\", \"libtpu\": $lt}, \"default_backend\": \"$b\", \"devices\": [\"fake:0\"], \"device_kind\": \"$k\"}"
   exit 0
 fi
 if [ "${1:-}" = "-" ] && [ "$FAKE_PLATFORM" != "cpu" ]; then

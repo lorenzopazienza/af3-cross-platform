@@ -66,6 +66,15 @@ save_embeddings (optional, true or false, default false): every harness run pass
 --save_embeddings (harness/run_af3.py), so AlphaFold3 writes its final trunk
 embeddings; recorded in session.json. Without the key nothing changes.
 
+seeds_beyond_input (optional, true or false, default false; follow-up 8, label seeds): every harness run passes
+--seeds_beyond_input (harness/run_af3.py), so the plan may run seeds the frozen inputs do not list (seeds 6 to 20).
+
+stack (optional, a mapping package: version; follow-up 7, label sw): the alternative JAX/XLA stack the VM installs
+after its normal setup (cloud/vm_af3_setup.sh), recorded in pip_freeze.txt and setup.json. TPU platforms pin jax,
+jaxlib and libtpu; GPU platforms jax, jaxlib, jax-cuda12-plugin and jax-cuda12-pjrt; every package of the family
+must be given, jax and jaxlib at the same version. cloud/af3_run.sh passes it to the VM and refuses a stack given any
+other way; without the key nothing changes.
+
 rep_start (optional, default 1; follow-up 6, notes/analysis_plan.md section 10, row of 2026-10-19): the first
 fresh repetition, so a plan with rep_start: 2 and fresh_reps: 1 runs r2 only (rep2 in the run names), for an arm
 whose r2 is launched apart from its r1 (follow-up 6 launches Go r2 last). The warm rerun's source is always rep 1, so
@@ -106,7 +115,9 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / 'harness'))
 from run_af3 import read_configs, upload  # noqa: E402
 
-PLATFORMS = ('cpu', 'l4', 'a100', 'v5e', 'v6e')
+PLATFORMS = ('cpu', 'l4', 'a100', 'h100', 'v5e', 'v6e')
+# Plan key stack (follow-up 7): the packages a platform's alternative stack may pin, per platform family.
+STACK_PACKAGES = {'tpu': ('jax', 'jaxlib', 'libtpu'), 'gpu': ('jax', 'jaxlib', 'jax-cuda12-plugin', 'jax-cuda12-pjrt')}
 
 
 def as_list(value):
@@ -226,6 +237,14 @@ def expand(plan_path, platform, manifest_path):
     extra['save_embeddings'] = True
   if plan_manifest:
     extra['manifest'] = plan_manifest
+  beyond = str(per_platform(plan.get('seeds_beyond_input', 'false'), platform)).lower()
+  if beyond not in ('true', 'false'):
+    raise SystemExit(f'plan: seeds_beyond_input must be true or false, not {beyond!r}')
+  if beyond == 'true':
+    extra['seeds_beyond_input'] = True
+  stack = per_platform(plan['stack'], platform) if 'stack' in plan else None
+  if stack is not None:
+    extra['stack'] = check_stack(stack, platform)
   if rep_start != 1:
     extra['rep_start'] = rep_start
   for key in ('launch_by', 'finish_by'):
@@ -246,6 +265,21 @@ def expand(plan_path, platform, manifest_path):
       'libtpu': libtpu, 'compare_reference': None if reference == 'none' else reference,
       'runs': runs, 'processes': len(runs) * len(targets), **extra,
   }
+
+
+def check_stack(stack, platform):
+  """The plan's alternative stack for this platform: every package of its family, versions like 0.10.1."""
+  family = 'tpu' if platform in ('v5e', 'v6e') else 'gpu' if platform in ('l4', 'a100', 'h100') else None
+  if family is None or not isinstance(stack, dict):
+    raise SystemExit(f'plan: stack is a mapping of pinned packages for a TPU or GPU platform, not {stack!r} on {platform}')
+  if sorted(stack) != sorted(STACK_PACKAGES[family]):
+    raise SystemExit(f'plan: a {family} stack pins exactly {", ".join(STACK_PACKAGES[family])}, not {", ".join(sorted(stack))}')
+  for pkg, v in stack.items():
+    if not re.fullmatch(r'[0-9]+(\.[0-9]+)+', str(v)):
+      raise SystemExit(f'plan: stack {pkg} {v!r} is not a version like 0.10.1')
+  if stack['jax'] != stack['jaxlib']:
+    raise SystemExit(f'plan: stack jax {stack["jax"]} and jaxlib {stack["jaxlib"]} must be the same version')
+  return {k: str(stack[k]) for k in STACK_PACKAGES[family]}
 
 
 HOST_KEYS = ('machine_type', 'min_cpu_platform', 'image_project', 'image_family')
@@ -426,6 +460,8 @@ def main():
       cmd += ['--buckets', str(run['buckets'])]
     if desc.get('save_embeddings'):
       cmd += ['--save_embeddings']
+    if desc.get('seeds_beyond_input'):
+      cmd += ['--seeds_beyond_input']
     if args.upload_uri:
       cmd += ['--upload_uri', f'{args.upload_uri.rstrip("/")}/{run["run"]}']
     print(f'>> [{i}/{len(desc["runs"])}] {run["run"]}: {len(desc["targets"])} targets', flush=True)

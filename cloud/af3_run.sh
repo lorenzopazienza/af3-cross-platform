@@ -17,6 +17,8 @@
 # a100      Compute Engine   none: MACHINE_TYPE must be    as l4 (follow-up 3 runs on demand,
 #                            a2-ultragpu-1g (1 x A100      SPOT=0; Spot A100 80 GB quota is 0)
 #                            80 GB)
+# h100      Compute Engine   a3-highgpu-1g (1 x H100       as a100 (follow-up 9; Spot or on demand; the
+#                            80 GB), the only type taken   on-demand H100 quota of the project is 0)
 # v5e       legacy TPU API   v5litepod-1                   Spot (SPOT=0: on-demand)
 # v6e       Compute Engine   ct6e-standard-1t              Flex-start (PROVISIONING=standard:
 #                                                          on-demand)
@@ -50,6 +52,13 @@
 # disagrees with it is refused. A plan with ccd_sha256 needs CCD_FILE, a local
 # components.cif with that SHA-256: it is uploaded (zstd) and build_data uses it
 # instead of the copy the AlphaFold3 build downloads (cloud/vm_af3_setup.sh).
+#
+# Alternative software stack (follow-up 7, plan key stack, harness/run_plan.py):
+# the plan's pinned jax, jaxlib and libtpu (TPU) or jax, jaxlib and the
+# jax-cuda12 plugin and pjrt (GPU) are passed to the VM (STACK), which installs
+# them after its normal setup (cloud/vm_af3_setup.sh); on TPU the stack's libtpu
+# is the LIBTPU_VERSION. A STACK in this shell, or a plan with both stack and a
+# libtpu list, is refused; without the key nothing changes.
 #
 # Plan dates (follow-up 6 stop rules, plan keys launch_by and finish_by): both are
 # printed; a new launch after launch_by (UTC date) is refused before anything is
@@ -146,7 +155,7 @@ RESUME=0 RESUME_LEGACY=0 RESUME_NOTE=""
 if [ -n "${RESUME_VM:-}" ]; then
   RESUME=1
   [ -n "${SESSION:-}" ] || die "RESUME_VM needs SESSION=<session folder name, as under results/af3/>."
-  echo "$SESSION" | grep -Eq '^[0-9]{8}T[0-9]{6}Z_(cpu|l4|a100|v5e|v6e)_[a-z0-9_-]+$' || die "Not a session name: SESSION='$SESSION'."
+  echo "$SESSION" | grep -Eq '^[0-9]{8}T[0-9]{6}Z_(cpu|l4|a100|h100|v5e|v6e)_[a-z0-9_-]+$' || die "Not a session name: SESSION='$SESSION'."
   REC="$(git rev-parse --show-toplevel)/results/af3/.launcher/$SESSION/launch_record.txt"
   rec() { sed -n "s/^$1=//p" "$REC" | tail -1; }
   if [ -f "$REC" ]; then
@@ -180,7 +189,8 @@ if [ -n "${RESUME_VM:-}" ]; then
   unset ZONES
   VM_NAME=$RESUME_VM
 fi
-: "${PLATFORM:?set PLATFORM to cpu, l4, a100, v5e or v6e}"
+: "${PLATFORM:?set PLATFORM to cpu, l4, a100, h100, v5e or v6e}"
+[ -z "${STACK:-}" ] || die "STACK is set in this shell; an alternative stack comes only from a plan's stack key."
 command -v gcloud > /dev/null || die "gcloud not found."
 command -v python3 > /dev/null || die "python3 not found."
 
@@ -256,6 +266,24 @@ us-west1-a us-west1-b us-west1-c us-west4-a us-west4-c"
     IMAGE_PROJECT="${IMAGE_PROJECT:-ubuntu-os-accelerator-images}"
     IMAGE_FAMILY="${IMAGE_FAMILY:-ubuntu-accelerator-2204-amd64-with-nvidia-580}"
     BOOT_DISK_TYPE=pd-balanced ;;
+  h100)
+    VM_API=gce
+    # Follow-up 9 (label h100): one H100 80 GB, a3-highgpu-1g (26 vCPU, 234 GiB), the only type taken. Zones: those
+    # with a3-highgpu-1g in the three US regions where the project ran A100s (`gcloud compute machine-types list
+    # --filter="name=a3-highgpu-1g"`, 2026-10-27; europe-west4, dearer, is left out), regions in order of on-demand
+    # price (cloud/prices.csv). Quotas read 2026-10-27 (Cloud Quotas, read-only): Spot H100 64 per region,
+    # GPUS_ALL_REGIONS 8; on-demand H100 0.
+    MACHINE_TYPE="${MACHINE_TYPE:-a3-highgpu-1g}"
+    [ "$MACHINE_TYPE" = "a3-highgpu-1g" ] || die "PLATFORM=h100 takes a3-highgpu-1g only (one H100 80 GB), not $MACHINE_TYPE."
+    H100_DEFAULT_ZONES="us-central1-a us-central1-b us-central1-c us-east4-a us-east4-b us-east4-c us-east5-a"
+    if [ -z "${ZONES:-}" ] && [ -z "${ZONE:-}" ]; then ZONES=$H100_DEFAULT_ZONES; fi
+    ZONE="${ZONE:-us-central1-a}"
+    for z in $(echo ${ZONES:-$ZONE}); do
+      case " $H100_DEFAULT_ZONES " in *" $z "*) ;; *) die "PLATFORM=h100: $z is not one of the zones with a3-highgpu-1g ($H100_DEFAULT_ZONES)." ;; esac
+    done
+    IMAGE_PROJECT="${IMAGE_PROJECT:-ubuntu-os-accelerator-images}"
+    IMAGE_FAMILY="${IMAGE_FAMILY:-ubuntu-accelerator-2204-amd64-with-nvidia-580}"
+    BOOT_DISK_TYPE=pd-balanced ;;
   v5e)
     VM_API=tpu
     MACHINE_TYPE="${MACHINE_TYPE:-v5litepod-1}"
@@ -269,7 +297,7 @@ us-west1-a us-west1-b us-west1-c us-west4-a us-west4-c"
     IMAGE_PROJECT="${IMAGE_PROJECT:-ubuntu-os-accelerator-images}"
     IMAGE_FAMILY="${IMAGE_FAMILY:-ubuntu-accel-2204-amd64-tpu-v5e-v5p-v6e}"
     [ "$MACHINE_TYPE" = "ct6e-standard-1t" ] || die "PLATFORM=v6e takes ct6e-standard-1t only (single chip), not $MACHINE_TYPE." ;;
-  *) die "PLATFORM must be cpu, l4, a100, v5e or v6e." ;;
+  *) die "PLATFORM must be cpu, l4, a100, h100, v5e or v6e." ;;
 esac
 MIN_CPU_PLATFORM="${MIN_CPU_PLATFORM-$MIN_CPU_PLATFORM_DEFAULT}"
 case "${PROVISIONING:-}" in
@@ -280,8 +308,8 @@ case "${PROVISIONING:-}" in
     esac ;;
   flex_start)
     case "$PLATFORM" in
-      l4 | a100 | v6e) ;;
-      *) die "PROVISIONING=flex_start is supported here for PLATFORM=l4, a100 and v6e only." ;;
+      l4 | a100 | h100 | v6e) ;;
+      *) die "PROVISIONING=flex_start is supported here for PLATFORM=l4, a100, h100 and v6e only." ;;
     esac ;;
   standard) ;;
   spot)
@@ -299,7 +327,7 @@ set -- $ZONES
 ZONE_COUNT=$#
 ZONE=$1
 if [ "$VM_API" = "tpu" ] && [ "$ZONE_COUNT" -gt 1 ]; then
-  die "ZONES with more than one zone is supported for the Compute Engine platforms (cpu, l4, a100, v6e), not v5e."
+  die "ZONES with more than one zone is supported for the Compute Engine platforms (cpu, l4, a100, h100, v6e), not v5e."
 fi
 REGION="${ZONE%-*}"
 REGIONS=$(for z in $ZONES; do echo "${z%-*}"; done | awk '!seen[$0]++' | tr '\n' ' ')
@@ -361,9 +389,18 @@ fi
 PLAN_LIBTPU=$(jget "['libtpu']" | python3 -c "import ast,sys; print(' '.join(ast.literal_eval(sys.stdin.read())))")
 COMPARE_REF=$(jget "['compare_reference']")
 [ "$COMPARE_REF" != "None" ] || COMPARE_REF=""
+# The plan's alternative stack (header): package==version pairs, comma-separated for the VM.
+STACK_SPEC=$(jget ".get('stack') or {}" | python3 -c "import ast,sys; d=ast.literal_eval(sys.stdin.read()); print(','.join(k + '==' + v for k, v in d.items()))")
+STACK_LIBTPU=$(echo "$STACK_SPEC" | tr ',' '\n' | sed -n 's/^libtpu==//p')
+STACK_JAX=$(echo "$STACK_SPEC" | tr ',' '\n' | sed -n 's/^jax==//p')
+[ -z "$STACK_SPEC" ] || [ -z "$PLAN_LIBTPU" ] || die "The plan has both a stack and a libtpu list; a stack plan pins its own libtpu."
 case "$PLATFORM" in
   v5e | v6e)
-    if [ -n "$PLAN_LIBTPU" ]; then
+    if [ -n "$STACK_LIBTPU" ]; then
+      [ -z "${LIBTPU_VERSION:-}" ] || [ "$LIBTPU_VERSION" = "$STACK_LIBTPU" ] \
+        || die "LIBTPU_VERSION=$LIBTPU_VERSION disagrees with the plan's stack (libtpu $STACK_LIBTPU); unset it."
+      LIBTPU_VERSION=$STACK_LIBTPU
+    elif [ -n "$PLAN_LIBTPU" ]; then
       set -- $PLAN_LIBTPU
       [ -z "${LIBTPU_VERSION:-}" ] || [ "$LIBTPU_VERSION" = "$1" ] \
         || die "LIBTPU_VERSION=$LIBTPU_VERSION disagrees with the plan's libtpu list ($PLAN_LIBTPU); unset it."
@@ -514,11 +551,13 @@ case "$WEIGHTS" in
   *) echo "   weights: random (generated on the VM)" ;;
 esac
 [ -z "$PLAN_CCD" ] || echo "   CCD: components.cif $(echo "$PLAN_CCD" | cut -c1-12)... from CCD_FILE, uploaded and given to build_data"
+[ -z "$STACK_SPEC" ] || [ -n "$LIBTPU_VERSION" ] || echo "   GPU stack: the plan's alternative stack, $(echo "$STACK_SPEC" | tr ',' ' ')"
 [ -z "$PLAN_LAUNCH_BY$PLAN_FINISH_BY" ] || echo "   dates: launch by ${PLAN_LAUNCH_BY:-any date}; a part not finished by ${PLAN_FINISH_BY:-any date} is reported as incomplete"
 if [ -n "$LIBTPU_VERSION" ]; then
   STACK_NOTE=""
   [ "$LIBTPU_VERSION" = "0.0.42.1" ] || STACK_NOTE=" (outside the 0.0.42.* that jax[tpu]==0.10.2 pins)"
-  echo "   TPU stack: jax/jaxlib 0.10.2 with libtpu $LIBTPU_VERSION$STACK_NOTE"
+  if [ -n "$STACK_SPEC" ]; then echo "   TPU stack: the plan's alternative stack, jax/jaxlib $STACK_JAX with libtpu $LIBTPU_VERSION"
+  else echo "   TPU stack: jax/jaxlib 0.10.2 with libtpu $LIBTPU_VERSION$STACK_NOTE"; fi
   N_LIBTPU=$(echo $PLAN_LIBTPU | wc -w | tr -d ' ')
   [ "$N_LIBTPU" -le 1 ] || echo "     then on the same VM, in order: $(echo $PLAN_LIBTPU | cut -d' ' -f2-)"
 fi
@@ -756,6 +795,7 @@ record PROJECT "$PROJECT"; record ZONE "$ZONE"; record PLAN "$PLAN"; record MACH
 record PROVISIONING "$PROVISIONING"; record WEIGHTS "$WEIGHTS"; record RESULTS_GCS_URI "$RESULTS_GCS_URI"
 record FETCH "$FETCH"; record LIBTPU_VERSION "$LIBTPU_VERSION"; record DEADLINE_MIN "$DETACHED_DEADLINE_MIN"
 record MAX_RUN_DURATION "$MAX_RUN_DURATION"; record COMMIT "$BENCH_COMMIT"; record DIRTY_FILES "$BENCH_DIRTY"
+[ -z "$STACK_SPEC" ] || record STACK "$STACK_SPEC"
 record LAUNCHED_UTC "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 detached_event "launch: session $SESSION, VM $VM_NAME ($MACHINE_TYPE, $PROVISIONING), plan $PLAN, commit $BENCH_COMMIT, $BENCH_DIRTY uncommitted file(s) under af3_tpu harness targets inputs cloud"
 
@@ -865,7 +905,7 @@ DETACHED_SCRIPT=cloud/vm_af3_job.sh
 DETACHED_LOG=job.log
 STARTED=1
 detached_start "$OUT_REL" \
-  "PLATFORM=$PLATFORM PLAN=$PLAN WEIGHTS=$WEIGHTS TARGETS=$TARGETS SESSION=$SESSION RESULTS_URI=$RESULTS_SESSION_URI LIBTPU_VERSION=$LIBTPU_VERSION${PLAN_CCD:+ CCD_SHA256=$PLAN_CCD}" \
+  "PLATFORM=$PLATFORM PLAN=$PLAN WEIGHTS=$WEIGHTS TARGETS=$TARGETS SESSION=$SESSION RESULTS_URI=$RESULTS_SESSION_URI LIBTPU_VERSION=$LIBTPU_VERSION${PLAN_CCD:+ CCD_SHA256=$PLAN_CCD}${STACK_SPEC:+ STACK=$STACK_SPEC}" \
   || die "Could not start the job on the VM."
 record STARTED_UTC "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 detached_event "job: started on the VM"

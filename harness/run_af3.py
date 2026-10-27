@@ -13,7 +13,12 @@ in a new process, with the flags of the chosen configuration in
 harness/configs.yaml, --run_data_pipeline=false and the frozen input from
 inputs/manifest.csv. If --seeds selects fewer seeds than the frozen input has,
 a derived input with only those seeds is written to the target's work/ folder
-and both hashes are recorded.
+and both hashes are recorded. --seeds_beyond_input (follow-up 8, label seeds) also
+accepts seeds the frozen input does not list (seeds 6 to 20): the derived input
+is the frozen one with modelSeeds set to them and nothing else changed;
+AlphaFold3 draws each seed's randomness from that seed alone, so a seed's output
+does not depend on which other seeds a process runs. Without the flag such seeds
+are refused, as before.
 
 Compile cache (--compile_cache):
   fresh       a new, empty JAX persistent compilation cache directory for every
@@ -399,6 +404,8 @@ def main():
   ap.add_argument('--num_recycles', type=int)
   ap.add_argument('--num_diffusion_samples', type=int)
   ap.add_argument('--seeds', help='comma-separated subset of the frozen seeds, for example 1')
+  ap.add_argument('--seeds_beyond_input', action='store_true',
+                  help='accept seeds the frozen input does not list (follow-up 8); recorded in session.json')
   ap.add_argument('--order', choices=('manifest', 'tokens'), default='manifest')
   ap.add_argument('--limit', type=int, help='run only the first N targets after ordering')
   ap.add_argument('--timeout_min', type=float, default=180)
@@ -526,7 +533,7 @@ def main():
     run_input = frozen
     if seeds:
       data = json.loads(frozen.read_text())
-      if not set(seeds) <= set(data['modelSeeds']):
+      if not set(seeds) <= set(data['modelSeeds']) and not args.seeds_beyond_input:
         raise SystemExit(f'--seeds {seeds} not all in the frozen input seeds {data["modelSeeds"]}')
       data['modelSeeds'] = seeds
       run_input = work / 'input_seeds.json'

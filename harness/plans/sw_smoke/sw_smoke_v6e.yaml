@@ -1,0 +1,29 @@
+# Follow-up 7 smoke test (label sw_smoke; an engineering check, never a finding):
+# 2PV7 (not a study target), its setup-check _data.json (inputs/official_data/smoke_manifest.csv, follow-up 6),
+# run end to end on v6e with the settings of V6s and its alternative stack. Seed 1, r1; deadline 60 min.
+
+description: follow-up sw_smoke, 2PV7 on v6e
+label: sw_smoke
+weights: gcs
+manifest: inputs/official_data/smoke_manifest.csv
+stack:
+  v6e:
+    jax: 0.10.1
+    jaxlib: 0.10.1
+    libtpu: 0.0.41
+
+configs:
+  v6e: tpu_xla
+
+targets:
+  default: [2PV7]
+
+seeds: [1]
+fresh_reps: 1
+warm_rerun_seed: none
+num_recycles: default
+num_diffusion_samples: default
+run_timeout_min: 30
+
+deadline_min:
+  v6e: 60

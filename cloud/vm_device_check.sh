@@ -3,7 +3,7 @@
 # AlphaFold3's JAX sees the expected device and writes OUT/setup.json; a
 # failure explains itself in OUT/device_check.txt and in the job log.
 #
-#   PLATFORM=cpu|l4|a100|v5e|v6e bash cloud/vm_device_check.sh OUT AF3_COMMIT
+#   PLATFORM=cpu|l4|a100|h100|v5e|v6e bash cloud/vm_device_check.sh OUT AF3_COMMIT
 #
 # JAX_PLATFORMS per platform: cpu, cuda (L4 and A100: never "gpu", which JAX 0.10.2
 # expands to cuda, rocm and oneapi and then fails because rocm is not
@@ -26,7 +26,7 @@ REPORT="$OUT/device_check.txt"
 
 case "$PLATFORM" in
   cpu) BACKEND=cpu JAXP=cpu ;;
-  l4 | a100) BACKEND=gpu JAXP=cuda ;;
+  l4 | a100 | h100) BACKEND=gpu JAXP=cuda ;;
   v5e | v6e) BACKEND=tpu JAXP=tpu ;;
   *) echo "!! device check: unknown PLATFORM $PLATFORM" >&2; exit 5 ;;
 esac
@@ -35,7 +35,7 @@ esac
   echo "## device check for PLATFORM=$PLATFORM: JAX_PLATFORMS=$JAXP, expected backend $BACKEND"
   echo "## environment (JAX, XLA, CUDA, NVIDIA, LD_LIBRARY_PATH, TPU)"
   env | grep -E '^(JAX_|XLA_|CUDA|NVIDIA|LD_LIBRARY_PATH|TPU_|LIBTPU_)' | sort
-  if [ "$PLATFORM" = "l4" ] || [ "$PLATFORM" = "a100" ]; then
+  if [ "$PLATFORM" = "l4" ] || [ "$PLATFORM" = "a100" ] || [ "$PLATFORM" = "h100" ]; then
     echo "## nvidia-smi"
     nvidia-smi 2>&1 || echo "(nvidia-smi failed with exit code $?)"
     echo "## /dev/nvidia*"
@@ -98,13 +98,15 @@ if jax.default_backend() != backend:
   sys.exit(f'JAX backend is {jax.default_backend()}, expected {backend}')
 if platform == 'l4' and 'L4' not in kind:
   sys.exit(f'expected an NVIDIA L4, JAX sees {kind}')
+if platform == 'h100' and 'H100' not in kind:
+  sys.exit(f'expected an NVIDIA H100, JAX sees {kind}')
 if platform == 'a100' and 'A100' not in kind:
   sys.exit(f'expected an NVIDIA A100, JAX sees {kind}')
 EOF
 rc=$?
 # GPU platforms: the GPU's name, memory and driver as nvidia-smi reports them, into setup.json (gpu); on a100 the
 # card must be the 80 GB one (follow-up 3 runs a2-ultragpu-1g only; nvidia-smi reports 81920 MiB).
-if [ "$rc" -eq 0 ] && { [ "$PLATFORM" = "l4" ] || [ "$PLATFORM" = "a100" ]; }; then
+if [ "$rc" -eq 0 ] && { [ "$PLATFORM" = "l4" ] || [ "$PLATFORM" = "a100" ] || [ "$PLATFORM" = "h100" ]; }; then
   GPU_CSV=$(nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader 2> /dev/null | head -1)
   python3 - "$OUT/setup.json" "$PLATFORM" "$GPU_CSV" <<'GPUEOF' | tee -a "$REPORT"
 import json, sys
@@ -117,6 +119,8 @@ info = json.load(open(path))
 info['gpu'] = {'name': parts[0], 'driver_version': parts[1], 'memory_total_mib': int(mib)}
 json.dump(info, open(path, 'w'), indent=2)
 print(f'   GPU {parts[0]}, {mib} MiB, driver {parts[1]}')
+if platform == 'h100' and int(mib) < 80000:
+  sys.exit(f'!! expected an H100 80 GB (a3-highgpu-1g), nvidia-smi reports {mib} MiB')
 if platform == 'a100' and int(mib) < 80000:
   sys.exit(f'!! expected an A100 80 GB (a2-ultragpu-1g), nvidia-smi reports {mib} MiB')
 GPUEOF

@@ -5,7 +5,12 @@
 # called), sets up JAX for the platform, runs build_data, puts the weights in
 # place (cloud/vm_af3_weights.sh) and checks that JAX sees the right device.
 #
-#   PLATFORM=cpu|l4|a100|v5e|v6e WEIGHTS=random|gcs|none TARGETS=ID,ID [CCD_SHA256=...] bash cloud/vm_af3_setup.sh OUT
+#   PLATFORM=cpu|l4|a100|h100|v5e|v6e WEIGHTS=random|gcs|none TARGETS=ID,ID [CCD_SHA256=...] [STACK=...] bash cloud/vm_af3_setup.sh OUT
+#
+# STACK (follow-up 7, a plan's stack key; cloud/af3_run.sh): pkg==version pairs, comma-separated. On TPU its jax
+# and jaxlib replace 0.10.2 in the swap (its libtpu is LIBTPU_VERSION); on GPU they and the jax-cuda12 plugin and
+# pjrt are installed over AlphaFold3's pinned ones after uv sync, and each installed version must be the pinned one
+# (exit 5 otherwise). pip_freeze.txt and setup.json record them. Without STACK, nothing changes.
 #
 # CCD_SHA256 (featurise-only plans of follow-up 5): build_data reads ~/components.cif.zst, uploaded by
 # cloud/af3_run.sh, which must have that SHA-256 once decompressed (exit 3 otherwise), instead of the
@@ -65,11 +70,22 @@ uv sync --frozen --python 3.12
 # swap. Call the venv's executables directly.
 case "$PLATFORM" in
   v5e | v6e)
-    step "swap CUDA JAX for jax/jaxlib 0.10.2 with libtpu ${LIBTPU_VERSION:-0.0.43.2}"
-    PY="$PY" LIBTPU_VERSION="${LIBTPU_VERSION:-0.0.43.2}" bash "$ROOT/cloud/vm_tpu_stack.sh" ;;
-  l4 | a100)
-    step "NVIDIA driver (from the image); AlphaFold3's pinned CUDA JAX is kept"
-    nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader ;;
+    STACK_JAX=$(echo "${STACK:-}" | tr ',' '\n' | sed -n 's/^jax==//p')
+    step "swap CUDA JAX for jax/jaxlib ${STACK_JAX:-0.10.2} with libtpu ${LIBTPU_VERSION:-0.0.43.2}${STACK:+ (the alternative stack of the plan)}"
+    PY="$PY" LIBTPU_VERSION="${LIBTPU_VERSION:-0.0.43.2}" JAX_VERSION="${STACK_JAX:-0.10.2}" \
+      bash "$ROOT/cloud/vm_tpu_stack.sh" || exit $? ;;
+  l4 | a100 | h100)
+    step "NVIDIA driver (from the image); AlphaFold3's pinned CUDA JAX is kept${STACK:+, then the alternative stack of the plan}"
+    nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+    if [ -n "${STACK:-}" ]; then
+      echo "   installing $(echo "$STACK" | tr ',' ' ')"
+      uv pip install --python "$PY" $(echo "$STACK" | tr ',' ' ') || exit 5
+      for pv in $(echo "$STACK" | tr ',' ' '); do
+        GOT=$("$PY" -c "import importlib.metadata as m; print(m.version('${pv%%==*}'))" 2> /dev/null || echo none)
+        [ "$GOT" = "${pv#*==}" ] || { echo "!! stack check: ${pv%%==*} $GOT, expected ${pv#*==}" >&2; exit 5; }
+      done
+      echo "   GPU stack: $(echo "$STACK" | tr ',' ' ')"
+    fi ;;
   cpu)
     step "CPU: default install kept; cpu_xla runs with JAX_PLATFORMS=cpu" ;;
 esac

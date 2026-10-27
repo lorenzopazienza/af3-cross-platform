@@ -1,0 +1,24 @@
+# Follow-up 9 smoke test (label h100_smoke; an engineering check, never a finding):
+# 2PV7 (not a study target), its setup-check _data.json (inputs/official_data/smoke_manifest.csv, follow-up 6),
+# run end to end on h100 with the settings of H. Seed 1, r1; deadline 60 min.
+
+description: follow-up h100_smoke, 2PV7 on h100
+label: h100_smoke
+weights: gcs
+manifest: inputs/official_data/smoke_manifest.csv
+
+configs:
+  h100: h100_xla
+
+targets:
+  default: [2PV7]
+
+seeds: [1]
+fresh_reps: 1
+warm_rerun_seed: none
+num_recycles: default
+num_diffusion_samples: default
+run_timeout_min: 30
+
+deadline_min:
+  h100: 60

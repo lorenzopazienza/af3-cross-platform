@@ -1,7 +1,8 @@
 #!/bin/bash
 # Test double for cloud/vm_af3_setup.sh: real input check, TPU stack
 # (cloud/vm_tpu_stack.sh, with the fake uv), weights script and device check
-# (cloud/vm_device_check.sh); fake AlphaFold3 install.
+# (cloud/vm_device_check.sh); fake AlphaFold3 install. A plan's alternative
+# stack (STACK, follow-up 7) as cloud/vm_af3_setup.sh installs and checks it.
 set -euo pipefail
 OUT=$1; ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MANIFEST=inputs/manifest.csv
@@ -19,8 +20,19 @@ cp "$FAKE_KIT/vm/python" "$ROOT/third_party/alphafold3/.venv/bin/python"; chmod 
 case "$PLATFORM" in
   v5e | v6e)
     echo ">> setup: TPU stack (real cloud/vm_tpu_stack.sh, fake uv)"
+    STACK_JAX=$(echo "${STACK:-}" | tr ',' '\n' | sed -n 's/^jax==//p')
     PY="$ROOT/third_party/alphafold3/.venv/bin/python" LIBTPU_VERSION="${LIBTPU_VERSION:-0.0.43.2}" \
-      bash "$ROOT/cloud/vm_tpu_stack.sh" || exit $? ;;
+      JAX_VERSION="${STACK_JAX:-0.10.2}" bash "$ROOT/cloud/vm_tpu_stack.sh" || exit $? ;;
+  l4 | a100 | h100)
+    if [ -n "${STACK:-}" ]; then
+      PY="$ROOT/third_party/alphafold3/.venv/bin/python"
+      echo ">> setup: GPU stack of the plan: $(echo "$STACK" | tr ',' ' ')"
+      uv pip install --python "$PY" $(echo "$STACK" | tr ',' ' ') || exit 5
+      for pv in $(echo "$STACK" | tr ',' ' '); do
+        GOT=$("$PY" -c "import importlib.metadata as m; print(m.version('${pv%%==*}'))" 2> /dev/null || echo none)
+        [ "$GOT" = "${pv#*==}" ] || { echo "!! stack check: ${pv%%==*} $GOT, expected ${pv#*==}" >&2; exit 5; }
+      done
+    fi ;;
 esac
 if [ -n "${CCD_SHA256:-}" ]; then   # as cloud/vm_af3_setup.sh: the uploaded components.cif must be the plan's
   echo ">> setup: CCD from ~/components.cif.zst"
