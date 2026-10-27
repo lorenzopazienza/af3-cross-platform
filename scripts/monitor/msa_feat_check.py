@@ -9,8 +9,8 @@ arm and token bucket (make_msa_plans.featurisation_medians). For each session (a
 a follow-up 6 part) this prints, from its runs.jsonl records: the processes done against the part's planned count,
 the featurisation seconds observed against the allowance (factor x the main-study median, summed over the processes
 done), the observed factor (observed over the main-study medians), the processes above their own allowance, and the
-job time against the part's expected job time and deadline (parts.csv; launcher_events.txt when the job has
-finished). A part whose observed featurisation exceeds its allowance, or whose job ran longer than expected, gets a
+job time against the part's expected job time and deadline (parts.csv; the start from launcher_events.txt, the
+end from the VM's final_status.json, or launcher_events.txt without it). A part whose observed featurisation exceeds its allowance, or whose job ran longer than expected, gets a
 WARNING line. Nothing is changed: plans are regenerated only by hand, with a section 10 row. Exit 0 without
 warnings, 1 with any, 2 if a session is not a follow-up 6 part. Reads only local files.
 """
@@ -40,7 +40,16 @@ def job_minutes(session_dir):
     m = re.match(r'(\S+)\s+(\w+): (\w+)', line)
     if m:
       ev.setdefault(f'{m.group(2)}:{m.group(3)}', dt.datetime.strptime(m.group(1), '%Y-%m-%dT%H:%M:%SZ'))
-  if 'job:started' in ev and 'job:finished' in ev:
+  if 'job:started' not in ev:
+    return None
+  # The VM's own finish time (final_status.json, written by the job) when present: the launcher's 'job: finished'
+  # event is the time the laptop read it, later than the finish if the laptop was offline meanwhile.
+  fs = session_dir / 'final_status.json'
+  if fs.is_file():
+    fin = json.loads(fs.read_text()).get('finished_utc')
+    if fin:
+      return (dt.datetime.strptime(fin, '%Y-%m-%dT%H:%M:%SZ') - ev['job:started']).total_seconds() / 60
+  if 'job:finished' in ev:
     return (ev['job:finished'] - ev['job:started']).total_seconds() / 60
   return None
 

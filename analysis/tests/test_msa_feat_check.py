@@ -51,3 +51,11 @@ def test_the_plans_record_their_factor_and_a_foreign_session_is_refused(tmp_path
   assert fc.factor_of((REPO / 'harness' / 'plans' / 'msa' / 'msa_go_r1_01.yaml').read_text()) == 2.0
   with pytest.raises(SystemExit, match='not a session of a follow-up 6 part'):
     fc.check(session(tmp_path, [], name='20261030T000000Z_l4_main_g_01'), {'msa_go_r1_01': PART}, MEDIANS, {})
+
+
+def test_the_job_ends_at_the_vm_finish_not_when_an_offline_laptop_reads_it(tmp_path):
+  # The laptop was offline: the launcher read 'job: finished' 300 min after the start, the VM had finished at 200 min.
+  s = session(tmp_path, [('T1', 256, 12.0)], job_min=300)
+  s.joinpath('final_status.json').write_text(json.dumps({'exit_code': 0, 'finished_utc': '2026-10-30T03:20:00Z'}))
+  lines, warnings = fc.check(s, {'msa_go_r1_01': PART}, MEDIANS, {})
+  assert warnings == [] and 'job: 200 min, expected 229 min' in '\n'.join(lines)

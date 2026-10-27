@@ -30,11 +30,13 @@ est = sum(SMOKE.values()) if arm == 'smoke' else sum(float(p['expected_usd']) fo
 worst = None if arm == 'smoke' else sum(float(p['worst_usd']) for p in parts if p['arm'].lower() == arm)
 now = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
 spent, smoke_spent, n = 0.0, 0.0, 0
+seen = set()   # a session with a VM has the same launcher_events.txt in results/af3/ and results/af3/.launcher/: count it once
 for s in sorted(pathlib.Path('results/af3').glob('*_msa_*')) + sorted(pathlib.Path('results/af3/.launcher').glob('*_msa_*')):
   f = s / 'launcher_events.txt'
   m = re.match(r'\d{8}T\d{6}Z_(v5e|v6e|l4)_msa_', s.name)
-  if not m or not f.is_file():
+  if not m or not f.is_file() or s.name in seen:
     continue
+  seen.add(s.name)
   ev = {}
   for line in f.read_text().splitlines():
     mm = re.match(r'(\S+)\s+(\w+): (\w+)', line)
