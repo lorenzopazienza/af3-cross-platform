@@ -33,7 +33,8 @@
 # POLL_S (15); MAX_ATTEMPTS (1) launches per part, a further attempt only when the previous one created no
 # VM (no capacity in any zone), after RETRY_WAIT_S (600); ALLOW_RELAUNCH ("" or a space-separated list of
 # plan names) to launch a part again that has an earlier session; LAUNCHER (cloud/af3_run.sh);
-# ALLOW_OTHER_LAUNCHERS=1 to start while af3_run.sh processes this script did not start are running
+# ALLOW_OTHER_LAUNCHERS=1 to start while af3_run.sh processes this script did not start are running (found by the
+# name cloud/af3_run.sh in any checkout; the test kits run theirs as cloud/af3_run.testkit.sh, never seen here)
 # (they hold quota and VMs this script cannot count); YES=1 (no prompt; the launchers always get YES=1).
 #
 # One launcher per part: a part is skipped if a session of it already created a VM (results/af3/.launcher/
@@ -109,8 +110,15 @@ earlier_sessions() {
 }
 relaunch_allowed() { case " $ALLOW_RELAUNCH " in *" $1 "*) return 0 ;; esac; return 1; }
 
-# Other af3_run.sh processes (not started by this script) hold slots this script cannot count.
-OTHERS=$(pgrep -f "cloud/af3_run.sh" 2> /dev/null | tr '\n' ' ')
+# Other af3_run.sh processes (not started by this script) hold slots this script cannot count: any launcher of any
+# checkout, started with a relative or an absolute path, whose command line holds cloud/af3_run.sh as a whole path
+# component. The test kits (tests/cloud, tests/many) never run a process under that name: their scratch repository
+# holds the launcher only as cloud/af3_run.testkit.sh, and their fake environment sets AF3_TEST_LAUNCHER_NAME to it,
+# so a test can never block a real launch, and a wrapper under test scans for test launchers only.
+launcher_pattern() {   # LAUNCHER FILE NAME -> extended regular expression for pgrep -f
+  printf '(^|[ /])cloud/%s( |$)' "$(printf '%s' "$1" | sed 's/[.]/[.]/g')"
+}
+OTHERS=$(pgrep -f "$(launcher_pattern "${AF3_TEST_LAUNCHER_NAME:-af3_run.sh}")" 2> /dev/null | tr '\n' ' ')
 if [ -n "$OTHERS" ] && [ "${ALLOW_OTHER_LAUNCHERS:-0}" != "1" ]; then
   die "af3_run.sh is already running (PIDs $OTHERS). Wait for it, or set ALLOW_OTHER_LAUNCHERS=1 and lower MAX_<PLATFORM> to leave room for it."
 fi

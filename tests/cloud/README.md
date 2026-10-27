@@ -30,6 +30,14 @@ was deleted after about 3.5 minutes. So:
 
 After adding or editing a file in `bin/`, `chmod +x` it.
 
+A test must also never block a real launch. `cloud/af3_run_many.sh` refuses to start while another launcher
+runs, and finds them by the name `cloud/af3_run.sh` in a process's command line (any checkout, relative or absolute
+path). So the scratch repository holds the launcher only as `cloud/af3_run.testkit.sh` (`mkrepo.sh`), every test
+runs it under that name (`run.sh`, `ctrlc.py`, `resume.py`, `tests/many/e2e_launcher.sh`), and `fake_env` sets
+`AF3_TEST_LAUNCHER_NAME=af3_run.testkit.sh`, so a wrapper under test scans for test launchers and a real wrapper
+never sees one (on 2026-10-27 a test process named `cloud/af3_run.sh` made a real wrapper refuse to start).
+`tests/many` checks both sides.
+
 ## Files
 
 | File | Purpose |

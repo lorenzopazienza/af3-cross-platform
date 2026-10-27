@@ -47,7 +47,7 @@ def pre():
 
 
 # 1. Launch, and kill the launcher (SIGKILL: no trap runs) while the job runs.
-p = subprocess.Popen(['/bin/bash', 'cloud/af3_run.sh'], cwd=R, env=env, preexec_fn=pre,
+p = subprocess.Popen(['/bin/bash', 'cloud/af3_run.testkit.sh'], cwd=R, env=env, preexec_fn=pre,
                      stdout=open(f'{D}/out_launch', 'w'), stderr=subprocess.STDOUT)
 t0 = time.time()
 while time.time() - t0 < 120:
@@ -78,7 +78,7 @@ def resume(vm_name, out):
   e = dict(env, RESUME_VM=vm_name, SESSION=session, **extra)
   e.pop('PLATFORM')   # resume mode takes it from the session, not from the shell
   t = time.time()
-  rc = subprocess.run(['/bin/bash', 'cloud/af3_run.sh'], cwd=R, env=e, stdout=open(f'{D}/{out}', 'w'),
+  rc = subprocess.run(['/bin/bash', 'cloud/af3_run.testkit.sh'], cwd=R, env=e, stdout=open(f'{D}/{out}', 'w'),
                       stderr=subprocess.STDOUT).returncode
   return rc, int(time.time() - t)
 

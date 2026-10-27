@@ -98,13 +98,39 @@ for bad in "gpu harness/plans/t/t_l4_01.yaml" "l4 harness/plans/t/missing.yaml" 
 done
 fresh; many env "$WORK/parts_dup.txt" YES=1 AF2_COMMIT=x
 check "cloud/env.sh sourced: refused" '[ "$(rc env)" = 2 ] && grep -q "env.sh is sourced" "$S/out"'
-fresh; (bash -c 'sleep 15; :' cloud/af3_run.sh &) ; sleep 0.5   # '; :' keeps bash from exec'ing sleep, which would drop cloud/af3_run.sh from the command line
+# A stand-in for another running launcher. It carries the test kit's launcher name (cloud/af3_run.testkit.sh), never
+# cloud/af3_run.sh, so it cannot block a real wrapper started while the tests run; the wrapper under test scans for
+# it because fake_env sets AF3_TEST_LAUNCHER_NAME. '; :' keeps bash from exec'ing sleep, which would drop the name.
+fresh; (bash -c 'sleep 15; :' cloud/af3_run.testkit.sh &) ; sleep 0.5
 printf 'l4 harness/plans/t/t_l4_01.yaml\n' > "$WORK/parts_one.txt"
 S="$WORK/state_many_others"; rm -rf "$S"; mkdir -p "$S"
 (cd "$R" && fake_env "$S" PARTS="$WORK/parts_one.txt" YES=1 LAUNCHER="$MANY/stub_launcher.sh" STUB_EVENTS="$S/events" \
   /bin/bash cloud/af3_run_many.sh > "$S/out" 2>&1); echo $? > "$S/rc"; touch "$S/events"
 check "another af3_run.sh running: refused without ALLOW_OTHER_LAUNCHERS=1" '[ "$(rc others)" = 2 ] && grep -q "already running" "$S/out"'
+# The same stand-in seen by a wrapper run as a real one (AF3_TEST_LAUNCHER_NAME unset): not counted, so the prompt is
+# reached (answered no: nothing launched). A test process never blocks a real launch.
+S="$WORK/state_many_real_scan"; rm -rf "$S"; mkdir -p "$S"
+(cd "$R" && echo n | fake_env "$S" PARTS="$WORK/parts_one.txt" LAUNCHER="$MANY/stub_launcher.sh" STUB_EVENTS="$S/events" \
+  env -u AF3_TEST_LAUNCHER_NAME -u YES /bin/bash cloud/af3_run_many.sh > "$S/out" 2>&1); echo $? > "$S/rc"; touch "$S/events"
+check "a test launcher running: a real wrapper does not count it" \
+  '[ "$(rc real_scan)" = 2 ] && grep -q "Not started" "$S/out" && ! grep -q "already running" "$S/out"'
 pkill -f "sleep 15" 2> /dev/null
+# The real wrapper's pattern (launcher_pattern of cloud/af3_run_many.sh, checked as strings: no test ever starts a
+# process named cloud/af3_run.sh): any checkout, relative or absolute path; never the test kit's name or a longer one.
+eval "$(sed -n '/^launcher_pattern() {/,/^}/p' "$REPO/cloud/af3_run_many.sh")"
+PAT=$(launcher_pattern af3_run.sh)
+hit=0 miss=0
+for c in "bash cloud/af3_run.sh" "/bin/bash /Users/x/Desktop/alphafold-on-tpu/cloud/af3_run.sh" \
+         "/bin/bash /Users/x/Desktop/af3-fu7-10/cloud/af3_run.sh" "bash -c sleep 15; : cloud/af3_run.sh"; do
+  echo "$c" | grep -Eq "$PAT" && hit=$((hit + 1))
+done
+for c in "bash cloud/af3_run.testkit.sh" "bash cloud/af3_run_many.sh" "bash cloud/af3_run.shx" "bash cloud/af3_runXsh" \
+         "bash xcloud/af3_run.sh"; do
+  echo "$c" | grep -Eq "$PAT" && miss=$((miss + 1))
+done
+check "real wrapper pattern: matches the launcher of any checkout (4/4), no test or other name (0/5)" '[ "$hit" = 4 ] && [ "$miss" = 0 ]'
+check "scratch repository: no cloud/af3_run.sh, only cloud/af3_run.testkit.sh" \
+  '[ ! -e "$R/cloud/af3_run.sh" ] && [ -f "$R/cloud/af3_run.testkit.sh" ]'
 
 fresh; many prompt_no "$WORK/parts_one.txt" < /dev/null
 check "prompt answered no: nothing launched" '[ "$(rc prompt_no)" = 2 ] && [ "$(starts prompt_no)" = 0 ] && grep -q "Not started" "$S/out"'

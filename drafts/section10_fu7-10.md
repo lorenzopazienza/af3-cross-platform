@@ -30,26 +30,32 @@ this order):
 
 | step | provisioning | expected USD | balance before | balance after | rule |
 |---|---|---|---|---|---|
-| sw_smoke | v6e on demand, L4 Spot | 1.08 | 172.65 | 171.57 | GO (outside the caps) |
-| V5x (seeds) | Spot | 18.81 | 171.57 | 152.76 | GO |
-| Gx (seeds) | Spot | 43.36 | 152.76 | 109.40 | GO (seeds 62.17 of 75) |
-| V6s (sw) | on demand | 29.36 | 109.40 | 80.04 | GO |
-| Gs (sw) | Spot | 14.42 | 80.04 | 65.62 | GO (sw 43.78 of 55) |
-| h100_smoke | Spot | 2.77 | 65.62 | | not run: the check for H fails (65.62 - 58.69 = 6.93 < 25) |
+| eigen_check (v5e, v6e) | on demand, as the follow-up 6 smoke tests | 1.37 | 172.65 | 171.28 | engineering check, outside the caps |
+| sw_smoke | v6e on demand, L4 Spot | 1.08 | 171.28 | 170.20 | GO (outside the caps) |
+| V5x (seeds) | Spot | 18.81 | 170.20 | 151.39 | GO |
+| Gx (seeds) | Spot | 43.36 | 151.39 | 108.03 | GO (seeds 62.17 of 75) |
+| V6s (sw) | on demand | 29.36 | 108.03 | 78.67 | GO |
+| Gs (sw) | Spot | 14.42 | 78.67 | 64.25 | GO (sw 43.78 of 55) |
+| h100_smoke | Spot | 2.77 | 64.25 | | not run: the check for H fails (64.25 - 58.69 = 5.56 < 25) |
 | H (h100) | Spot | 58.69 | | | NO GO on this credit |
 | H r2 (h100) | Spot | 11.51 | | | after H, same condition |
 
 h100_smoke runs only if the check for H would pass (balance at least 83.69 USD); H then needs at least 83.69 USD at
 its own launch, after the smoke test (so at least 86.46 USD before h100_smoke), and H r2 at least 36.51 USD after H;
 with the new credit all three pass. If V5x, Gx and V6s ran to their worst case (26.45, 62.58, 41.09), the balance
-before Gs would be 41.45 USD and Gs (14.42) would still pass, by 2.03 USD; the check decides at each launch.
+before Gs would be 40.08 USD and Gs (14.42) would still pass, by 0.66 USD; the check decides at each launch.
+eigen_check: the follow-up 6 smoke plans of v5e and v6e with the Eigen archive, one process of 2PV7 each, VM hours
+0.33 (v5e) and 0.29 (v6e) as estimated for the follow-up 6 smoke tests (`scripts/monitor/credit_check.sh`), at the
+on-demand prices 1.56 and 2.97 USD/h: 0.51 + 0.86 = 1.37 USD. It runs first: no follow-up 7 to 9 run starts until both
+platforms PASS (`scripts/monitor/eigen_check.sh`).
 
 Calendar (one launch host, one arm at a time; wall clock from the plans, expected and worst; `MAX_V5E=5`, Spot v5e
 quota 1,536 chips per zone; v6e one VM at a time, the wrapper default):
 
 | day (2026) | step | wall clock |
 |---|---|---|
-| 10-30 | merge, parts files, sw_smoke (v6e, L4) | about 1 h |
+| 10-30 | merge, parts files, Eigen archive uploaded, eigen_check (v5e, v6e; both must PASS) | about 1 h |
+| 10-30 | sw_smoke (v6e, L4) | about 1 h |
 | 10-31 | V5x | 8.0 h (worst 10.2) |
 | 11-01 | Gx (8 L4 at a time; Spot L4 quota 16 per region, all GPUs 8) | 11.3 h (worst 14.8) |
 | 11-02 | V6s (on demand) | 9.9 h (worst 12.8) |
