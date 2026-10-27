@@ -6,6 +6,7 @@ description: follow-up h100_smoke, 2PV7 on h100
 label: h100_smoke
 weights: gcs
 manifest: inputs/official_data/smoke_manifest.csv
+eigen_source: archive
 
 configs:
   h100: h100_xla

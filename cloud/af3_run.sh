@@ -60,6 +60,11 @@
 # is the LIBTPU_VERSION. A STACK in this shell, or a plan with both stack and a
 # libtpu list, is refused; without the key nothing changes.
 #
+# Eigen from our bucket (follow-ups 7 to 9, plan key eigen_source: archive, harness/run_plan.py): the VM
+# takes the Eigen source of libcifpp's build from the pinned archive (cloud/eigen_pin.sh, cloud/vm_eigen_source.sh)
+# instead of cloning gitlab.com (EIGEN_SOURCE=archive on the VM, recorded in the launch record). An EIGEN_SOURCE in
+# this shell is refused; without the key nothing changes.
+#
 # Plan dates (follow-up 6 stop rules, plan keys launch_by and finish_by): both are
 # printed; a new launch after launch_by (UTC date) is refused before anything is
 # created; a part not finished by finish_by is reported as incomplete.
@@ -191,6 +196,7 @@ if [ -n "${RESUME_VM:-}" ]; then
 fi
 : "${PLATFORM:?set PLATFORM to cpu, l4, a100, h100, v5e or v6e}"
 [ -z "${STACK:-}" ] || die "STACK is set in this shell; an alternative stack comes only from a plan's stack key."
+[ -z "${EIGEN_SOURCE:-}" ] || die "EIGEN_SOURCE is set in this shell; the Eigen archive comes only from a plan's eigen_source key."
 command -v gcloud > /dev/null || die "gcloud not found."
 command -v python3 > /dev/null || die "python3 not found."
 
@@ -393,6 +399,7 @@ COMPARE_REF=$(jget "['compare_reference']")
 STACK_SPEC=$(jget ".get('stack') or {}" | python3 -c "import ast,sys; d=ast.literal_eval(sys.stdin.read()); print(','.join(k + '==' + v for k, v in d.items()))")
 STACK_LIBTPU=$(echo "$STACK_SPEC" | tr ',' '\n' | sed -n 's/^libtpu==//p')
 STACK_JAX=$(echo "$STACK_SPEC" | tr ',' '\n' | sed -n 's/^jax==//p')
+EIGEN_SOURCE=$(jget ".get('eigen_source') or ''")   # plan key eigen_source (cloud/vm_eigen_source.sh); empty: unchanged
 [ -z "$STACK_SPEC" ] || [ -z "$PLAN_LIBTPU" ] || die "The plan has both a stack and a libtpu list; a stack plan pins its own libtpu."
 case "$PLATFORM" in
   v5e | v6e)
@@ -552,6 +559,9 @@ case "$WEIGHTS" in
 esac
 [ -z "$PLAN_CCD" ] || echo "   CCD: components.cif $(echo "$PLAN_CCD" | cut -c1-12)... from CCD_FILE, uploaded and given to build_data"
 [ -z "$STACK_SPEC" ] || [ -n "$LIBTPU_VERSION" ] || echo "   GPU stack: the plan's alternative stack, $(echo "$STACK_SPEC" | tr ',' ' ')"
+if [ "$EIGEN_SOURCE" = "archive" ]; then
+  ( source cloud/eigen_pin.sh; echo "   Eigen (libcifpp build): the plan's archive $EIGEN_ARCHIVE_URI, sha256 $(echo "$EIGEN_ARCHIVE_SHA256" | cut -c1-12)..., commit $(echo "$EIGEN_COMMIT" | cut -c1-12) (tag $EIGEN_TAG), not gitlab.com" )
+fi
 [ -z "$PLAN_LAUNCH_BY$PLAN_FINISH_BY" ] || echo "   dates: launch by ${PLAN_LAUNCH_BY:-any date}; a part not finished by ${PLAN_FINISH_BY:-any date} is reported as incomplete"
 if [ -n "$LIBTPU_VERSION" ]; then
   STACK_NOTE=""
@@ -796,6 +806,7 @@ record PROVISIONING "$PROVISIONING"; record WEIGHTS "$WEIGHTS"; record RESULTS_G
 record FETCH "$FETCH"; record LIBTPU_VERSION "$LIBTPU_VERSION"; record DEADLINE_MIN "$DETACHED_DEADLINE_MIN"
 record MAX_RUN_DURATION "$MAX_RUN_DURATION"; record COMMIT "$BENCH_COMMIT"; record DIRTY_FILES "$BENCH_DIRTY"
 [ -z "$STACK_SPEC" ] || record STACK "$STACK_SPEC"
+[ -z "$EIGEN_SOURCE" ] || record EIGEN_SOURCE "$EIGEN_SOURCE"
 record LAUNCHED_UTC "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 detached_event "launch: session $SESSION, VM $VM_NAME ($MACHINE_TYPE, $PROVISIONING), plan $PLAN, commit $BENCH_COMMIT, $BENCH_DIRTY uncommitted file(s) under af3_tpu harness targets inputs cloud"
 
@@ -872,6 +883,8 @@ vm_wait_ssh || exit 1
 echo ">> Uploading the plan's files (commit $BENCH_COMMIT)"
 TGZ=$(mktemp -t af3-run.XXXXXX)
 FILES="af3_tpu harness targets inputs/manifest.csv cloud/vm_af3_setup.sh cloud/vm_af3_weights.sh cloud/vm_device_check.sh cloud/vm_tpu_stack.sh cloud/vm_af3_job.sh cloud/vm_job_finish.sh"
+# The Eigen archive step (plan key eigen_source) needs its script and pin; without the key the upload is unchanged.
+[ "$EIGEN_SOURCE" != "archive" ] || FILES="$FILES cloud/vm_eigen_source.sh cloud/eigen_pin.sh"
 [ "$MANIFEST" = "inputs/manifest.csv" ] || FILES="$FILES $MANIFEST"
 FILES="$FILES $INPUT_FILES"
 # Provenance: the git blob hash of every uploaded file (comparable with
@@ -905,7 +918,7 @@ DETACHED_SCRIPT=cloud/vm_af3_job.sh
 DETACHED_LOG=job.log
 STARTED=1
 detached_start "$OUT_REL" \
-  "PLATFORM=$PLATFORM PLAN=$PLAN WEIGHTS=$WEIGHTS TARGETS=$TARGETS SESSION=$SESSION RESULTS_URI=$RESULTS_SESSION_URI LIBTPU_VERSION=$LIBTPU_VERSION${PLAN_CCD:+ CCD_SHA256=$PLAN_CCD}${STACK_SPEC:+ STACK=$STACK_SPEC}" \
+  "PLATFORM=$PLATFORM PLAN=$PLAN WEIGHTS=$WEIGHTS TARGETS=$TARGETS SESSION=$SESSION RESULTS_URI=$RESULTS_SESSION_URI LIBTPU_VERSION=$LIBTPU_VERSION${PLAN_CCD:+ CCD_SHA256=$PLAN_CCD}${STACK_SPEC:+ STACK=$STACK_SPEC}${EIGEN_SOURCE:+ EIGEN_SOURCE=$EIGEN_SOURCE}" \
   || die "Could not start the job on the VM."
 record STARTED_UTC "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 detached_event "job: started on the VM"

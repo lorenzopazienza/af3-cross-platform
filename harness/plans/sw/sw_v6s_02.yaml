@@ -7,6 +7,7 @@ label: sw
 weights: gcs
 launch_by: 2026-11-11
 finish_by: 2026-11-12
+eigen_source: archive
 stack:
   v6e:
     jax: 0.10.1

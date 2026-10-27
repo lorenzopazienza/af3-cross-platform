@@ -7,6 +7,7 @@ label: seeds
 weights: gcs
 launch_by: 2026-11-11
 finish_by: 2026-11-12
+eigen_source: archive
 seeds_beyond_input: true
 
 configs:

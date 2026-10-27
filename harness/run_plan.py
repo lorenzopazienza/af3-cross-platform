@@ -66,6 +66,9 @@ save_embeddings (optional, true or false, default false): every harness run pass
 --save_embeddings (harness/run_af3.py), so AlphaFold3 writes its final trunk
 embeddings; recorded in session.json. Without the key nothing changes.
 
+eigen_source (optional, git or archive, default git; follow-ups 7 to 9): archive makes the VM build AlphaFold3
+with the Eigen source of the pinned archive in our bucket instead of cloning it from gitlab.com (cloud/eigen_pin.sh,
+cloud/vm_eigen_source.sh; the same commit, so the same files); cloud/af3_run.sh passes it to the VM as EIGEN_SOURCE.
 seeds_beyond_input (optional, true or false, default false; follow-up 8, label seeds): every harness run passes
 --seeds_beyond_input (harness/run_af3.py), so the plan may run seeds the frozen inputs do not list (seeds 6 to 20).
 
@@ -242,6 +245,11 @@ def expand(plan_path, platform, manifest_path):
     raise SystemExit(f'plan: seeds_beyond_input must be true or false, not {beyond!r}')
   if beyond == 'true':
     extra['seeds_beyond_input'] = True
+  eigen = str(per_platform(plan.get('eigen_source', 'git'), platform)).lower()
+  if eigen not in ('git', 'archive'):
+    raise SystemExit(f'plan: eigen_source must be git or archive, not {eigen!r}')
+  if eigen == 'archive':
+    extra['eigen_source'] = 'archive'
   stack = per_platform(plan['stack'], platform) if 'stack' in plan else None
   if stack is not None:
     extra['stack'] = check_stack(stack, platform)

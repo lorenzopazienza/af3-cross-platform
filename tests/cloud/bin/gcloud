@@ -83,8 +83,11 @@ if [ "$1 $2" = "storage cp" ] && [ "${last#gs://}" != "$last" ]; then   # upload
   echo "   fake storage cp -> $last" >> "$FAKE_LOG"
   exit 0
 fi
-if [ "$1 $2" = "storage cp" ]; then          # on the VM: weights from the bucket
+if [ "$1 $2" = "storage cp" ]; then          # on the VM: weights from the bucket (random bytes), or a file of FAKE_DEPS_DIR
   echo "Copying $3 to file://$4" >&2
+  if [ -n "${FAKE_DEPS_DIR:-}" ] && [ -f "$FAKE_DEPS_DIR/$(basename "$3")" ]; then   # the Eigen archive (suite 12)
+    cp "$FAKE_DEPS_DIR/$(basename "$3")" "$4/"; exit 0
+  fi
   head -c 4096 /dev/urandom > "$4/$(basename "$3")"
   exit 0
 fi

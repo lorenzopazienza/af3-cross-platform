@@ -6,6 +6,7 @@ description: follow-up sw_smoke, 2PV7 on l4
 label: sw_smoke
 weights: gcs
 manifest: inputs/official_data/smoke_manifest.csv
+eigen_source: archive
 stack:
   l4:
     jax: 0.10.1

@@ -5,7 +5,14 @@
 # called), sets up JAX for the platform, runs build_data, puts the weights in
 # place (cloud/vm_af3_weights.sh) and checks that JAX sees the right device.
 #
-#   PLATFORM=cpu|l4|a100|h100|v5e|v6e WEIGHTS=random|gcs|none TARGETS=ID,ID [CCD_SHA256=...] [STACK=...] bash cloud/vm_af3_setup.sh OUT
+#   PLATFORM=cpu|l4|a100|h100|v5e|v6e WEIGHTS=random|gcs|none TARGETS=ID,ID [CCD_SHA256=...] [STACK=...] [EIGEN_SOURCE=archive] bash cloud/vm_af3_setup.sh OUT
+#
+# EIGEN_SOURCE=archive (follow-ups 7 to 9, plan key eigen_source; cloud/af3_run.sh): the Eigen source that libcifpp's
+# FetchContent (my-eigen3) would clone from gitlab.com comes instead from our bucket, as the archive of the same
+# commit (cloud/eigen_pin.sh, cloud/vm_eigen_source.sh: SHA-256 and commit checked, exit 3 otherwise), passed to
+# the build as CMAKE_ARGS=-DFETCHCONTENT_SOURCE_DIR_MY-EIGEN3=<folder> (scikit-build-core forwards CMAKE_ARGS); during
+# uv sync any git URL on gitlab.com is rewritten to an invalid host, so a clone cannot happen silently. OUT/eigen.json
+# records it. Without EIGEN_SOURCE, nothing changes.
 #
 # STACK (follow-up 7, a plan's stack key; cloud/af3_run.sh): pkg==version pairs, comma-separated. On TPU its jax
 # and jaxlib replace 0.10.2 in the swap (its libtpu is LIBTPU_VERSION); on GPU they and the jax-cuda12 plugin and
@@ -62,9 +69,25 @@ step "AlphaFold3 $AF3_TAG ($AF3_COMMIT) with af3_tpu.patch"
 git -C "$AF3" -c advice.detachedHead=false checkout -q "$AF3_COMMIT"
 bash "$ROOT/af3_tpu/apply.sh" "$AF3"
 
+case "${EIGEN_SOURCE:-}" in
+  "") ;;
+  archive)
+    step "Eigen for libcifpp: the pinned archive from our bucket, not a clone from gitlab.com"
+    EIGEN_DIR=$(bash "$ROOT/cloud/vm_eigen_source.sh" "$OUT") || exit 3
+    export CMAKE_ARGS="${CMAKE_ARGS:+$CMAKE_ARGS }-DFETCHCONTENT_SOURCE_DIR_MY-EIGEN3=$EIGEN_DIR"
+    echo "   CMAKE_ARGS=$CMAKE_ARGS" ;;
+  *) echo "!! EIGEN_SOURCE must be archive or unset, not $EIGEN_SOURCE"; exit 3 ;;
+esac
+
 step "install from uv.lock (uv sync --frozen, as in docker/Dockerfile)"
 cd "$AF3"
-uv sync --frozen --python 3.12
+if [ "${EIGEN_SOURCE:-}" = "archive" ]; then
+  # Only for the build: a git URL on gitlab.com becomes an invalid host, so a clone of Eigen fails instead of happening.
+  GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=url.https://gitlab.invalid/.insteadOf GIT_CONFIG_VALUE_0=https://gitlab.com/ \
+    uv sync --frozen --python 3.12
+else
+  uv sync --frozen --python 3.12
+fi
 
 # From here on, never `uv run`: it re-syncs to uv.lock and would undo the TPU
 # swap. Call the venv's executables directly.

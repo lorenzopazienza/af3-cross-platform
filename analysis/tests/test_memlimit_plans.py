@@ -42,7 +42,7 @@ def test_plans_are_what_the_generator_writes():
   assert {p.name: p.read_text() for p in (PLANS / 'memlimit').glob('memlimit_*.yaml')} == before
 
 
-@pytest.mark.parametrize('plan', sorted(p for p in PLANS.rglob('*.yaml') if not {'memlimit', 'embed', 'ppi', 'feat', 'msa', 'msa_smoke', 'sw_smoke', 'h100_smoke'} & set(p.parts)))
+@pytest.mark.parametrize('plan', sorted(p for p in PLANS.rglob('*.yaml') if not {'memlimit', 'embed', 'ppi', 'feat', 'msa', 'msa_smoke', 'sw_smoke', 'h100_smoke', 'eigen_check'} & set(p.parts)))
 def test_other_plans_get_no_new_keys(plan):
   for platform in run_plan.PLATFORMS:
     try:

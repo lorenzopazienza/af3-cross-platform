@@ -1,6 +1,7 @@
 #!/bin/bash
 # Test double for cloud/vm_af3_setup.sh: real input check, TPU stack
-# (cloud/vm_tpu_stack.sh, with the fake uv), weights script and device check
+# (cloud/vm_tpu_stack.sh, with the fake uv), the Eigen archive (real cloud/vm_eigen_source.sh, with the fake
+# gcloud serving FAKE_DEPS_DIR; CMAKE_ARGS written to OUT/fake_cmake_args.txt), weights script and device check
 # (cloud/vm_device_check.sh); fake AlphaFold3 install. A plan's alternative
 # stack (STACK, follow-up 7) as cloud/vm_af3_setup.sh installs and checks it.
 set -euo pipefail
@@ -12,6 +13,15 @@ if [ -n "${PLAN:-}" ]; then
 fi
 echo ">> setup: inputs against $MANIFEST"
 python3 "$ROOT/harness/verify_inputs.py" --targets "$TARGETS" --manifest "$MANIFEST" || exit 3
+case "${EIGEN_SOURCE:-}" in   # as cloud/vm_af3_setup.sh
+  "") ;;
+  archive)
+    echo ">> setup: Eigen from the archive (real cloud/vm_eigen_source.sh)"
+    EIGEN_DIR=$(bash "$ROOT/cloud/vm_eigen_source.sh" "$OUT") || exit 3
+    export CMAKE_ARGS="${CMAKE_ARGS:+$CMAKE_ARGS }-DFETCHCONTENT_SOURCE_DIR_MY-EIGEN3=$EIGEN_DIR"
+    echo "$CMAKE_ARGS" > "$OUT/fake_cmake_args.txt" ;;
+  *) echo "!! EIGEN_SOURCE must be archive or unset"; exit 3 ;;
+esac
 echo ">> setup: fake install of AlphaFold3 (test double)"
 sleep "${FAKE_SETUP_S:-0.5}"
 mkdir -p "$ROOT/third_party/alphafold3/.venv/bin"
