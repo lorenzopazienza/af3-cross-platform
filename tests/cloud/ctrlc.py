@@ -37,7 +37,7 @@ def pre():
   os.setpgrp(); signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 
-p = subprocess.Popen(['/bin/bash', 'cloud/af3_run.sh'], cwd=f'{WORK}/repo', env=env, preexec_fn=pre,
+p = subprocess.Popen(['/bin/bash', 'cloud/af3_run.testkit.sh'], cwd=f'{WORK}/repo', env=env, preexec_fn=pre,
                      stdout=open(f'{D}/out', 'w'), stderr=subprocess.STDOUT)
 t0 = time.time()
 while time.time() - t0 < 120:

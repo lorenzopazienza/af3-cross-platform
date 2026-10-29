@@ -108,6 +108,18 @@ a100_xla:
     XLA_PYTHON_CLIENT_PREALLOCATE: true
     XLA_CLIENT_MEM_FRACTION: 0.95
 
+# Follow-up 9 (label h100): the H100 80 GB with the settings of a100_xla (A), only the chip changes; AlphaFold3's
+# docs/performance.md names the H100 80 GB with the A100 80 GB as tested, with the same three settings.
+h100_xla:
+  description: NVIDIA H100 80 GB (compute capability 9.0), XLA attention (H arm)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+
 a100_xla_highest:
   description: NVIDIA A100 80 GB, XLA attention, float32 matmuls at highest precision (Ah arm)
   jax_backend: gpu

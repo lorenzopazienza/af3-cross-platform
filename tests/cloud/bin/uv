@@ -1,7 +1,8 @@
 #!/bin/bash
 # Fake uv: pip install / uninstall / freeze. Records, per venv (the --python
 # interpreter's venv folder), the libtpu and jaxlib versions it installs in
-# fake_libtpu / fake_jaxlib, which vm/python and vm/run_alphafold.py read.
+# fake_libtpu / fake_jaxlib, which vm/python and vm/run_alphafold.py read, and
+# jax and the jax-cuda12 plugin and pjrt in fake_pkg_<name> (follow-up 7 stacks).
 #   FAKE_UV_FAIL=TEXT        an install whose arguments contain TEXT fails
 #   FAKE_LIBTPU_WRONG=VER    a libtpu install puts VER instead of the requested one
 echo "uv $*" >> "${FAKE_LOG:-/dev/null}"
@@ -19,6 +20,7 @@ case "$1 $2" in
         libtpu==*) v=${a#libtpu==}; [ -z "${FAKE_LIBTPU_WRONG:-}" ] || v=$FAKE_LIBTPU_WRONG
                    [ -z "$venv" ] || echo "$v" > "$venv/fake_libtpu" ;;
         jaxlib==*) [ -z "$venv" ] || echo "${a#jaxlib==}" > "$venv/fake_jaxlib" ;;
+        jax==* | jax-cuda12-plugin==* | jax-cuda12-pjrt==*) [ -z "$venv" ] || echo "${a#*==}" > "$venv/fake_pkg_${a%%==*}" ;;
         'jax[tpu]=='*) v=${a#'jax[tpu]=='}
                    if [ -n "$venv" ]; then
                      echo "$v" > "$venv/fake_jaxlib"

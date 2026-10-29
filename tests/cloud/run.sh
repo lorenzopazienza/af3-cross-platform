@@ -4,14 +4,15 @@
 # The launcher runs from the scratch repository $WORK/repo (built by
 # mkrepo.sh) with FAKE_SCENARIO=SCENARIO and the given variables; its output
 # and the fake VM's home are in $WORK/state_NAME/. VAR=value pairs may include
-#   SCRIPT=cloud/v5e_bisect.sh  run the bisection launcher (default cloud/af3_run.sh)
+#   SCRIPT=cloud/v5e_bisect.sh  run the bisection launcher (default cloud/af3_run.testkit.sh, the
+#                               scratch repository's name for cloud/af3_run.sh; mkrepo.sh)
 #   ANSWER=n                    answer the Proceed prompt instead of YES=1
 # Prints a summary: exit code, VM created/deleted/left, zones tried,
 # JAX_PLATFORMS values seen on the fake VM, what was fetched.
 . "$(dirname "$0")/common.sh"
 NAME=$1 SC=$2; shift 2
 D=$WORK/state_$NAME; rm -rf "$D"; mkdir -p "$D/home"
-SCRIPT=cloud/af3_run.sh ANSWER=""
+SCRIPT=cloud/af3_run.testkit.sh ANSWER=""
 for kv in "$@"; do
   case "$kv" in SCRIPT=*) SCRIPT=${kv#SCRIPT=} ;; ANSWER=*) ANSWER=${kv#ANSWER=} ;; esac
 done

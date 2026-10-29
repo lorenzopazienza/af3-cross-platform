@@ -1,8 +1,10 @@
 #!/bin/bash
 # Fake nvidia-smi: what the real one printed on the L4 VM (2026-10-09); with FAKE_PLATFORM=a100, an A100 80 GB
-# as on a2-ultragpu-1g (81920 MiB; the name as NVIDIA's driver reports the SXM4 80 GB card).
+# as on a2-ultragpu-1g (81920 MiB; the name as NVIDIA's driver reports the SXM4 80 GB card); with FAKE_PLATFORM=h100, an
+# H100 80 GB as on a3-highgpu-1g (81559 MiB, the HBM3 card's reported total).
 [ "${FAKE_NO_GPU:-0}" = "1" ] && { echo "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver." ; exit 9; }
-if [ "${FAKE_PLATFORM:-}" = "a100" ]; then NAME="NVIDIA A100-SXM4-${FAKE_A100_GB:-80}GB" MIB=$(( ${FAKE_A100_GB:-80} * 1024 )); else NAME="NVIDIA L4" MIB=23034; fi
+if [ "${FAKE_PLATFORM:-}" = "a100" ]; then NAME="NVIDIA A100-SXM4-${FAKE_A100_GB:-80}GB" MIB=$(( ${FAKE_A100_GB:-80} * 1024 ))
+elif [ "${FAKE_PLATFORM:-}" = "h100" ]; then NAME="NVIDIA H100 80GB HBM3" MIB=81559; else NAME="NVIDIA L4" MIB=23034; fi
 case "$*" in
   *--query-gpu*) echo "$NAME, 580.178.04, $MIB MiB" ;;
   *) echo "| NVIDIA-SMI 580.178.04   Driver Version: 580.178.04   CUDA Version: 13.0 |"

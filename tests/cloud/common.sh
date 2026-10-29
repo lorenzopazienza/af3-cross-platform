@@ -7,6 +7,10 @@
 #          folder per scenario, the reference structures. Outside the
 #          repository: $CLOUD_TEST_WORK, default ${TMPDIR:-/tmp}/af3-cloud-tests
 #
+# Launcher name: the scratch repository holds the launcher as cloud/af3_run.testkit.sh (mkrepo.sh), and fake_env
+# sets AF3_TEST_LAUNCHER_NAME to it, so no test process ever carries the name cloud/af3_run.sh that a real
+# cloud/af3_run_many.sh scans for (a running test cannot block a real launch).
+#
 # Safety: the tests must never reach the real gcloud. cloud_test_guard stops
 # unless every fake in bin/ is executable and `gcloud` on the test PATH is the
 # fake, and fake_env (used for every launcher run) also points gcloud at an
@@ -39,7 +43,7 @@ fake_env() {
   env $FAKE_UNSET CLOUDSDK_CONFIG="$d/cloudsdk" CLOUDSDK_CORE_PROJECT=fake-project-no-access \
     PATH="$KIT/bin:$PATH" FAKE_LOG="$d/log" FAKE_DIR="$d" FAKE_HOME="$d/home" FAKE_KIT="$KIT" \
     FAKE_REAL_PY="$REPO/third_party/alphafold3/.venv/bin/python" DETACHED_POLL_S=1 VM_POLL_S=0 \
-    VM_OP_WAIT_S=5 VM_CLEAR_SLEEP_S=0 AF3_TPU_LOG_DIR="$d/libtpu_logs" "$@"
+    VM_OP_WAIT_S=5 VM_CLEAR_SLEEP_S=0 AF3_TPU_LOG_DIR="$d/libtpu_logs" AF3_TEST_LAUNCHER_NAME=af3_run.testkit.sh "$@"
 }
 
 # Variables a test run must not inherit from the caller's shell.

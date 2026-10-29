@@ -21,7 +21,7 @@
 set -euo pipefail
 : "${PY:?python of the AlphaFold3 venv}"
 LIBTPU_VERSION="${LIBTPU_VERSION:-0.0.43.2}"
-JAX_VERSION=0.10.2
+JAX_VERSION="${JAX_VERSION:-0.10.2}"   # follow-up 7: an alternative stack's jax/jaxlib (cloud/vm_af3_setup.sh STACK)
 LIBTPU_LINKS=https://storage.googleapis.com/jax-releases/libtpu_releases.html
 echo "$LIBTPU_VERSION" | grep -Eq '^[0-9]+(\.[0-9]+)+$' \
   || { echo "!! LIBTPU_VERSION must be a version like 0.0.43.2, not '$LIBTPU_VERSION'" >&2; exit 5; }

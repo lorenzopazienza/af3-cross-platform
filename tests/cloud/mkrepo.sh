@@ -20,5 +20,8 @@ if [ -d "$REF" ]; then
     cp "$d"/*_model.cif "$d"/*confidences.json "$WORK/ref/7U3J/$(basename "$d")/"
   done
 fi
+# The launcher exists here only under a name no real wrapper scans for (cloud/af3_run_many.sh, launcher_pattern):
+# a test process can never look like a real launch, and a test that ran cloud/af3_run.sh would fail at once.
+mv "$R/cloud/af3_run.sh" "$R/cloud/af3_run.testkit.sh"
 cd "$R" && git init -q && git add -A && git -c user.name=test -c user.email=test@invalid commit -qm test
 echo ">> scratch repository: $R$([ -d "$WORK/ref" ] && echo "; v6e reference structures: $WORK/ref/7U3J")"

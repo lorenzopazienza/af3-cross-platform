@@ -30,6 +30,14 @@ was deleted after about 3.5 minutes. So:
 
 After adding or editing a file in `bin/`, `chmod +x` it.
 
+A test must also never block a real launch. `cloud/af3_run_many.sh` refuses to start while another launcher
+runs, and finds them by the name `cloud/af3_run.sh` in a process's command line (any checkout, relative or absolute
+path). So the scratch repository holds the launcher only as `cloud/af3_run.testkit.sh` (`mkrepo.sh`), every test
+runs it under that name (`run.sh`, `ctrlc.py`, `resume.py`, `tests/many/e2e_launcher.sh`), and `fake_env` sets
+`AF3_TEST_LAUNCHER_NAME=af3_run.testkit.sh`, so a wrapper under test scans for test launchers and a real wrapper
+never sees one (on 2026-10-27 a test process named `cloud/af3_run.sh` made a real wrapper refuse to start).
+`tests/many` checks both sides.
+
 ## Files
 
 | File | Purpose |
@@ -46,6 +54,7 @@ After adding or editing a file in `bin/`, `chmod +x` it.
 | `suite_6_connection.sh`, `resume.py` | Connection loss and resume (after the 2026-10-09 network incident): network loss while the VM runs (no deletion, the follow resumes), past the deadline, with the VM deleted by Google meanwhile; `EXIT_CODE` and `final_status.json` in the bucket, read from there when SSH is lost; resume mode after the launcher is killed, with the session's launch record and without one, refusing a VM that is not the session's |
 | `suite_10_feat.sh` | Follow-up 5 (featurisation only): the plan's host on the create call, `WEIGHTS=none` with a weights URI in the shell (never uploaded), the CCD upload and its check on the VM; refusals (host mismatch, weights, CCD missing or different, PLATFORM=l4, `WEIGHTS=none` on a model plan) |
 | `suite_11_msa.sh` | Follow-up 6 launcher support: the plan dates printed, a launch after `launch_by` refused before any VM, a `rep_start: 2` plan running r2 only |
+| `suite_12_fu7_10.sh` | Follow-ups 7 to 9 launcher support: `PLATFORM=h100` (a3-highgpu-1g, Spot, an H100 80 GB in `setup.json`), a plan's `stack` installed and checked on L4 and v6e and kept in the launch record, a seeds plan past the frozen input's seeds (`seeds_beyond_input`); refusals (`STACK` in the shell, a `LIBTPU_VERSION` that disagrees with the stack, another machine type or zone on h100); the Eigen archive (`eigen_source: archive`: installed from the fake bucket by the real `cloud/vm_eigen_source.sh` and recorded, other bytes refused, `EIGEN_SOURCE` in the shell refused, a plan without the key unchanged) |
 | `run_all.sh`, `summarize.py` | All suites; a scenario fails the check if its exit code is not the expected one, a VM is left, or a GPU path sets `gpu`/`rocm` |
 | `bin/gcloud` | The fake: create, describe (also labels), ssh, scp, delete, operations, `storage rsync`, `cp` and `cat`, a laptop-side network outage (`FAKE_NET_DOWN`); scenarios and zone behaviours listed in its header |
 | `bin/fake_rsync.py`, `bin/uv`, `bin/nvidia-smi`, `bin/setsid` | Fake bucket copy, venv installs (records the libtpu and jaxlib versions per venv), GPU listing, `setsid` for macOS |

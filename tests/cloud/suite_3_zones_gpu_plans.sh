@@ -30,7 +30,8 @@ echo "   static check: JAX_PLATFORMS assignments containing gpu or rocm in cloud
 (cd "$REPO" && grep -rnIE "JAX_PLATFORMS *[=:] *['\"]?[^ #,]*(gpu|rocm)|JAX_PLATFORMS=[^ ]*(gpu|rocm)" cloud harness) | sed 's/^/   | /'
 echo "   (end of static check)"
 echo "   regression 1: the old setup check (JAX_PLATFORMS=gpu) must be caught"
-sed -i '' 's/  l4 | a100) BACKEND=gpu JAXP=cuda ;;/  l4 | a100) BACKEND=gpu JAXP=gpu ;;/' "$WORK/repo/cloud/vm_device_check.sh"
+sed -i '' 's/  l4 | a100 | h100) BACKEND=gpu JAXP=cuda ;;/  l4 | a100 | h100) BACKEND=gpu JAXP=gpu ;;/' "$WORK/repo/cloud/vm_device_check.sh"
+grep -q 'BACKEND=gpu JAXP=gpu' "$WORK/repo/cloud/vm_device_check.sh" || echo "!! regression 1: the injection did not apply"
 bash "$R" l4_regress_setup ok PLATFORM=l4 FAKE_PLATFORM=l4 ZONES="us-east4-a"
 echo "   regression 2: a GPU config with JAX_PLATFORMS: gpu must be caught"
 bash "$KIT/mkrepo.sh" > /dev/null
