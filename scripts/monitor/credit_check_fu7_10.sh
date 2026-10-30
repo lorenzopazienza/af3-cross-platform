@@ -1,7 +1,7 @@
 #!/bin/bash
 # Follow-ups 7 to 9 budget rule (drafts/section10_fu7-10.md): an arm is launched only if the credit balance read before
 # its launch, minus the arm's expected cost, stays at or above the floor of 25 USD, and the follow-up's spend with this
-# arm stays within its cap (seeds 75, sw 55, h100 85 USD, about 1.2 times each follow-up's expected cost; the smoke
+# arm stays within its cap (seeds 95 since 2026-10-30, was 75; sw 55, h100 85 USD, about 1.2 times each follow-up's expected cost; the smoke
 # tests are reported apart, outside the caps). Credit: the TPU Builders credit only (the Free Trial does not cover TPUs
 # or GPUs, Cloud Billing support, 2026-10-27). Run from the repository root before each arm, with the balance read
 # from the console:
@@ -29,7 +29,7 @@ python3 - "$ARM" "$BAL" <<'PY'
 import csv, datetime as dt, pathlib, re, sys
 arm, bal = sys.argv[1], float(sys.argv[2])
 FLOOR = 25.0
-CAP = {'seeds': 75.0, 'sw': 55.0, 'h100': 85.0}
+CAP = {'seeds': 95.0, 'sw': 55.0, 'h100': 85.0}
 parts = list(csv.DictReader(open('harness/plans/fu7_10_parts.csv')))
 od = {p['platform']: float(p['usd_per_h_on_demand']) for p in parts}
 planned = {p['platform']: (p['provisioning'], float(p['usd_per_h_planned'])) for p in parts}

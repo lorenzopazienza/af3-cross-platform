@@ -277,8 +277,8 @@ def test_credit_check_floor_cap_and_spend_counted_once_at_its_provisioning(tmp_p
   (smoke / 'launcher_events.txt').write_text(events)
   code, out = credit(tmp_path, 'gx', '500')
   assert f'from 2 session record(s): arms {10 * spot_l4 + 10 * od_l4:.2f} USD' in out
-  total = 10 * spot_l4 + 10 * od_l4 + 43.36                          # within the seeds cap of 75
-  assert code == 0 and f'arms with this arm {total:.2f} USD (cap of seeds: 75)' in out
+  total = 10 * spot_l4 + 10 * od_l4 + 43.36                          # within the seeds cap of 95 (75 until 2026-10-30)
+  assert code == 0 and f'arms with this arm {total:.2f} USD (cap of seeds: 95)' in out
   assert credit(tmp_path, 'gx', 'x')[0] == 2 and credit(tmp_path, 'nope', '1')[0] == 2
 
 
