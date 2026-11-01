@@ -282,6 +282,34 @@ def test_credit_check_floor_cap_and_spend_counted_once_at_its_provisioning(tmp_p
   assert credit(tmp_path, 'gx', 'x')[0] == 2 and credit(tmp_path, 'nope', '1')[0] == 2
 
 
+def test_credit_check_ends_a_vm_deleted_by_google_when_it_was_gone(tmp_path):
+  # A Spot VM deleted by Google has no "delete: done" event: its time ends at "delete: the VM was already gone",
+  # not at the time of the check (fixed 2026-10-31).
+  rows = list(csv.DictReader(open(PLANS / 'fu7_10_parts.csv')))
+  spot_l4 = next(float(r['usd_per_h_planned']) for r in rows if r['platform'] == 'l4')
+  s = tmp_path / 'results' / 'af3' / '20261031T000000Z_l4_seeds_seeds_gx_04'
+  s.mkdir(parents=True)
+  (s / 'launch_record.txt').write_text('PROVISIONING=spot\n')
+  (s / 'launcher_events.txt').write_text('2026-10-31T00:00:00Z  vm: af3-run-l4-x running in europe-west3-a\n'
+                                         '2026-10-31T02:00:00Z  vm: NOT_FOUND according to the API; following stops\n'
+                                         '2026-10-31T02:00:05Z  delete: the VM was already gone\n'
+                                         '2026-10-31T02:00:06Z  launcher: exit code 1\n')
+  code, out = credit(tmp_path, 'gx', '500')
+  assert f'from 1 session record(s): arms {(2 + 5 / 3600) * spot_l4:.2f} USD' in out
+
+
+def test_credit_check_prices_a_flex_start_session_at_the_flex_start_price(tmp_path):
+  (tmp_path / 'cloud').mkdir()
+  (tmp_path / 'cloud' / 'prices.csv').write_text((REPO / 'cloud' / 'prices.csv').read_text())
+  s = tmp_path / 'results' / 'af3' / '20261101T000000Z_v6e_sw_sw_v6s_01'
+  s.mkdir(parents=True)
+  (s / 'launch_record.txt').write_text('PROVISIONING=flex_start\n')
+  (s / 'launcher_events.txt').write_text('2026-11-01T00:00:00Z  vm: af3-run-v6e-x running in europe-west4-a\n'
+                                         '2026-11-01T02:00:00Z  delete: done\n')
+  code, out = credit(tmp_path, 'gs', '500')
+  assert 'from 1 session record(s): arms 2.70 USD' in out          # 2 h x 1.35 USD/h, not 2.97 on demand
+
+
 def test_config_diff_shows_only_the_factor_under_study():
   r = subprocess.run([sys.executable, str(PLANS / 'config_diff_fu7_10.py'), '--out', '/dev/null'], capture_output=True,
                      text=True)

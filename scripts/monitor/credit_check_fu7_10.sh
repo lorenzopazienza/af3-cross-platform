@@ -17,7 +17,8 @@
 # Spend so far: every session of the follow-up (labels seeds, sw, h100; sw_smoke and h100_smoke apart) in results/af3/
 # and results/af3/.launcher/ (each session once), VM minutes from launcher_events.txt (VM running to delete done, or to
 # now while it runs) x the price of its platform in fu7_10_parts.csv for the provisioning in its launch_record.txt
-# (spot: the Spot price; standard, anything else or no record: on demand).
+# (spot: the Spot price; flex_start: the Flex-start price of cloud/prices.csv; standard, anything else or no record:
+# on demand).
 # Prints GO or NO GO with the reason; exit 0 for GO, 1 for NO GO, 2 for a usage error. Reads only local files.
 set -u
 ARM=${1:-} BAL=${2:-}
@@ -34,6 +35,12 @@ parts = list(csv.DictReader(open('harness/plans/fu7_10_parts.csv')))
 od = {p['platform']: float(p['usd_per_h_on_demand']) for p in parts}
 planned = {p['platform']: (p['provisioning'], float(p['usd_per_h_planned'])) for p in parts}
 spot = {pl: usd for pl, (prov, usd) in planned.items() if prov == 'spot'}
+# Flex-start (DWS) list prices from cloud/prices.csv, the highest row per platform (added 2026-11-01 for V6s).
+flex = {}
+if pathlib.Path('cloud/prices.csv').is_file():
+  for r in csv.DictReader(open('cloud/prices.csv')):
+    if r['provisioning'] == 'flex_start' and r['usd_per_hour']:          # rows without a published price are skipped
+      flex[r['platform']] = max(flex.get(r['platform'], 0.0), float(r['usd_per_hour']))
 # Smoke tests: one process of 2PV7 with provisioning, setup and teardown (the main-study medians, H from the A100
 # sessions), VM hours v6e 0.29, l4 0.41, h100 0.42, at each platform's planned price.
 SMOKE = {'sw_smoke': (('v6e', 0.29), ('l4', 0.41)), 'h100_smoke': (('h100', 0.42),)}
@@ -71,8 +78,16 @@ for s in sorted(pathlib.Path('results/af3').glob('*')) + sorted(pathlib.Path('re
       if line.startswith('PROVISIONING='):
         prov = line.split('=', 1)[1]
   pl = m.group(1)
-  rate = spot[pl] if prov == 'spot' and pl in spot else od.get(pl, max(od.values()))
-  usd = (ev.get('delete:done', now) - start).total_seconds() / 3600 * rate
+  if prov == 'spot' and pl in spot:
+    rate = spot[pl]
+  elif prov == 'flex_start' and pl in flex:
+    rate = flex[pl]
+  else:
+    rate = od.get(pl, max(od.values()))
+  # VM end: delete done, or the VM already gone (a Spot VM deleted by Google: 'delete: the VM was already gone'),
+  # or the launcher's exit; now only while the launcher still runs
+  end = ev.get('delete:done') or ev.get('delete:the') or ev.get('launcher:exit') or now
+  usd = (end - start).total_seconds() / 3600 * rate
   if m.group(2).endswith('_smoke'):
     smoke_spent += usd
   else:
