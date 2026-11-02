@@ -1,0 +1,12 @@
+# Follow-up 7 (sw) sessions that enter the analysis (notes/analysis_plan.md section 10, rows of 2026-11-01 (V6s) and
+# 2026-11-02 (Gs)): V6s 2 parts (Flex-start), Gs 7 parts (Spot; 04 and 06 from the relaunch). The smoke sessions
+# (sw_smoke) and the two preempted Gs sessions enter no analysis.
+20261101T111818Z_v6e_sw_v6s_01
+20261101T193029Z_v6e_sw_v6s_02
+20261101T213058Z_l4_sw_gs_01
+20261101T213103Z_l4_sw_gs_02
+20261101T213108Z_l4_sw_gs_03
+20261101T213118Z_l4_sw_gs_05
+20261101T213129Z_l4_sw_gs_07
+20261102T020717Z_l4_sw_gs_04
+20261102T020722Z_l4_sw_gs_06

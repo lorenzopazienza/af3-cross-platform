@@ -1,0 +1,23 @@
+# Follow-up 6 (msa) sessions that enter the analysis (notes/analysis_plan.md section 10, launch rows of 2026-10-26 to 2026-10-29):
+# Go r1 (7 parts), V6o (3), V5o (3), Go r2 (7); one complete session per part. Smoke sessions (msa_smoke) and the
+# interrupted or failed sessions listed in those rows enter no analysis.
+20261026T162701Z_l4_msa_go_r1_01
+20261026T164420Z_l4_msa_go_r1_06
+20261026T170125Z_l4_msa_go_r1_07
+20261026T220013Z_l4_msa_go_r1_02
+20261026T220024Z_l4_msa_go_r1_04
+20261026T220029Z_l4_msa_go_r1_05
+20261026T221808Z_l4_msa_go_r1_03
+20261027T115935Z_v6e_msa_v6o_01
+20261027T142051Z_v6e_msa_v6o_03
+20261027T174139Z_v6e_msa_v6o_02
+20261028T095840Z_v5e_msa_v5o_01
+20261028T123354Z_v5e_msa_v5o_02
+20261028T200249Z_v5e_msa_v5o_03
+20261029T064355Z_l4_msa_go_r2_01
+20261029T064400Z_l4_msa_go_r2_02
+20261029T064405Z_l4_msa_go_r2_03
+20261029T064410Z_l4_msa_go_r2_04
+20261029T064414Z_l4_msa_go_r2_05
+20261029T064420Z_l4_msa_go_r2_06
+20261029T064425Z_l4_msa_go_r2_07

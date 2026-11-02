@@ -1,0 +1,30 @@
+# Follow-up 8 (seeds) sessions that enter the analysis (notes/analysis_plan.md section 10, rows of 2026-10-31 (V5x)
+# and 2026-11-01 (Gx)): V5x 5 parts, Gx 22 parts, one complete session per part. V5x part 03 is the local full fetch
+# (final upload cut off on the VM, synced to the bucket by hand). Preempted, failed and never-started sessions enter no analysis.
+20261029T190936Z_v5e_seeds_v5x_04
+20261029T191836Z_v5e_seeds_v5x_02
+20261030T220829Z_v5e_seeds_v5x_01
+20261030T220834Z_v5e_seeds_v5x_03
+20261030T220839Z_v5e_seeds_v5x_05
+20261031T110127Z_l4_seeds_gx_01
+20261031T110132Z_l4_seeds_gx_02
+20261031T110136Z_l4_seeds_gx_03
+20261031T110147Z_l4_seeds_gx_05
+20261031T110202Z_l4_seeds_gx_08
+20261031T130255Z_l4_seeds_gx_09
+20261031T130314Z_l4_seeds_gx_10
+20261031T133122Z_l4_seeds_gx_11
+20261031T144136Z_l4_seeds_gx_15
+20261031T144245Z_l4_seeds_gx_16
+20261031T163159Z_l4_seeds_gx_21
+20261031T163204Z_l4_seeds_gx_22
+20261031T204043Z_l4_seeds_gx_04
+20261031T204048Z_l4_seeds_gx_06
+20261031T204053Z_l4_seeds_gx_07
+20261031T204059Z_l4_seeds_gx_12
+20261031T204104Z_l4_seeds_gx_13
+20261031T204109Z_l4_seeds_gx_14
+20261031T204113Z_l4_seeds_gx_17
+20261031T204119Z_l4_seeds_gx_18
+20261101T021537Z_l4_seeds_gx_19
+20261101T021541Z_l4_seeds_gx_20
