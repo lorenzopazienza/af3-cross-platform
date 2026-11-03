@@ -8,8 +8,8 @@ Arms (each with the settings of its source arm; only the factor under study chan
   seeds  V5x  tpu_xla on v5e and  Gx  l4_xla on L4: 60 targets, seeds 6 to 20 (seeds_beyond_input), r1;
   sw     V6s  tpu_xla on v6e and  Gs  l4_xla on L4: 60 targets, seeds 1 to 5, r1, the alternative stack (plan key stack:
          jax and jaxlib 0.10.1 with libtpu 0.0.41 on TPU, with jax-cuda12-plugin and -pjrt 0.10.1 on GPU);
-  h100   H    h100_xla on an H100 80 GB (a3-highgpu-1g): 60 targets, seeds 1 to 5, r1; H r2 (optional, for RC(H)): the 10
-         pilot targets, seeds 1 to 5, r2 only (rep_start 2);
+  h100   H    h100_xla on an H100 80 GB (a3-highgpu-1g): 60 targets, seeds 1 to 5, r1; H r2 (for RC(H)): all 60
+         targets, seeds 1 to 5, r2 only (rep_start 2; the 10 pilot targets until the amendment of 2026-11-03);
   smoke  sw_smoke (V6s and Gs stacks) and h100_smoke: 2PV7 (inputs/official_data/smoke_manifest.csv), seed 1, r1.
 Sizing (harness/plans/main, ~/Desktop/af3_drafts/main_study/make_main_plans.py): each target's runs in one part,
 first-fit decreasing up to 8 h of job on TPU and 4 h on GPU, deadline ceil(job min x 1.25 + 20). Timings: per source
@@ -46,7 +46,7 @@ ARMS = {
     'V6s': ('sw', 'V6', 'v6e', 'tpu_xla', range(1, 6), 1, 'all', None),
     'Gs': ('sw', 'G', 'l4', 'l4_xla', range(1, 6), 1, 'all', None),
     'H': ('h100', 'H', 'h100', 'h100_xla', range(1, 6), 1, 'all', ''),
-    'H_r2': ('h100', 'H', 'h100', 'h100_xla', range(1, 6), 2, 'pilot', 'rep_start: 2\n'),
+    'H_r2': ('h100', 'H', 'h100', 'h100_xla', range(1, 6), 2, 'all', 'rep_start: 2\n'),
 }
 ORDER = ['V5x', 'Gx', 'V6s', 'Gs', 'H', 'H_r2']
 MAX_H = {'v5e': 8.0, 'v6e': 8.0, 'l4': 4.0, 'h100': 4.0}

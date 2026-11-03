@@ -65,7 +65,7 @@ def test_h100_plans_and_smoke_plans():
   d = describe(PLANS / 'h100' / 'h100_h_01.yaml', 'h100')
   assert d['configs'] == ['h100_xla'] and d['label'] == 'h100' and d['seeds'] == [1, 2, 3, 4, 5]
   r2 = describe(PLANS / 'h100' / 'h100_h_r2_01.yaml', 'h100')
-  assert r2['rep_start'] == 2 and len(r2['targets']) == 10
+  assert r2['rep_start'] == 2 and len(r2['targets']) > 10   # H r2 on the 60 targets (amendment of 2026-11-03)
   for f, platform in (('sw_smoke/sw_smoke_v6e.yaml', 'v6e'), ('sw_smoke/sw_smoke_l4.yaml', 'l4'),
                       ('h100_smoke/h100_smoke_h100.yaml', 'h100')):
     text = (PLANS / f).read_text()
@@ -82,7 +82,7 @@ def test_every_arm_covers_the_60_targets_once():
       plat = next(iter(run_plan.read_configs(p)['deadline_min']))
       by.setdefault(arm, []).extend(describe(p, plat)['targets'])
   for arm, ts in by.items():
-    want = sorted(pd.read_csv(REPO / 'inputs' / 'manifest.csv').query('pilot == "yes"').pdb_id) if arm == 'h100_h_r2' else subset
+    want = subset   # every arm, H r2 included since the amendment of 2026-11-03, covers the 60 targets once
     assert sorted(ts) == sorted(want), arm
 
 

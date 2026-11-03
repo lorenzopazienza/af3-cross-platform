@@ -30,7 +30,7 @@ python3 - "$ARM" "$BAL" <<'PY'
 import csv, datetime as dt, pathlib, re, sys
 arm, bal = sys.argv[1], float(sys.argv[2])
 FLOOR = 25.0
-CAP = {'seeds': 95.0, 'sw': 55.0, 'h100': 85.0}
+CAP = {'seeds': 95.0, 'sw': 55.0, 'h100': 141.0}   # h100: 85 until the amendment of 2026-11-03 (H r2 on 60 targets)
 parts = list(csv.DictReader(open('harness/plans/fu7_10_parts.csv')))
 od = {p['platform']: float(p['usd_per_h_on_demand']) for p in parts}
 planned = {p['platform']: (p['provisioning'], float(p['usd_per_h_planned'])) for p in parts}

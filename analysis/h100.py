@@ -5,13 +5,13 @@ study, whatever it shows).
         --out results/analysis/h100_<date> [--a100 results/analysis/a100_20261018/samples.csv]
         [--main results/analysis/main_20261014/primary_v2]
 
-Conditions: H (h100_xla on a3-highgpu-1g, the settings of A), r1 on the 60 targets and, if it ran, r2 on the 10 pilot
-targets; A (follow-up 3, r1 and r2); V5, V6 and G (main study, r1).
+Conditions: H (h100_xla on a3-highgpu-1g, the settings of A), r1 on the 60 targets and, if it ran, r2 on the 60 targets
+(the 10 pilot targets until the amendment of 2026-11-03, section 10); A (follow-up 3, r1 and r2); V5, V6 and G (main study, r1).
 Checks, before anything else (the analysis stops if one fails): one machine type, a3-highgpu-1g, in every H session;
 exit codes. An arm short of its (target, seed) is reported as incomplete; nothing is imputed.
 Contrasts, paired as in section 5, with its statistics and the target-clustered bootstrap (10,000 replicates, seed
 2026): HW(H,A) (two GPU generations, the counterpart of HW(V5,V6)), HW(H,G), HW(H,V6), HW(H,V5), SD(H), and RC(H) if
-H r2 ran. HW minus RC for HW(H,A): against RC(A) (follow-up 3, 60 targets) and, if H r2 ran, against RC(H) on its 10
+H r2 ran. HW minus RC for HW(H,A): against RC(A) (follow-up 3, 60 targets) and, if H r2 ran, against RC(H) on the 60
 targets. Headline: the top-1 flip rate; the success flip rate and flips that matter are secondary, and every result
 that uses M1 is also given on the 39 targets released after 2021-09-30.
 Outputs in --out: checks.csv, completeness.csv, contrasts.csv, hw_minus_rc.csv, pairs_seed.csv, pairs_sample.csv,
@@ -76,7 +76,7 @@ def main():
   if any(r['detail'] != 'pass' for r in chk):
     raise SystemExit('a check failed (checks.csv); nothing is compared')
   ok = f34.union(main, a, h)
-  comp = completeness(ok, targets, pilot)
+  comp = completeness(ok, targets, targets)   # H r2 on the 60 targets (amendment of 2026-11-03)
   sp, sm, cons, counts = f34.build(ok, SPECS)
   parts_c, parts_h = [], []
   for label, ts, stats in (('all 60', targets, contrasts.FLIP_STATS), (f'post-cutoff {len(post)}', post, M1_STATS)):

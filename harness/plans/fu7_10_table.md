@@ -7,7 +7,7 @@
 | V6s | sw | v6e | 2 | 300 | 9.9 | 29.36, 41.09 | 29.36, 41.09 (standard) |
 | Gs | sw | l4 | 7 | 300 | 26.8 | 24.02, 34.41 | 14.42, 20.64 (spot) |
 | H | h100 | h100 | 3 | 300 | 8.9 | 110.17, 166.94 | 58.69, 88.94 (spot) |
-| H r2 | h100 | h100 | 1 | 50 | 1.8 | 21.60, 36.69 | 11.51, 19.54 (spot) |
+| H r2 | h100 | h100 | 3 | 300 | 8.9 | 110.17, 166.94 | 58.69, 88.94 (spot) |
 
 Process wall per bucket (median s, fresh): V5: 256 71, 512 104, 768 163, 1024 262; G: 256 124, 512 220, 768 399, 1024 706; V6: 256 71, 512 96, 768 139, 1024 206; H: 256 70, 512 87, 768 110, 1024 149.
 Overheads (median min): V5: provisioning 2.6, setup 12.4, teardown 1.7; G: provisioning 5.6, setup 11.0, teardown 1.2; V6: provisioning 3.8, setup 9.4, teardown 1.4; H: provisioning 0.9, setup 17.1, teardown 1.6.
