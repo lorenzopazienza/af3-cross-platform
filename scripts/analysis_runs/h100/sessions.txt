@@ -1,0 +1,8 @@
+# Follow-up 9 (label h100): the complete session of each part, from the section 10 rows of 2026-11-04 (H and H r2).
+# The smoke test (20261103T210601Z_h100_h100_smoke_h100) enters no analysis.
+20261103T213551Z_h100_h100_h_01
+20261103T213556Z_h100_h100_h_02
+20261103T213601Z_h100_h100_h_03
+20261104T073009Z_h100_h100_h_r2_01
+20261104T073014Z_h100_h100_h_r2_02
+20261104T073019Z_h100_h100_h_r2_03
