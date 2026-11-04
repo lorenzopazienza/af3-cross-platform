@@ -118,7 +118,7 @@ Source arm: as recorded in its sessions. New arm: as its plans, harness/configs.
 | repetitions of the arm (r = fresh, w = warm rerun) | `r1, r2, w` | `r1` | intended |
 | seeds of the arm | `1 to 5` | `1 to 5` | same |
 
-## H against A (7 source sessions, 4 plans)
+## H against A (7 source sessions, 6 plans)
 
 | setting | source arm (recorded) | new arm (planned) | |
 |---|---|---|---|
