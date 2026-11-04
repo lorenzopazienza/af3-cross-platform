@@ -74,10 +74,15 @@ class ScoreError(Exception):
 
 
 def _subset_row(target):
+  """The target's row: the 60 of the main study first, then the follow-up 11 targets (targets/repl/repl_subset.csv,
+  the same columns; no PDB ID is in both)."""
   import csv
-  for row in csv.DictReader(open(REPO / 'targets' / 'posebusters_subset.csv')):
-    if row['pdb_id'] == target:
-      return row
+  for path in (REPO / 'targets' / 'posebusters_subset.csv', REPO / 'targets' / 'repl' / 'repl_subset.csv'):
+    if not path.is_file():
+      continue
+    for row in csv.DictReader(open(path)):
+      if row['pdb_id'] == target:
+        return row
   raise ScoreError(f'{target} is not in targets/posebusters_subset.csv')
 
 

@@ -63,7 +63,9 @@ def sessions(source):
   if source == 'A':
     return [l.split('#')[0].strip() for l in (REPO / 'scripts' / 'analysis_runs' / 'a100' / 'sessions.txt').read_text().splitlines()
             if l.split('#')[0].strip() and re.search(r'_a100_a_\d', l)]
-  pat = {'V5': r'_v5e_main_v5_', 'V6': r'_v6e_main_v6_', 'G': r'_l4_main_g_'}[source]
+  # V6h and Gh (the section 11 arms): used by harness/plans/make_fu11_12_plans.py (follow-up 12), not here.
+  pat = {'V5': r'_v5e_main_v5_', 'V6': r'_v6e_main_v6_', 'G': r'_l4_main_g_', 'V6h': r'_v6e_main_v6h_',
+         'Gh': r'_l4_main_gh_'}[source]
   return [s for s in (REPO / 'results' / 'analysis' / 'main_20261014' / 'sessions_main.txt').read_text().split()
           if re.search(pat, s)]
 

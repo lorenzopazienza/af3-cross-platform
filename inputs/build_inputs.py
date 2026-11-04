@@ -3,9 +3,19 @@
 Run inside the pinned AlphaFold3 environment, after targets/ and the MSAs:
 
     cd third_party/alphafold3
-    .venv/bin/python ../../inputs/build_inputs.py
+    .venv/bin/python ../../inputs/build_inputs.py [--subset CSV --manifest CSV --input_dir DIR]
 
-For each row of targets/posebusters_subset.csv, writes data/inputs/<pdb_id>.json
+Defaults: --subset targets/posebusters_subset.csv, --manifest inputs/manifest.csv (and inputs/manifest.json next to
+it), --input_dir data/inputs, all relative to the repository root. Follow-up 11 (label repl): --subset
+targets/repl/repl_subset.csv --manifest inputs/repl/manifest.csv --input_dir data/inputs_repl
+--exclusions inputs/repl/excluded.csv.
+
+--exclusions CSV (off by default; then any problem stops the run and nothing is written, as before): a target whose
+input AlphaFold3 rejects, or whose token count differs from the targets CSV, is left out of the manifest and listed
+in that CSV with its cause (its section 10 row records it before any run); the file is written, with its header
+only, also when nothing is excluded. A target without a cached MSA always stops the run (run inputs/build_msas.py).
+
+For each row of the targets CSV, writes <input_dir>/<pdb_id>.json
 (dialect alphafold3, version 1): the protein chain with the cached unpaired MSA
 from data/msa/, empty paired MSA, no templates; the ligand by CCD code;
 modelSeeds [1, 2, 3, 4, 5]. Each written file is then loaded with the loader
@@ -13,11 +23,12 @@ run_alphafold.py uses for --json_path and featurised with AlphaFold3's own
 pipeline (first seed, no inference). Its token count must equal the one in the
 targets CSV.
 
-Writes inputs/manifest.csv and inputs/manifest.json (build environment).
+Writes the manifest CSV and, next to it, its .json (build environment).
 Refuses to change an existing input file whose content would differ: frozen
 inputs stay frozen. Delete the file by hand to rebuild it on purpose.
 """
 
+import argparse
 import csv
 import datetime
 import hashlib
@@ -49,14 +60,22 @@ def git_head(path) -> str:
 
 
 def main():
-  INPUT_DIR.mkdir(parents=True, exist_ok=True)
-  with open(SUBSET) as f:
+  ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+  ap.add_argument('--subset', default=str(SUBSET.relative_to(REPO)))
+  ap.add_argument('--manifest', default='inputs/manifest.csv')
+  ap.add_argument('--input_dir', default=str(INPUT_DIR.relative_to(REPO)))
+  ap.add_argument('--exclusions', help='CSV of targets left out with their cause (off: any problem stops the run)')
+  args = ap.parse_args()
+  subset, manifest, input_dir = REPO / args.subset, REPO / args.manifest, REPO / args.input_dir
+  default = (subset, manifest, input_dir) == (SUBSET, REPO / 'inputs' / 'manifest.csv', INPUT_DIR)
+  input_dir.mkdir(parents=True, exist_ok=True)
+  with open(subset) as f:
     targets = list(csv.DictReader(f))
   ids = [t['pdb_id'] for t in targets]
   if len(set(ids)) != len(ids):
     raise SystemExit('Duplicate PDB IDs in the subset; input file names would collide.')
 
-  rows, problems = [], []
+  rows, problems, excluded = [], [], []
   for n, t in enumerate(targets, 1):
     seq = t['sequence']
     key = sha256(seq.encode())
@@ -72,7 +91,7 @@ def main():
       raise SystemExit(f'{a3m_path}: SHA-256 does not match its sidecar')
 
     text = af3_featurise.protein_ligand_json(t['pdb_id'], seq, t['ligand_ccd'], SEEDS, a3m) + '\n'
-    path = INPUT_DIR / f'{t["pdb_id"]}.json'
+    path = input_dir / f'{t["pdb_id"]}.json'
     if path.exists() and path.read_text() != text:
       raise SystemExit(f'{path} exists with different content; frozen inputs are not overwritten.')
     if not path.exists():
@@ -82,15 +101,17 @@ def main():
     try:
       result = af3_featurise.featurise_path(path)
     except Exception as e:  # AlphaFold3 rejects the input
-      problems.append(f'{t["pdb_id"]}: AlphaFold3 rejected the input: {type(e).__name__}: {e}')
+      (excluded if args.exclusions else problems).append(
+          f'{t["pdb_id"]}: AlphaFold3 rejected the input: {type(e).__name__}: {e}')
       continue
     seconds = time.time() - t0
     if result['num_tokens'] != int(t['num_tokens']) or result['num_seeds'] != len(SEEDS):
-      problems.append(f'{t["pdb_id"]}: featurised {result}, targets CSV says {t["num_tokens"]} tokens')
+      (excluded if args.exclusions else problems).append(
+          f'{t["pdb_id"]}: featurised {result}, targets CSV says {t["num_tokens"]} tokens')
       continue
     rows.append({
         'pdb_id': t['pdb_id'], 'ligand_ccd': t['ligand_ccd'], 'pilot': t['pilot'],
-        'input_path': str(path.relative_to(REPO)), 'input_sha256': sha256(text.encode()),
+        'input_path': str(path.relative_to(REPO)) if path.is_relative_to(REPO) else str(path), 'input_sha256': sha256(text.encode()),
         'input_bytes': len(text.encode()), 'sequence_sha256': key,
         'msa_sha256': side['a3m_sha256'], 'msa_rows': side['a3m_rows'],
         'msa_server': side['server'], 'msa_mode': side['mode'],
@@ -104,8 +125,17 @@ def main():
   if problems:
     print('\n'.join(['Problems:'] + problems))
     raise SystemExit(1)
+  if args.exclusions:
+    (REPO / args.exclusions).parent.mkdir(parents=True, exist_ok=True)
+    with open(REPO / args.exclusions, 'w', newline='') as f:
+      w = csv.writer(f, lineterminator='\n')
+      w.writerow(['pdb_id', 'cause'])
+      w.writerows(e.split(': ', 1) for e in excluded)
+    if excluded:
+      print('\n'.join([f'Excluded ({len(excluded)}; record each in section 10 before any run):'] + excluded))
 
-  with open(REPO / 'inputs' / 'manifest.csv', 'w', newline='') as f:
+  manifest.parent.mkdir(parents=True, exist_ok=True)
+  with open(manifest, 'w', newline='') as f:
     w = csv.DictWriter(f, list(rows[0]), lineterminator='\n')
     w.writeheader()
     w.writerows(rows)
@@ -115,7 +145,8 @@ def main():
       packages[name] = importlib.metadata.version(name)
     except importlib.metadata.PackageNotFoundError:
       packages[name] = None
-  (REPO / 'inputs' / 'manifest.json').write_text(json.dumps({
+  extra = {} if default else {'targets_csv': args.subset, 'input_dir': args.input_dir}
+  manifest.with_suffix('.json').write_text(json.dumps({
       'built_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
       'built_by': 'inputs/build_inputs.py',
       'repo_commit': git_head(REPO),
@@ -125,9 +156,9 @@ def main():
       'validation': 'folding_input.load_fold_inputs_from_path + featurisation.featurise_input '
                     '(first seed, no inference)',
       'seeds': list(SEEDS), 'python': platform.python_version(), 'packages': packages,
-      'targets_csv_sha256': sha256(SUBSET.read_bytes()), 'inputs': len(rows),
+      'targets_csv_sha256': sha256(subset.read_bytes()), 'inputs': len(rows), **extra,
   }, indent=2) + '\n')
-  print(f'Wrote inputs/manifest.csv with {len(rows)} validated inputs.')
+  print(f'Wrote {args.manifest} with {len(rows)} validated inputs.')
 
 
 if __name__ == '__main__':
