@@ -87,6 +87,12 @@ PILOT_SEED = 2027
 AA = set('ALA ARG ASN ASP CYS GLN GLU GLY HIS ILE LEU LYS MET PHE PRO SER THR TRP TYR VAL'.split())
 NA = set('A C G U DA DC DG DT DI'.split())
 STANDARD_LETTERS = set('ACDEFGHIKLMNPQRSTVWY')
+SUBSET_COLS = ['pdb_id', 'ligand_ccd', 'posebusters_id', 'n_protein_chains', 'n_input_chains',
+               'protein_chain_id', 'sequence_length', 'num_tokens', 'bucket', 'bin', 'pilot',
+               'sequence_sha256', 'source_file', 'source_sha256', 'rcsb_url', 'rcsb_sha256',
+               'rcsb_initial_release', 'rcsb_latest_revision', 'sequence']
+SCREEN_COLS = ['posebusters_id', 'pdb_id', 'ligand_ccd', 'status', 'reason', 'n_protein_chains',
+               'num_tokens', 'bucket', 'bin', 'source_sha256', 'rcsb_sha256']
 
 
 def sha256(data: bytes) -> str:
@@ -151,26 +157,10 @@ def allocate(counts: dict, total: int) -> dict:
   return alloc
 
 
-def main():
-  started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
-  pb_dir = DATA / 'posebusters'
-
-  record = json.loads(fetch(ZENODO_RECORD))
-  zip_meta = next(f for f in record['files'] if f['key'] == ZIP_NAME)
-  zip_bytes = cached(pb_dir / ZIP_NAME, zip_meta['links']['self'])
-  md5 = hashlib.md5(zip_bytes).hexdigest()
-  if f'md5:{md5}' != zip_meta['checksum']:
-    raise SystemExit(f'{ZIP_NAME}: MD5 {md5} does not match Zenodo {zip_meta["checksum"]}')
-  ids_bytes = cached(pb_dir / 'posebusters_pdb_ccd_ids.txt', V2_IDS_URL)
-  v2_ids = sorted(l.strip() for l in ids_bytes.decode().splitlines() if l.strip())
-  print(f'PoseBusters V2: {len(v2_ids)} identifiers; zip MD5 verified')
-
-  zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
-  v1_ids = {l.strip() for l in zf.read('posebusters_benchmark_set_ids.txt').decode().splitlines() if l.strip()}
-  ccd = af3_featurise.ccd()
-  cache_path = DATA / 'posebusters' / 'token_counts.json'
-  token_cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
-
+def screen_v2(zf, v2_ids, v1_ids, ccd, token_cache, cache_path):
+  """Steps 1 to 5 of the rule for every V2 identifier: one row per identifier (status eligible or excluded, with
+  the reason), in identifier order. Token counts come from token_cache (keyed by the SHA-256 of the input JSON),
+  featurised and saved to cache_path when missing. Shared with targets/build_repl_subset.py."""
   screen = []
   for n, pb_id in enumerate(v2_ids, 1):
     pdb, lig = pb_id.split('_')
@@ -231,6 +221,31 @@ def main():
       continue
     row.update(status='eligible', bin=bin_of(result['num_tokens']))
 
+  return screen
+
+
+def main():
+  started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
+  pb_dir = DATA / 'posebusters'
+
+  record = json.loads(fetch(ZENODO_RECORD))
+  zip_meta = next(f for f in record['files'] if f['key'] == ZIP_NAME)
+  zip_bytes = cached(pb_dir / ZIP_NAME, zip_meta['links']['self'])
+  md5 = hashlib.md5(zip_bytes).hexdigest()
+  if f'md5:{md5}' != zip_meta['checksum']:
+    raise SystemExit(f'{ZIP_NAME}: MD5 {md5} does not match Zenodo {zip_meta["checksum"]}')
+  ids_bytes = cached(pb_dir / 'posebusters_pdb_ccd_ids.txt', V2_IDS_URL)
+  v2_ids = sorted(l.strip() for l in ids_bytes.decode().splitlines() if l.strip())
+  print(f'PoseBusters V2: {len(v2_ids)} identifiers; zip MD5 verified')
+
+  zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
+  v1_ids = {l.strip() for l in zf.read('posebusters_benchmark_set_ids.txt').decode().splitlines() if l.strip()}
+  ccd = af3_featurise.ccd()
+  cache_path = DATA / 'posebusters' / 'token_counts.json'
+  token_cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
+
+  screen = screen_v2(zf, v2_ids, v1_ids, ccd, token_cache, cache_path)
+
   eligible = [r for r in screen if r['status'] == 'eligible']  # already sorted by identifier
   by_bin = collections.OrderedDict((b, [r for r in eligible if r['bin'] == b]) for b, _, _ in BINS)
   alloc = allocate({b: len(v) for b, v in by_bin.items()}, N_TARGETS)
@@ -251,19 +266,13 @@ def main():
   else:
     raise SystemExit('No pilot seed in 1000 tries covers every bin.')
 
-  subset_cols = ['pdb_id', 'ligand_ccd', 'posebusters_id', 'n_protein_chains', 'n_input_chains',
-                 'protein_chain_id', 'sequence_length', 'num_tokens', 'bucket', 'bin', 'pilot',
-                 'sequence_sha256', 'source_file', 'source_sha256', 'rcsb_url', 'rcsb_sha256',
-                 'rcsb_initial_release', 'rcsb_latest_revision', 'sequence']
   with open(OUT_DIR / 'posebusters_subset.csv', 'w', newline='') as f:
-    w = csv.DictWriter(f, subset_cols, extrasaction='ignore', lineterminator='\n')
+    w = csv.DictWriter(f, SUBSET_COLS, extrasaction='ignore', lineterminator='\n')
     w.writeheader()
     for r in chosen:
       w.writerow(dict(r, n_input_chains=2, pilot='yes' if r['posebusters_id'] in pilot else 'no'))
-  screen_cols = ['posebusters_id', 'pdb_id', 'ligand_ccd', 'status', 'reason', 'n_protein_chains',
-                 'num_tokens', 'bucket', 'bin', 'source_sha256', 'rcsb_sha256']
   with open(OUT_DIR / 'posebusters_v2_screen.csv', 'w', newline='') as f:
-    w = csv.DictWriter(f, screen_cols, extrasaction='ignore', lineterminator='\n')
+    w = csv.DictWriter(f, SCREEN_COLS, extrasaction='ignore', lineterminator='\n')
     w.writeheader()
     w.writerows(screen)
 

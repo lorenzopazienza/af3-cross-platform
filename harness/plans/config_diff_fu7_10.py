@@ -61,7 +61,8 @@ def source_sessions(arm):
   if arm == 'A':
     return [l.split('#')[0].strip() for l in (REPO / 'scripts' / 'analysis_runs' / 'a100' / 'sessions.txt').read_text().splitlines()
             if re.search(r'_a100_a100_a_\d', l.split('#')[0])]
-  code = {'V5': ('v5e', 'v5'), 'V6': ('v6e', 'v6'), 'G': ('l4', 'g')}[arm]
+  # V6h and Gh (section 11 arms): used by harness/plans/config_diff_fu11_12.py (follow-up 12), not here.
+  code = {'V5': ('v5e', 'v5'), 'V6': ('v6e', 'v6'), 'G': ('l4', 'g'), 'V6h': ('v6e', 'v6h'), 'Gh': ('l4', 'gh')}[arm]
   return [s for s in (REPO / 'results' / 'analysis' / 'main_20261014' / 'sessions_main.txt').read_text().split()
           if re.search(rf'_{code[0]}_main_{code[1]}_\d+$', s)]
 

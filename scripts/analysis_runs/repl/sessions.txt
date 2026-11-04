@@ -1,0 +1,3 @@
+# Follow-up 11 (repl) sessions that enter the analysis (notes/analysis_plan.md section 10, the launch rows of arms
+# V5r, V6r and Gr): one complete session per part, listed here once the arms have finished and committed before any
+# analysis run. Preempted or failed sessions and smoke tests enter no analysis. None listed yet.

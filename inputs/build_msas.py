@@ -1,8 +1,10 @@
 """Frozen unpaired MSAs from the public ColabFold MMseqs2 server.
 
-    python3 inputs/build_msas.py [--limit N]
+    python3 inputs/build_msas.py [--limit N] [--subset targets/posebusters_subset.csv]
 
-For every unique protein sequence in targets/posebusters_subset.csv, asks the
+For every unique protein sequence in targets/posebusters_subset.csv (or the targets CSV given with --subset, for
+example targets/repl/repl_subset.csv for follow-up 11; the cache is shared, so a sequence already cached for any
+subset is never queried again), asks the
 ColabFold MSA server (https://api.colabfold.com, mode "env": UniRef30 plus the
 ColabFold environmental databases, the ColabFold default) for an unpaired MSA
 and caches it as
@@ -29,6 +31,7 @@ import argparse
 import csv
 import datetime
 import hashlib
+import http.client
 import io
 import json
 import pathlib
@@ -87,8 +90,8 @@ def call(url, backoff, data=None):
   while True:
     try:
       status, headers, body = http_util.request(url, data=data, timeout=60)
-    except OSError as e:
-      backoff.wait(f'network error {e}')
+    except (OSError, http.client.HTTPException) as e:   # HTTPException: e.g. IncompleteRead on a cut download
+      backoff.wait(f'network error {e!r}')
       continue
     if status == 429 or status >= 500:
       backoff.wait(f'HTTP {status}')
@@ -155,12 +158,15 @@ def combine(tar_bytes, seq):
 def main():
   parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
   parser.add_argument('--limit', type=int, default=0, help='query at most N new sequences')
+  parser.add_argument('--subset', default=str(SUBSET.relative_to(REPO)),
+                      help='targets CSV with a sequence column, relative to the repository root')
   args = parser.parse_args()
+  subset = REPO / args.subset
   MSA_DIR.mkdir(parents=True, exist_ok=True)
   repo_commit = subprocess.run(['git', '-C', str(REPO), 'rev-parse', 'HEAD'],
                                capture_output=True, text=True).stdout.strip()
 
-  with open(SUBSET) as f:
+  with open(subset) as f:
     seqs = sorted({row['sequence'] for row in csv.DictReader(f)}, key=lambda s: sha256(s.encode()))
   todo = []
   for seq in seqs:
