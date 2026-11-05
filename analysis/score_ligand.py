@@ -29,6 +29,16 @@ coordinates), and predicted ligand atoms are matched by those names
 (AlphaFold3 writes CCD atom names). Heavy atoms only; alternative conformers:
 the first.
 
+Follow-up 10 targets (targets/large/large_subset.csv, looked up after the 60 and the 72; section 10, row of
+2026-11-04, item d: "the reference is the rule-2 instance of the deposited model"): the crystal structure is the
+deposited mmCIF the screen cached (the row's source_file, data/pdb_large_screen/cif/<PDB>.cif.gz) and the reference
+ligand is data/large_refs/<PDB>_ligand.sdf, written by targets/large/build_large_subset.py from that model's
+ligand_asym instance (heavy atoms, first alternate location, bond orders and charges from AlphaFold3's CCD). Its atoms
+get their names from that crystal instance as above. There is no PoseBusters crystal protein file, so
+--pb_protein crystal is not available for them, and their self-test checks validity with the crystal chain itself
+(the predicted-protein path, which writes the scored model's protein chain); the self-test also names the ligand's
+chain, since an oligomer can hold copies of the ligand with the same residue number in several chains.
+
 Also used by analysis/contrasts.py for M4 (pair_divergence): the same pocket
 superposition between two predictions, their ligand RMSD, and the protein
 C-alpha RMSD after global superposition. The C-alpha RMSD uses the protein
@@ -75,15 +85,27 @@ class ScoreError(Exception):
 
 def _subset_row(target):
   """The target's row: the 60 of the main study first, then the follow-up 11 targets (targets/repl/repl_subset.csv,
-  the same columns; no PDB ID is in both)."""
+  the same columns), then the follow-up 10 targets (targets/large/large_subset.csv, the same columns and its own; no
+  PDB ID is in two of them)."""
   import csv
-  for path in (REPO / 'targets' / 'posebusters_subset.csv', REPO / 'targets' / 'repl' / 'repl_subset.csv'):
+  for path in (REPO / 'targets' / 'posebusters_subset.csv', REPO / 'targets' / 'repl' / 'repl_subset.csv',
+               REPO / 'targets' / 'large' / 'large_subset.csv'):
     if not path.is_file():
       continue
     for row in csv.DictReader(open(path)):
       if row['pdb_id'] == target:
         return row
-  raise ScoreError(f'{target} is not in targets/posebusters_subset.csv')
+  raise ScoreError(f'{target} is not in targets/posebusters_subset.csv, targets/repl/repl_subset.csv or '
+                   f'targets/large/large_subset.csv')
+
+
+def _is_large(row):
+  """A follow-up 10 target (its reference is the deposited model, not a PoseBusters file)."""
+  return bool(row.get('ligand_asym'))
+
+
+def _crystal_path(target, row):
+  return REPO / row['source_file'] if _is_large(row) else REPO / 'data' / 'rcsb' / f'{target}.cif'
 
 
 class _SetsUnpickler(pickle.Unpickler):
@@ -147,16 +169,21 @@ class Reference:
     row = _subset_row(target)
     self.target, self.ccd, self.pb_id = target, row['ligand_ccd'], row['posebusters_id']
     self.sequence = row['sequence']
-    pb_dir = REPO / 'data' / 'posebusters' / 'posebusters_benchmark_set' / self.pb_id
-    self.pb_protein = pb_dir / f'{self.pb_id}_protein.pdb'
-    sdf = pb_dir / f'{self.pb_id}_ligand.sdf'
+    if _is_large(row):
+      self.pb_protein = None
+      sdf = REPO / 'data' / 'large_refs' / f'{target}_ligand.sdf'
+    else:
+      pb_dir = REPO / 'data' / 'posebusters' / 'posebusters_benchmark_set' / self.pb_id
+      self.pb_protein = pb_dir / f'{self.pb_id}_protein.pdb'
+      sdf = pb_dir / f'{self.pb_id}_ligand.sdf'
     mol = Chem.MolFromMolFile(str(sdf), removeHs=False, sanitize=True)
     if mol is None:
       raise ScoreError(f'cannot read {sdf.name}')
     self.ligand = Chem.RemoveHs(mol)
     lig_xyz = self.ligand.GetConformer().GetPositions()
 
-    st = _load_structure(REPO / 'data' / 'rcsb' / f'{target}.cif')
+    crystal = _crystal_path(target, row)
+    st = _load_structure(crystal)
     model = st[0]
     chain_id = row['protein_chain_id']
     chains = [c for c in model if c.name == chain_id] or [c for c in model if c.name.startswith(chain_id)]
@@ -167,7 +194,7 @@ class Reference:
         poly = p
         break
     if poly is None:
-      raise ScoreError(f'{target}: protein chain {chain_id} not found in data/rcsb/{target}.cif')
+      raise ScoreError(f'{target}: protein chain {chain_id} not found in {crystal.relative_to(REPO)}')
 
     # Names for the SDF atoms: the crystal instance of the ligand at the same coordinates.
     self.ligand_names, best = None, None
@@ -259,10 +286,11 @@ class Protein:
 class Prediction(Protein):
   """Protein C-alpha atoms (by label_seq_id) and ligand atoms (by name) of one model."""
 
-  def __init__(self, path, ccd, protein_chain='A', ligand_seqid=None):
+  def __init__(self, path, ccd, protein_chain='A', ligand_seqid=None, ligand_chain=None):
     super().__init__(path, protein_chain)
     model = self.structure[0]
-    ligands = [r for c in model for r in c if r.name == ccd and (ligand_seqid is None or r.seqid.num == ligand_seqid)]
+    ligands = [r for c in model for r in c if r.name == ccd and (ligand_seqid is None or r.seqid.num == ligand_seqid)
+               and (ligand_chain is None or c.name == ligand_chain)]
     if len(ligands) != 1:
       raise ScoreError(f'{self.path.name}: expected one {ccd} ligand, found {len(ligands)}')
     self.ligand = {a.name: np.array(a.pos.tolist()) for a in ligands[0]}
@@ -303,8 +331,9 @@ def _write_protein_pdb(pred, r, t, path):
 
 
 def score(target, prediction_path, pb_protein='predicted', protein_chain='A', ligand_seqid=None,
-          drop_af3_removed=False):
-  """M1 for one predicted model; never raises, errors go to the result. drop_af3_removed: analysis (3) above."""
+          drop_af3_removed=False, ligand_chain=None):
+  """M1 for one predicted model; never raises, errors go to the result. drop_af3_removed: analysis (3) above.
+  ligand_chain: the chain holding the ligand residue (self-test of a follow-up 10 crystal; None elsewhere)."""
   shown = pathlib.Path(prediction_path).resolve()
   shown = str(shown.relative_to(REPO)) if shown.is_relative_to(REPO) else shown.name
   out = {'target': target, 'prediction': shown, 'ligand_rmsd': None, 'pocket_residues': None,
@@ -312,7 +341,7 @@ def score(target, prediction_path, pb_protein='predicted', protein_chain='A', li
          'success': False, 'error': None}
   try:
     ref = reference(target, drop_af3_removed)
-    pred = Prediction(prediction_path, ref.ccd, protein_chain, ligand_seqid)
+    pred = Prediction(prediction_path, ref.ccd, protein_chain, ligand_seqid, ligand_chain)
     r, t, n = _pocket_superposition(ref.ca, pred.ca, ref.pocket)
     out.update(pocket_residues=len(ref.pocket), pocket_ca_used=n)
     mol = ref.ligand_with(_transform(pred.ligand, r, t))
@@ -322,6 +351,8 @@ def score(target, prediction_path, pb_protein='predicted', protein_chain='A', li
         protein = pathlib.Path(tmp) / 'protein.pdb'
         _write_protein_pdb(pred, r, t, protein)
       else:
+        if ref.pb_protein is None:
+          raise ScoreError(f'{target}: no crystal protein file (a follow-up 10 target); use --pb_protein predicted')
         protein = ref.pb_protein
       valid, failed = posebusters_check(mol, protein)
     out.update(pb_valid=valid, pb_failed=failed)
@@ -367,28 +398,39 @@ def pair_divergence(target, path_a, path_b, drop_af3_removed=False):
   return out
 
 
-def crystal_site(target):
-  """(protein chain name, ligand residue number) of the reference ligand instance in data/rcsb/<target>.cif."""
+def _crystal_ligand(target):
+  """(protein chain name, ligand residue number, ligand chain name) of the reference ligand instance in the target's
+  crystal structure (data/rcsb/<target>.cif; for follow-up 10, the cached deposited mmCIF)."""
   ref = reference(target)
   row = _subset_row(target)
-  st = _load_structure(REPO / 'data' / 'rcsb' / f'{target}.cif')
-  seqid = None
+  st = _load_structure(_crystal_path(target, row))
+  seqid = lig_chain = None
   for c in st[0]:
     for res in c:
       if res.name == ref.ccd and [a.name for a in res if a.name in ref.ligand_names]:
         pos = {a.name: np.array(a.pos.tolist()) for a in res}
         if all(n in pos for n in ref.ligand_names) and max(
             np.linalg.norm(pos[n] - ref.ligand.GetConformer().GetAtomPosition(i)) for i, n in enumerate(ref.ligand_names)) < 0.05:
-          seqid = res.seqid.num
+          seqid, lig_chain = res.seqid.num, c.name
   chain = row['protein_chain_id']
   chain = next((c.name for c in st[0] if c.name == chain), next(c.name for c in st[0] if c.name.startswith(chain)))
+  return chain, seqid, lig_chain
+
+
+def crystal_site(target):
+  """(protein chain name, ligand residue number) of the reference ligand instance in data/rcsb/<target>.cif."""
+  chain, seqid, _ = _crystal_ligand(target)
   return chain, seqid
 
 
 def self_test(target, pb_protein='crystal', path=None):
-  """The crystal structure (or a copy of it at path, e.g. rigidly moved) scored as a prediction of itself."""
-  chain, seqid = crystal_site(target)
-  xtal = path or REPO / 'data' / 'rcsb' / f'{target}.cif'
+  """The crystal structure (or a copy of it at path, e.g. rigidly moved) scored as a prediction of itself.
+  A follow-up 10 target is checked with its own crystal chain (pb_protein predicted) and its ligand's chain named."""
+  row = _subset_row(target)
+  chain, seqid, lig_chain = _crystal_ligand(target)
+  xtal = path or _crystal_path(target, row)
+  if _is_large(row):
+    return score(target, xtal, pb_protein='predicted', protein_chain=chain, ligand_seqid=seqid, ligand_chain=lig_chain)
   return score(target, xtal, pb_protein=pb_protein, protein_chain=chain, ligand_seqid=seqid)
 
 

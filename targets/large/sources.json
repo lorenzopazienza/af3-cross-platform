@@ -1,0 +1,616 @@
+{
+  "built_utc": "2026-11-05T12:10:04+00:00",
+  "built_by": "targets/large/build_large_subset.py",
+  "specification": "notes/analysis_plan.md section 10, row of 2026-11-04 (follow-up experiment 10, larger inputs on the whole PDB, label large); OSF addendum https://osf.io/nsbgp",
+  "rule": "the rows of groups large and control of targets/large/pdb_targets_amended.csv (the screen of the row, item a), large first, each in PDB ID order; pilot no; tpu_r2: the row's r2 subset (item c)",
+  "inputs_sha256": {
+    "targets/large/pdb_targets_amended.csv": "7536e8995f822e42236c5e3ea3380264131828814c1ad6b2a28831fe9e6e44f4"
+  },
+  "rcsb_mmcif_sha256": {
+    "7DIA": "f0b259b05b720e26190e5cdd0bfbcc9d91fb3af4d9762adcf623c533f42d761c",
+    "7NSN": "93d68e2a7d89febd459d8f009be275153dcc10428a09048171ee546f45083e3d",
+    "7QUR": "d2ccd806342fa21cc790557a738833bfb5045df7d1a2edd54a4a0aed23dc168d",
+    "7Z3J": "aad695e6d220f672d266709e813d29e3b9fea205789d8a935934a7ad8e0e2792",
+    "8C8V": "d167fb705b4301f5cd40e1e808e966c40403f10a620a9da5ecc3d8fef99530c0",
+    "8EXL": "faa9dc901cf7320059ead45a3a081eadf15ddf1e1fc9696771c6ce54589f49b4",
+    "8J79": "da02d6113894afa9688f3c2605bd6cc59a922ed3d49723360f5df7c434680380",
+    "8K3X": "5c68fdc7aef9e2b12eae76821b0cb3942fc6e1d23dce5b5ed6de1af5c0b557c6",
+    "8SI6": "5a4d43398de0dcb520a5e9afe8c92e6351be5e0f66c199e3787c033bee3e7547",
+    "8SVL": "5a51d40205a7e713a87d30eb6b8974939f40a5ceb29d91c7c56ec97b54ada9ec",
+    "8SX7": "52162ee49664028e52bb561f0e0919bf610acff32bd2754c9aa9a496ab990536",
+    "8TZG": "88d0078dd49445f1136ec71f0a96f854ae7bb779ffd6ad338f2146b0ee0581af",
+    "8V1G": "ef3ed6020178dd24bf800a43d0c7cb17aa3ac3bf691da5ad04c2378baef1c4ab",
+    "8X94": "1123f9333fcdec9cb634a29c5fdd4b4faabaf42c280956f076a72eba9f0e356e",
+    "8XB3": "8c136f8eb4e55a0e528a94b761144118a55f4cbef0be10479414d76e68c67b26",
+    "8Y85": "46d0d1566f4fa6e893963d72a0638e9120e2e1370551d5ec28a486631eba4e2a",
+    "9BFT": "29278e17430d837129ea3997e818cd59527f96f83dfd5a275bd403ad946792b7",
+    "9BWT": "203befbfd2b2321ce2ab7f45da6345133b3d11931acf61772bd2dd7e0769d0e4",
+    "9E0D": "b68e0568a810b3b60486a5b09558942ef58155521b69213f0149976cc35f380a",
+    "9EJQ": "8e6847d14c665db2c5dc9bf82112e10c6589550bc9b4e1cf470db20b85fd4d16",
+    "9FTR": "2ec06d41169a1da95031d8380bb3bc0830da3cdb298cfbbe7634d9ee97d9e03f",
+    "9GZ2": "4f498ac504d1febc1f04bd94e1124300b1b0ac86c79d7560c86c0704dac02d8f",
+    "9JO3": "345e13473a94f30de3d5f54ee699a84d6d528bd5060f3fc8bda50237c3e076ca",
+    "9MFP": "98fb1cdba7080441a299718cc853c5731b30f531d9790f027abe39a1ed1de5f9",
+    "9MGY": "59db01a1f5e2bc9197f10aae89aaa4038ef7846ff24cc2764ad677fabb75da28",
+    "9MXL": "a431a5facef51936f02da4992c7a8396be2da0a47343d57354353c4332bc1a3a",
+    "9OE4": "314b0a8a054ec3e0e1fd7ec643120d927b137381d7daf66684732678c03c6176",
+    "9OVL": "c52c419c03cf4c21d9a15c6429a821a85c73937bc094209190022c4f8f6e8ed1",
+    "9QHP": "cc6e293dbe051c3e48d01f5b857869d0994e7eb6843971ceac22a974f5b3023f",
+    "9VT2": "3ce702245a1bc2d326f939ebc09c2ec016dbf5fc9d55fcbfc3bb4b6060592b5e",
+    "9VU1": "8470766b3ebd3eb0fd990a84887042db8b5c794f6c65d7438f5b4c4a9fd02c85",
+    "9WLN": "60709a038b77d32b17e8f6d47b8dc10829e5947d388156aff120e18665ace4b3",
+    "9X5O": "861966b7ee7f3d43bb131d5a0b2256f9ff3862e119d1a94419f3f80190eebda2",
+    "9Z22": "43d030a14d717e94105899a42b8f95c0c0648806785193faecf8c3bd7ac143d9",
+    "7KFO": "c6cd242d901194b0212fb489c25345958a8e4e6468627004ea823c81e421a48f",
+    "7MIP": "14d3221b6481cfcf59b72dbf4b1143d25a06ebc6afcdb5da54179365135dfbdb",
+    "7SIL": "91c91c77ef9e9205779ed9bb2eac90f6141916a101962c5a800452aab7546d4c",
+    "7UG0": "78258fec19feed160e065ee0b46f475d50c3b7bda5134bc9eb416ad4908b5e43",
+    "7UMP": "3d4fb09d7924f4cff519930191b0f3ed314bfc0ef09efdee42cd0ef469cae241",
+    "7X01": "ed4c17b05a4c026e3a99d973543e96a011299b416f936d9d93c97a7e35d1fc51",
+    "8AHH": "3ae3d37dedb2e065fcf84bca1a6c88904dca9cf5e0062a37cb36242a33f19348",
+    "8BLP": "e5a6456f421e84d253d41cca5ab3ed88b4aa56f2a2b3c8816e7b8251726c02a9",
+    "8CEY": "4068bffb9673719ebf4cc6bb7d5f20e3b37883e92c277ffe820dd41cf11b55f8",
+    "8EEP": "77b02cb9df258c69e9cc6c5722bfd0dbff2bd0cebc93ffb7fe59129aa0beb8ae",
+    "8GOF": "ee6e39d59fcdf3a13eccd15d8dad3175c256554e86ab4ebf8301b0655bb1f481",
+    "8ITA": "eba7e5180f43288ffb1683d49d7de1499312957986bca49a9a58e19911cf81bc",
+    "8JPD": "3e0d6d57bac4cfd247a549afaa1009d174da1c8e82a364e34abd0ddb18792604",
+    "8T7N": "72a23d60420ed631ac50a8a61d51f7828369a6227b9c9236f6154ebd434bc9c2",
+    "8V4J": "492693bee4401ba6511a6c9b2e1bb3cf2c4f74965edd40a0a022938992d0bf3a",
+    "8W0R": "8f5befc6b7fa05d79266027f8a01a1575625d3b6fb92db5d0eb6d6ba9d679af8",
+    "8X1S": "531cca92512b5a9a070f6c95b7257cbd44f323f6573ca13d5ffe7832e835e289",
+    "9BIQ": "78555a5f60259796c42d2e0643748d4b76d75189f47bd20b747922ca3aa3bb79",
+    "9DRA": "c94d0f8b4b260f4d8878baaa79512a74073e3791fe4caa58581725a53db66e1b",
+    "9ETQ": "dd7355d7d25c3df031a0b834808cd958be021ebd3b48afcd84a71bfce3e3daff",
+    "9HKX": "f6a19ac39286bf4adf7277eca8e5f6be4a7be5773982592504932a396ea7a6e8",
+    "9JDC": "f6433290c8d004a047a56152dd306f6849de3d9602518704af60c4fb992baf1d",
+    "9LQY": "8a028868832a3b545bfdea25246fb9e36fe597c01b1ee2f6dd90d9ecbbb10f73",
+    "9LZG": "a3f6cc61560475bec3e13df0125083a4fd2e1fa282bc9485279abe7bef53e9e4",
+    "9OHN": "7f8d75924abb8bf1bab740821d31781ae74249939076b2652cd8990304fefbaa",
+    "9OKG": "22754076487d81b6c59555d7218ae190258264e2298dff991e7472aaa4b3729d",
+    "9OMM": "c58bd57d01326e98f786df724347c4ca6d515c11abb7ea793f42baa4ffce2d80",
+    "9OSW": "2ed4915374ac4cc454b007be398f52a60e0b995d070a504ef9637b97a3ce3279",
+    "9P4Y": "b7205e1383f62808214cd27511c6a8c1726f72b23db9fad77861686e670c8816",
+    "9SDI": "ca9de721d13c9b152a911684cc05a2a0e69fa0c880e92dfe31aa648c81401ca0",
+    "9UWL": "769ac77954a9af327e887033afc0b73557286137eab7e998f6f4afc3cb803a77",
+    "9ZB9": "ef96402b8ba8923d9a996eaea110ad8368bac17f32896ee3b906bcffa39c7bd3",
+    "9ZNN": "15cd6ecea956b02d0f4eeb9d8fbea5cb8ac52c48736756c2d4df9c90ea1a18ab",
+    "9ZNO": "9d0c9a76f08c7415e99687bf3c5020a11f57f2fb47c62ffadfcab55ff5a91a2d"
+  },
+  "reference_ligands": {
+    "folder": "data/large_refs",
+    "files": {
+      "7DIA": {
+        "ligand_ccd": "H8O",
+        "ligand_asym": "B",
+        "heavy_atoms": 26,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "1a0ff28b4219f13d9e2d791ea7a5478ae978409ba79821f58bd9677117e74cc1"
+      },
+      "7NSN": {
+        "ligand_ccd": "MVL",
+        "ligand_asym": "G",
+        "heavy_atoms": 14,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "144f3b5c5d04fd8b5583c1140cd0d5d6445b2afd52eaa3b352571819d4a36df5"
+      },
+      "7QUR": {
+        "ligand_ccd": "GE9",
+        "ligand_asym": "BA",
+        "heavy_atoms": 12,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "cd305fc001c3789410e7c0c8d9af251706663bd07c7262011a9fda5fd3e18276"
+      },
+      "7Z3J": {
+        "ligand_ccd": "I3P",
+        "ligand_asym": "D",
+        "heavy_atoms": 24,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "3ee59b1751aec245977ca782acd55aef4b894417842a7dd1009294117b9e459c"
+      },
+      "8C8V": {
+        "ligand_ccd": "ILA",
+        "ligand_asym": "D",
+        "heavy_atoms": 31,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "61f1669a3241624dd9e60679925e07ba775bbd655eb22e10e16ad29a0aa350f4"
+      },
+      "8EXL": {
+        "ligand_ccd": "799",
+        "ligand_asym": "B",
+        "heavy_atoms": 34,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "f752c6e76c77be72aaa241804bc744ab214ca881e0706a89b07f0db0520feb52"
+      },
+      "8J79": {
+        "ligand_ccd": "141",
+        "ligand_asym": "I",
+        "heavy_atoms": 11,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "7adef45edbfccbb05e3535c2f4aa2a29bc5aa4a22cb0538b6bab0a9a25555edb"
+      },
+      "8K3X": {
+        "ligand_ccd": "BGI",
+        "ligand_asym": "C",
+        "heavy_atoms": 35,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "324f4825942947db8e9de3d88341640bb6ceeea79b6c669e3b4875d86ff9de62"
+      },
+      "8SI6": {
+        "ligand_ccd": "ZY8",
+        "ligand_asym": "HA",
+        "heavy_atoms": 31,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "0c3457f9ab634ac60d7a8c862fcff6ce61b15b499d648cca6540ccdbc4d2e965"
+      },
+      "8SVL": {
+        "ligand_ccd": "WRC",
+        "ligand_asym": "C",
+        "heavy_atoms": 28,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "e20ac827d20da5aac7b348f70ef9d2e89a927b961fed2f56da25dbf48f662927"
+      },
+      "8SX7": {
+        "ligand_ccd": "ZWY",
+        "ligand_asym": "B",
+        "heavy_atoms": 25,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "685aa94fd86561a90a3620b078dbf43af5b6461ad46e8b61240141174e51af32"
+      },
+      "8TZG": {
+        "ligand_ccd": "A1N",
+        "ligand_asym": "B",
+        "heavy_atoms": 28,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "1bcd98401bc0d4eacddc8d2788085a07657506febb4adaff2cacd9ea197679bb"
+      },
+      "8V1G": {
+        "ligand_ccd": "Y6F",
+        "ligand_asym": "D",
+        "heavy_atoms": 28,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "ab73662776f6e5d167eebaf29c7ee56d5db1a9359f8316725f92be1a997263c5"
+      },
+      "8X94": {
+        "ligand_ccd": "EZI",
+        "ligand_asym": "K",
+        "heavy_atoms": 23,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "a70fc3b517e4b65cf9d1180a6ab542b7e54bc0199f57037b1001c462ca025f37"
+      },
+      "8XB3": {
+        "ligand_ccd": "YMN",
+        "ligand_asym": "B",
+        "heavy_atoms": 12,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "68b70a8a897b6031bc9c842038c8fd6efe39dcae346eb6105ee40c0fd534a490"
+      },
+      "8Y85": {
+        "ligand_ccd": "4KU",
+        "ligand_asym": "F",
+        "heavy_atoms": 28,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "21370b61069d3b6d577862a738f14b50a352747f77eb666ed16674d210adb555"
+      },
+      "9BFT": {
+        "ligand_ccd": "A1AOF",
+        "ligand_asym": "E",
+        "heavy_atoms": 20,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "bdb373a571dd25113706d7b241c587f983aaa7a5007dbfd851134315a3fd6b65"
+      },
+      "9BWT": {
+        "ligand_ccd": "HCZ",
+        "ligand_asym": "D",
+        "heavy_atoms": 17,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "fdbfd433789c2059fcf1f1c6ce871430c5f5bbb041dcbb9be601827a44fd1a3f"
+      },
+      "9E0D": {
+        "ligand_ccd": "A1BDV",
+        "ligand_asym": "U",
+        "heavy_atoms": 11,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "40f1de9809db40fa3c7a8ca4e584a1fba6b60d8ea3b4a7ab356efd09514296d3"
+      },
+      "9EJQ": {
+        "ligand_ccd": "A1BIX",
+        "ligand_asym": "F",
+        "heavy_atoms": 29,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "cf7e7e4a6761d0a1fa950fc88e2f421c54b7d6605b205ffbecfec210c1cfaf35"
+      },
+      "9FTR": {
+        "ligand_ccd": "A1IGB",
+        "ligand_asym": "B",
+        "heavy_atoms": 18,
+        "ccd_heavy_atoms_missing": [
+          "C1",
+          "C2"
+        ],
+        "sha256": "d237ab4b412b839908e26e65a655be2a69cbd3e73b2895a122853dc06a1a3db3"
+      },
+      "9GZ2": {
+        "ligand_ccd": "XB2",
+        "ligand_asym": "E",
+        "heavy_atoms": 20,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "5e4ad533804966abba31f1cdc54ed775753e8b5c09f52ea4681bc302cefb9cd5"
+      },
+      "9JO3": {
+        "ligand_ccd": "A1L4E",
+        "ligand_asym": "T",
+        "heavy_atoms": 23,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "d65b7ac1bb4a6db421570210ecd409436c9a13be2a465d82368a8ff505fc1354"
+      },
+      "9MFP": {
+        "ligand_ccd": "A1BK0",
+        "ligand_asym": "B",
+        "heavy_atoms": 22,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "a1a4ba87831e03bd4fd0ab7085ec916194f98066cf92346c18845fe3b47b6fa0"
+      },
+      "9MGY": {
+        "ligand_ccd": "A1BLR",
+        "ligand_asym": "C",
+        "heavy_atoms": 25,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "7711fed1787c46c144ec8aa50386c06c335d1fb28227eaf74bcfd1efc8f9dde1"
+      },
+      "9MXL": {
+        "ligand_ccd": "A1BUJ",
+        "ligand_asym": "B",
+        "heavy_atoms": 36,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "cd74a1da4bb55d959171e65f1ef69e1e2449fa3e42c9e1c7b0aae43f12ff5d6f"
+      },
+      "9OE4": {
+        "ligand_ccd": "R0Z",
+        "ligand_asym": "F",
+        "heavy_atoms": 42,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "aa4dd00d3319d67bb8f5f2b2c8449281ca9e01f99717ef79e2f8570d3c335cda"
+      },
+      "9OVL": {
+        "ligand_ccd": "A1AR1",
+        "ligand_asym": "YA",
+        "heavy_atoms": 44,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "fc5d617bdb93f32e30c4699456cae6d1a7a96a5fdedf397fef95d19609703299"
+      },
+      "9QHP": {
+        "ligand_ccd": "A1JBK",
+        "ligand_asym": "E",
+        "heavy_atoms": 21,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "a972f41f2cf897097fcb5834c0a06e5f2fd8ab3865e2750711d4c6cd748bd4ea"
+      },
+      "9VT2": {
+        "ligand_ccd": "TPF",
+        "ligand_asym": "B",
+        "heavy_atoms": 22,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "c2587a70e88698dafd1332cfaac094bb294197d816c6adfb70f4b644f3feeacc"
+      },
+      "9VU1": {
+        "ligand_ccd": "A1ETS",
+        "ligand_asym": "H",
+        "heavy_atoms": 39,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "d177e654c4f9efec22b1efe4fb9b4b3bd0816bf3ec1f3686031717f0b39e8bbf"
+      },
+      "9WLN": {
+        "ligand_ccd": "A1EXG",
+        "ligand_asym": "I",
+        "heavy_atoms": 49,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "3e2020711f3c6de1bfeceabf1453bf9e37ec7d16d2a4f03c7868a18036e6d05a"
+      },
+      "9X5O": {
+        "ligand_ccd": "4KU",
+        "ligand_asym": "C",
+        "heavy_atoms": 28,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "50553335000c026b91fb82402000dcb6f50523a03b8a3077eaebd789e95347ca"
+      },
+      "9Z22": {
+        "ligand_ccd": "A1CY8",
+        "ligand_asym": "E",
+        "heavy_atoms": 27,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "abb5f869e536e20c913cd7bb4eccde37acb31790395cd93c4e797a702d7e450b"
+      },
+      "7KFO": {
+        "ligand_ccd": "IAC",
+        "ligand_asym": "B",
+        "heavy_atoms": 13,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "ef5d7f2ce7dfb49f0baae23bd013611acaa12059c2e035cfd7e844e8f0674f57"
+      },
+      "7MIP": {
+        "ligand_ccd": "ZG4",
+        "ligand_asym": "H",
+        "heavy_atoms": 33,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "92a301781ff6c031e74118a9e4d23efa29813fccfb10da4f51ad5684250ad739"
+      },
+      "7SIL": {
+        "ligand_ccd": "9IG",
+        "ligand_asym": "DA",
+        "heavy_atoms": 21,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "d13bd9cbedabb743a2df8c432296a0438a18c340052a85eda6692f33d038d0b5"
+      },
+      "7UG0": {
+        "ligand_ccd": "TB1",
+        "ligand_asym": "B",
+        "heavy_atoms": 17,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "c96f788f85871be0a725a50f3e3791aebdd98af2d2e90346924e17de566cfde6"
+      },
+      "7UMP": {
+        "ligand_ccd": "A1Z",
+        "ligand_asym": "C",
+        "heavy_atoms": 21,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "aedb067a7136e2024a8dd97ea8210850de2b31c36d0e4f12c16ae9bd70539494"
+      },
+      "7X01": {
+        "ligand_ccd": "7XQ",
+        "ligand_asym": "X",
+        "heavy_atoms": 21,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "3fcc59bdd6103a19e5db84301a0144de55b4a45a377b1354fa95234fd58581b2"
+      },
+      "8AHH": {
+        "ligand_ccd": "M4X",
+        "ligand_asym": "B",
+        "heavy_atoms": 15,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "e8f7656ab920e96310508f5c4364356c08616886a158f90eaa91b34c5901b365"
+      },
+      "8BLP": {
+        "ligand_ccd": "5D3",
+        "ligand_asym": "QB",
+        "heavy_atoms": 30,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "217516eee79e1782e20aaa8b005ae75d61a81e9a3039575dd87456aa0189d030"
+      },
+      "8CEY": {
+        "ligand_ccd": "UEF",
+        "ligand_asym": "D",
+        "heavy_atoms": 17,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "f290ff74da5291abe9752af5ff6d42b391cca266ad3bb0d533628b725dcc8379"
+      },
+      "8EEP": {
+        "ligand_ccd": "IHP",
+        "ligand_asym": "B",
+        "heavy_atoms": 36,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "27b1e292156934952c57c9f6121dcbc2f6bb0c0568ab8a16087e530876689248"
+      },
+      "8GOF": {
+        "ligand_ccd": "LYA",
+        "ligand_asym": "B",
+        "heavy_atoms": 31,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "8734d0b8b0f52016a39aec28f76d6630f5aea20aeadfcc55f1be870d64617922"
+      },
+      "8ITA": {
+        "ligand_ccd": "R0U",
+        "ligand_asym": "B",
+        "heavy_atoms": 22,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "73073c0899239b9561a8f5637e8c8d763958fd6f0309252cef67d7ace0a3797e"
+      },
+      "8JPD": {
+        "ligand_ccd": "STU",
+        "ligand_asym": "B",
+        "heavy_atoms": 35,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "ed0636ebfc9d1daad4c449698e4b1bb1c72c576c9a359364af9aa2fc9e39556f"
+      },
+      "8T7N": {
+        "ligand_ccd": "ZT3",
+        "ligand_asym": "F",
+        "heavy_atoms": 30,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "a0d4849ee80212b0db322009e010d5a14bb7c985c849718cc06e3420a92118ea"
+      },
+      "8V4J": {
+        "ligand_ccd": "J7D",
+        "ligand_asym": "B",
+        "heavy_atoms": 17,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "45ef2c9546d7d1b6e5fd2f9bd899ad3e3e469b9569a5f781f95d2e9c824c3861"
+      },
+      "8W0R": {
+        "ligand_ccd": "A1AEU",
+        "ligand_asym": "C",
+        "heavy_atoms": 27,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "4d5f21150ad3d55207ad6b98f2767cd4300b61769eda02b1baa2a74d2c600051"
+      },
+      "8X1S": {
+        "ligand_ccd": "I2U",
+        "ligand_asym": "E",
+        "heavy_atoms": 21,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "c0f52c3a303f78c91d56554ee44c9733be82bf0f594c17992435a7d387bca347"
+      },
+      "9BIQ": {
+        "ligand_ccd": "A1APN",
+        "ligand_asym": "C",
+        "heavy_atoms": 28,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "35e2e48b1e9236a28859c71d3eb1cea34694841f608d20a3577010f2afd9467f"
+      },
+      "9DRA": {
+        "ligand_ccd": "A1BA2",
+        "ligand_asym": "D",
+        "heavy_atoms": 10,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "c05dfde2a99ff36d7cc69563374b58cf85b6a0daf910a357b1545e7e0ed2b5a0"
+      },
+      "9ETQ": {
+        "ligand_ccd": "A1H63",
+        "ligand_asym": "C",
+        "heavy_atoms": 30,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "f4ca24bdc306fc9869b76d707e1aaaee39ba7351b71055b85f48a8b96498b652"
+      },
+      "9HKX": {
+        "ligand_ccd": "ADN",
+        "ligand_asym": "L",
+        "heavy_atoms": 19,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "33e469a892eb7d3a41c60b15b1fa392c1b93089c87377ab0f742f6824b32ca14"
+      },
+      "9JDC": {
+        "ligand_ccd": "LH6",
+        "ligand_asym": "D",
+        "heavy_atoms": 21,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "4a1b25456727a197dc99f3e97291ed159042812f9efffc40141b31278f2354bc"
+      },
+      "9LQY": {
+        "ligand_ccd": "A1EK3",
+        "ligand_asym": "D",
+        "heavy_atoms": 37,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "9eafe06606e6284b23e625dc800bf4928fae809a8b0499a5b8d6dc21d401a72a"
+      },
+      "9LZG": {
+        "ligand_ccd": "A1L8C",
+        "ligand_asym": "E",
+        "heavy_atoms": 13,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "990e767213860172a26d2c7cbbcaf4c4f06da934adde90e015ad609d55a9ba02"
+      },
+      "9OHN": {
+        "ligand_ccd": "A1CBF",
+        "ligand_asym": "BA",
+        "heavy_atoms": 40,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "6fc8ea585af34ace6a9be6dad073a0f332e98c8c2cb59007802deeac2b27305b"
+      },
+      "9OKG": {
+        "ligand_ccd": "UKX",
+        "ligand_asym": "B",
+        "heavy_atoms": 12,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "9c5092116dafd0da17915b9660badfbbb8a9b3e34786b9e79c3775dee2298d92"
+      },
+      "9OMM": {
+        "ligand_ccd": "GMP",
+        "ligand_asym": "F",
+        "heavy_atoms": 20,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "6ca7f2ed716ec5534236547a13d381b38cbcd3f3f29d8f86af017cde4d949228"
+      },
+      "9OSW": {
+        "ligand_ccd": "A1CER",
+        "ligand_asym": "F",
+        "heavy_atoms": 34,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "ebaef46eb0509fed011a4fa431f8329721c8d00e4dac44c6d45721989d9ce697"
+      },
+      "9P4Y": {
+        "ligand_ccd": "A1CG9",
+        "ligand_asym": "B",
+        "heavy_atoms": 23,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "90242dcdd98fe02c1fc988b21ecb6f29b7db612e209dd3ebb400330546103c10"
+      },
+      "9SDI": {
+        "ligand_ccd": "A1JNJ",
+        "ligand_asym": "G",
+        "heavy_atoms": 14,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "522f37f0375861e83bac5369c414f305110287034b280611cb310668f07cebae"
+      },
+      "9UWL": {
+        "ligand_ccd": "A1EQN",
+        "ligand_asym": "F",
+        "heavy_atoms": 52,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "e256f56af272eccdf5a369bb5c1e6c0dfd6bbdc98bc162596d7943d9831d2f29"
+      },
+      "9ZB9": {
+        "ligand_ccd": "A1C1E",
+        "ligand_asym": "AA",
+        "heavy_atoms": 37,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "bd8fde110de707ffb4ace0762e0106a7526f3a9e60832531629b9a89b5f12a94"
+      },
+      "9ZNN": {
+        "ligand_ccd": "A1C3G",
+        "ligand_asym": "C",
+        "heavy_atoms": 62,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "15aa8f006cce962f22aa4a4d419580230dfc14d48161e651620a31a57d90efa5"
+      },
+      "9ZNO": {
+        "ligand_ccd": "A1C3G",
+        "ligand_asym": "C",
+        "heavy_atoms": 62,
+        "ccd_heavy_atoms_missing": [],
+        "sha256": "a6103d6063e86e9d4e112fc58dbd65e3567fb171693d2fa99f6d2b9420eec735"
+      }
+    },
+    "how": "ligand_asym instance of model 1, heavy atoms, first alternate location; bond orders and charges from the AlphaFold3 CCD (rdkit_utils.mol_from_ccd_cif)"
+  },
+  "alphafold3": {
+    "commit": "85c4d20505fd5cef05eac22b534d4e793971ae69",
+    "buckets": [
+      256,
+      512,
+      768,
+      1024,
+      1280,
+      1536,
+      2048,
+      2560,
+      3072,
+      3584,
+      4096,
+      4608,
+      5120
+    ]
+  },
+  "counts": {
+    "large": {
+      "targets": 34,
+      "by_bucket": {
+        "1280": 24,
+        "1536": 10
+      },
+      "by_method": {
+        "EM": 22,
+        "X-ray": 12
+      },
+      "variant_A": 17,
+      "tpu_r2": 10
+    },
+    "control": {
+      "targets": 34,
+      "by_bucket": {
+        "1024": 4,
+        "256": 3,
+        "512": 20,
+        "768": 7
+      },
+      "by_method": {
+        "EM": 22,
+        "X-ray": 12
+      },
+      "variant_A": 11,
+      "tpu_r2": 10
+    }
+  },
+  "output": {
+    "path": "targets/large/large_subset.csv",
+    "sha256": "622e0239013f3b7f404fe2346c0d0eadae0cbde799a9c1c55bf098ba3c3fe473"
+  }
+}
