@@ -23,13 +23,13 @@ def describe(path, platform):
 
 # ---- plans
 
-def test_followups_7_to_9_11_12_and_the_check_take_the_archive_and_nothing_else_does():
+def test_followups_7_to_12_and_the_check_take_the_archive_and_nothing_else_does():
   with_key = sorted(p for p in PLANS.rglob('*.yaml') if 'eigen_source:' in p.read_text())
   folders = {p.parent.name for p in with_key}
-  assert folders == {'seeds', 'sw', 'h100', 'sw_smoke', 'h100_smoke', 'eigen_check', 'repl', 'prec5'}
+  assert folders == {'seeds', 'sw', 'h100', 'sw_smoke', 'h100_smoke', 'eigen_check', 'repl', 'prec5', 'large'}
   for p in with_key:
     platform = next(iter(run_plan.read_configs(p)['configs']))
-    if p.parent.name == 'repl':   # its manifest exists once the follow-up 11 inputs are built
+    if p.parent.name in ('repl', 'large'):   # their manifests exist once the follow-up 11 and 10 inputs are built
       assert 'eigen_source: archive\n' in p.read_text(), p
       continue
     assert describe(p, platform)['eigen_source'] == 'archive', p
