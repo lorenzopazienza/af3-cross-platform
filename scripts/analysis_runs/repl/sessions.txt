@@ -1,3 +1,20 @@
-# Follow-up 11 (repl) sessions that enter the analysis (notes/analysis_plan.md section 10, the launch rows of arms
-# V5r, V6r and Gr): one complete session per part, listed here once the arms have finished and committed before any
-# analysis run. Preempted or failed sessions and smoke tests enter no analysis. None listed yet.
+# Follow-up 11 (label repl): the complete session of each part, from the section 10 rows of 2026-11-05 (Gr, V5r) and
+# 2026-11-06 (V6r). Interrupted sessions (Spot preemption, no capacity, apt lock) enter no analysis.
+20261105T074623Z_l4_repl_gr_01
+20261105T024725Z_l4_repl_gr_02
+20261104T223033Z_l4_repl_gr_03
+20261105T024730Z_l4_repl_gr_04
+20261105T024734Z_l4_repl_gr_05
+20261105T024739Z_l4_repl_gr_06
+20261105T024745Z_l4_repl_gr_07
+20261105T024750Z_l4_repl_gr_08
+20261104T223426Z_l4_repl_gr_09
+20261105T024755Z_l4_repl_gr_10
+20261105T033217Z_l4_repl_gr_11
+20261104T233146Z_l4_repl_gr_12
+20261104T223012Z_v5e_repl_v5r_01
+20261105T064758Z_v5e_repl_v5r_02
+20261105T173434Z_v5e_repl_v5r_03
+20261105T224245Z_v6e_repl_v6r_01
+20261106T064938Z_v6e_repl_v6r_02
+20261106T145206Z_v6e_repl_v6r_03
