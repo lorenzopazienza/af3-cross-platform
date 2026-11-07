@@ -1,3 +1,8 @@
-# Follow-up 12 (prec5) sessions that enter the analysis (notes/analysis_plan.md section 10, the launch rows of arms
-# V6h5 and Gh5): one complete session per part, listed here once the arms have finished and committed before any
-# analysis run. Preempted or failed sessions and smoke tests enter no analysis. None listed yet.
+# Follow-up 12 (label prec5): the complete session of each part, from the section 10 rows of 2026-11-06 (Gh5) and
+# 2026-11-07 (V6h5). Seeds 1 and 2 come from the main-study sessions (analysis/prec5.py --main).
+20261106T183601Z_l4_prec5_gh5_01
+20261106T183606Z_l4_prec5_gh5_02
+20261106T183611Z_l4_prec5_gh5_03
+20261106T183616Z_l4_prec5_gh5_04
+20261106T183621Z_l4_prec5_gh5_05
+20261106T183014Z_v6e_prec5_v6h5_01
