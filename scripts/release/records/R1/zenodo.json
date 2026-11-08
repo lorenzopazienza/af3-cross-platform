@@ -1,0 +1,62 @@
+{
+ "metadata": {
+  "title": "AlphaFold3 on TPU and GPU: inputs, targets, manifests, data freeze and run records",
+  "description": "<p>Record R1 of the study \"&lt;paper title&gt;\": the frozen AlphaFold3 inputs with their ColabFold MSAs, targets, manifests, every data freeze (final identifier 689230120499e5ba9d903051553c6554f3412f462456461757398f8fd3560a1a, 295 sessions), session lists, the run records of the main study and follow-ups 1 to 12, and the records of sessions outside the freeze mapped to the analysis plan.</p><p>No AlphaFold3 Output and no model parameters are in this record. The outputs, the results of AlphaFold3's data pipeline and the follow-up 6 deliveries are in the companion record, 10.5281/zenodo.24057544, under the AlphaFold 3 Output Terms of Use. Provenance files are released with the contact address and home paths redacted; REDACTIONS.tsv lists each file with the SHA-256 of the original and of the released copy. LICENCES.md gives the licence of every third-party source and of each archive.</p>",
+  "keywords": [
+   "AlphaFold 3",
+   "protein structure prediction",
+   "TPU",
+   "GPU",
+   "benchmark",
+   "reproducibility",
+   "data freeze",
+   "multiple sequence alignment",
+   "PoseBusters"
+  ],
+  "license": "cc-by-4.0",
+  "related_identifiers": [
+   {
+    "identifier": "arXiv:<arXiv identifier>",
+    "relation": "isSupplementTo",
+    "resource_type": "publication-preprint"
+   },
+   {
+    "identifier": "https://github.com/lorenzopazienza/alphafold-on-tpu",
+    "relation": "isSupplementedBy",
+    "resource_type": "software"
+   },
+   {
+    "identifier": "10.5281/zenodo.24057544",
+    "relation": "isSourceOf",
+    "resource_type": "dataset"
+   },
+   {
+    "identifier": "10.5281/zenodo.8278563",
+    "relation": "references",
+    "resource_type": "dataset"
+   },
+   {
+    "identifier": "10.5281/zenodo.14794785",
+    "relation": "references",
+    "resource_type": "dataset"
+   }
+  ],
+  "upload_type": "dataset",
+  "access_right": "open",
+  "language": "eng",
+  "creators": [
+   {
+    "name": "Pazienza, Lorenzo",
+    "orcid": "0009-0006-1687-0125"
+   }
+  ],
+  "contributors": [
+   {
+    "name": "Pazienza, Lorenzo",
+    "type": "ContactPerson",
+    "orcid": "0009-0006-1687-0125"
+   }
+  ],
+  "notes": "Contact: lorenzo.pazienza@gmail.com"
+ }
+}
