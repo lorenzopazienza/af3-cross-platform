@@ -1,3 +1,51 @@
-# Follow-up 10 (large) sessions that enter the analysis (notes/analysis_plan.md section 10, the launch rows of arms
-# V5l, V6l and Gl): one complete session per part, listed here once the arms have finished and committed before any
-# analysis run. Preempted or failed sessions and smoke tests enter no analysis. None listed yet.
+# Follow-up 10 (label large): the complete session of each part, from the section 10 rows of 2026-11-07 (V5l) and
+# 2026-11-08 (Gl, V6l). Interrupted sessions (Spot preemption, no capacity) enter no analysis.
+20261105T224849Z_v5e_large_v5l_04
+20261106T065042Z_v5e_large_v5l_01
+20261106T144717Z_v5e_large_v5l_02
+20261106T224431Z_v5e_large_v5l_03
+20261106T231145Z_v5e_large_v5l_05
+20261107T074746Z_v5e_large_v5l_06
+20261107T022602Z_v6e_large_v6l_01
+20261107T104645Z_v6e_large_v6l_02
+20261107T151145Z_v6e_large_v6l_03
+20261107T231510Z_v6e_large_v6l_04
+20261107T142213Z_l4_large_gl_01
+20261107T142217Z_l4_large_gl_02
+20261107T142223Z_l4_large_gl_03
+20261107T142228Z_l4_large_gl_04
+20261107T142232Z_l4_large_gl_05
+20261107T142238Z_l4_large_gl_06
+20261107T142243Z_l4_large_gl_07
+20261107T142249Z_l4_large_gl_08
+20261107T113132Z_l4_large_gl_09
+20261107T193406Z_l4_large_gl_10
+20261107T113142Z_l4_large_gl_11
+20261107T195710Z_l4_large_gl_12
+20261107T113209Z_l4_large_gl_13
+20261107T000646Z_l4_large_gl_14
+20261107T195716Z_l4_large_gl_15
+20261107T225302Z_l4_large_gl_16
+20261107T195653Z_l4_large_gl_17
+20261107T123201Z_l4_large_gl_18
+20261107T010244Z_l4_large_gl_19
+20261107T123206Z_l4_large_gl_20
+20261107T123211Z_l4_large_gl_21
+20261107T013237Z_l4_large_gl_22
+20261107T013241Z_l4_large_gl_23
+20261107T013247Z_l4_large_gl_24
+20261107T030144Z_l4_large_gl_25
+20261107T123230Z_l4_large_gl_26
+20261107T033209Z_l4_large_gl_27
+20261107T040716Z_l4_large_gl_28
+20261107T050207Z_l4_large_gl_29
+20261107T050757Z_l4_large_gl_30
+20261107T053359Z_l4_large_gl_31
+20261107T053918Z_l4_large_gl_32
+20261107T054015Z_l4_large_gl_33
+20261107T130220Z_l4_large_gl_34
+20261107T073509Z_l4_large_gl_35
+20261107T194011Z_l4_large_gl_36
+20261107T194047Z_l4_large_gl_37
+20261107T194156Z_l4_large_gl_38
+20261107T195148Z_l4_large_gl_39
