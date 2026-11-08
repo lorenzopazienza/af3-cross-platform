@@ -4,7 +4,7 @@ Scripts and tests that the study's results depend on, kept here under version co
 the gitignored `results/`. Moved out of `results/` on 2026-10-15; `MOVED.tsv` lists every old and new path. Run
 everything from the repository root.
 
-- `freeze/`: the data freeze (`make_freeze_manifest.py`, `reproduce.sh`); output `results/freeze/`.
+- `freeze/`: the data freeze (`make_freeze_manifest.py`, `reproduce*.sh`) and its index (`freeze_index.py`); output `results/freeze/`.
 - `release/`: the Zenodo release (`release.py`, its tests, `RUNBOOK.md`, the record README drafts in `records/`);
   outputs `results/release/`.
 - `monitor/`: checks run while launches were in progress (main study 2026-10-13, follow-ups 2026-10-15); outputs
