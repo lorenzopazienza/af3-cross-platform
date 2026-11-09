@@ -842,12 +842,22 @@ def test_vm_steps_script_is_valid_and_copies_outputs_only_for_released_sessions(
 
 
 DOI = {'R1': '10.5281/zenodo.24057470', 'R2': '10.5281/zenodo.24057544'}
+PAPER_POINTER = 'Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available).'
 # The relations of Zenodo's deposit metadata reference (developers.zenodo.org, read on 2026-11-08); isRelatedTo is not one.
 ZENODO_RELATIONS = {'isCitedBy', 'cites', 'isSupplementTo', 'isSupplementedBy', 'isContinuedBy', 'continues', 'isDescribedBy',
                     'describes', 'hasMetadata', 'isMetadataFor', 'isNewVersionOf', 'isPreviousVersionOf', 'isPartOf', 'hasPart',
                     'isReferencedBy', 'references', 'isDocumentedBy', 'documents', 'isCompiledBy', 'compiles', 'isVariantFormOf',
                     'isOriginalFormof', 'isIdenticalTo', 'isAlternateIdentifier', 'isReviewedBy', 'reviews', 'isDerivedFrom',
                     'isSourceOf', 'requires', 'isRequiredBy', 'isObsoletedBy', 'obsoletes'}
+
+
+def test_runbook_tags_the_build_and_fills_in_no_paper_field():
+  text = (release.HERE / 'RUNBOOK.md').read_text()
+  flat = ' '.join(text.split())
+  assert 'git tag -a zenodo-v1 -m "Zenodo release build"' in text and 'git push origin zenodo-v1' in text
+  assert 'build from that tag' in flat
+  assert 'TITLE=' not in text and '<paper' not in text and '<arXiv' not in text and 'angle bracket' not in text and 'placeholder' not in text
+  assert 'added later as related works ("is supplement to")' in flat and 'no new version needed' in flat
 
 
 def test_r2_licence_is_custom_and_r1_is_cc_by():
@@ -862,7 +872,7 @@ def test_r2_licence_is_custom_and_r1_is_cc_by():
 def test_runbook_never_sends_r2_metadata_through_the_deposit_api():
   # that endpoint takes only licence ids and defaults to CC0 for a dataset: R2's licence is set by hand in the form
   text = (release.HERE / 'RUNBOOK.md').read_text()
-  assert '$API/$R1_ID"' in text and '--data @$HOME/zenodo_R1.json' in text
+  assert '$API/$R1_ID"' in text and '--data @$HOME/repo/scripts/release/records/R1/zenodo.json' in text
   assert 'zenodo_R2.json' not in text and '"$API/$R2_ID"' not in text
   assert 'other-nc' not in text and 'Add custom' in text
 
@@ -875,7 +885,9 @@ def test_zenodo_metadata(record):
   assert m['contributors'][0]['type'] == 'ContactPerson' and m['contributors'][0]['orcid'] == '0009-0006-1687-0125'
   address = release.EMAIL.findall(m['notes'].encode())
   assert len(address) == 1 and hashlib.sha256(address[0]).hexdigest() == release.CONTACT_SHA256
-  assert 'github.com/lorenzopazienza/alphafold-on-tpu' in str(m['related_identifiers']) and 'arXiv:<arXiv identifier>' in str(m['related_identifiers'])
+  assert 'github.com/lorenzopazienza/alphafold-on-tpu' in str(m['related_identifiers'])
+  assert 'arXiv' not in str(m['related_identifiers']) and PAPER_POINTER in m['description']   # added on Zenodo when available
+  assert not re.search(r'<paper|&lt;paper|<arXiv|<commit', json.dumps(m))
   other = 'R2' if record == 'R1' else 'R1'
   links = {r['identifier']: r['relation'] for r in m['related_identifiers']}
   assert links[DOI[other]] == {'R1': 'isSourceOf', 'R2': 'isDerivedFrom'}[record]
@@ -890,6 +902,9 @@ def test_readme_carries_the_decisions(record):
   for needed in (release.FREEZE_ID, '0009-0006-1687-0125', DOI['R1'], DOI['R2'], 'REDACTIONS.tsv', 'LICENCES.md'):
     assert needed in text
   assert '<DOI of record' not in text
+  assert PAPER_POINTER in text and 'alphafold-on-tpu, the repository commit tagged zenodo-v1.' in text
+  assert 'DRAFT' not in text and 'not yet published' not in text and 'angle brackets' not in text
+  assert not re.search(r'<paper|<arXiv|<commit', text)
   address = release.EMAIL.findall(text.encode())
   assert len(address) == 1 and hashlib.sha256(address[0]).hexdigest() == release.CONTACT_SHA256
   for spec in release.ARCHIVES:

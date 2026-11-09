@@ -1,7 +1,7 @@
 {
  "metadata": {
   "title": "AlphaFold3 on TPU and GPU: predicted structures, confidences and derived analysis outputs",
-  "description": "<p>Record R2 of the study \"&lt;paper title&gt;\": the AlphaFold3 v3.0.4 outputs of the 295 sessions of the data freeze 689230120499e5ba9d903051553c6554f3412f462456461757398f8fd3560a1a, on TPU v5e, TPU v6e, NVIDIA L4, A100, H100 and CPU, covering the main study and follow-ups 1 to 12: predicted structures, confidences, embeddings of follow-up 2, feature arrays of follow-up 5, AlphaFold3 logs, the results of AlphaFold3's data pipeline with the three deliveries of follow-up 6, the analysis outputs derived from them, and, apart, superseded or engineering sessions not used in any reported result.</p><p><strong>By using this information, you agree to AlphaFold 3 Output Terms of Use found at https://github.com/google-deepmind/alphafold3/blob/main/OUTPUT_TERMS_OF_USE.md.</strong> Non-commercial use only. Any use must cite Abramson, J. et al. Accurate structure prediction of biomolecular interactions with AlphaFold 3. Nature (2024). No Creative Commons licence applies to this record. Every archive holds a Legally Binding Terms of Use text file (LEGALLY_BINDING_TERMS_OF_USE.txt) and a copy of the Terms.</p><p>No model parameters are in this record; they are available only from Google DeepMind. Inputs with ColabFold MSAs, data freeze and run records are in the companion record, 10.5281/zenodo.24057470.</p>",
+  "description": "<p>Record R2 of the study: the AlphaFold3 v3.0.4 outputs of the 295 sessions of the data freeze 689230120499e5ba9d903051553c6554f3412f462456461757398f8fd3560a1a, on TPU v5e, TPU v6e, NVIDIA L4, A100, H100 and CPU, covering the main study and follow-ups 1 to 12: predicted structures, confidences, embeddings of follow-up 2, feature arrays of follow-up 5, AlphaFold3 logs, the results of AlphaFold3's data pipeline with the three deliveries of follow-up 6, the analysis outputs derived from them, and, apart, superseded or engineering sessions not used in any reported result.</p><p><strong>By using this information, you agree to AlphaFold 3 Output Terms of Use found at https://github.com/google-deepmind/alphafold3/blob/main/OUTPUT_TERMS_OF_USE.md.</strong> Non-commercial use only. Any use must cite Abramson, J. et al. Accurate structure prediction of biomolecular interactions with AlphaFold 3. Nature (2024). No Creative Commons licence applies to this record. Every archive holds a Legally Binding Terms of Use text file (LEGALLY_BINDING_TERMS_OF_USE.txt) and a copy of the Terms.</p><p>No model parameters are in this record; they are available only from Google DeepMind. Inputs with ColabFold MSAs, data freeze and run records are in the companion record, 10.5281/zenodo.24057470.</p><p>Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available).</p>",
   "keywords": [
    "AlphaFold 3",
    "protein structure prediction",
@@ -21,11 +21,6 @@
    }
   ],
   "related_identifiers": [
-   {
-    "identifier": "arXiv:<arXiv identifier>",
-    "relation": "isSupplementTo",
-    "resource_type": "publication-preprint"
-   },
    {
     "identifier": "https://github.com/lorenzopazienza/alphafold-on-tpu",
     "relation": "isSupplementedBy",

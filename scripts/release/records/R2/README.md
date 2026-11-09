@@ -1,10 +1,8 @@
-# AlphaFold3 on TPU and GPU: predicted structures, confidences and derived analysis outputs (DRAFT)
-
-**Draft, not yet published.** Fields in angle brackets are to be filled in at publication.
+# AlphaFold3 on TPU and GPU: predicted structures, confidences and derived analysis outputs
 
 Author: Lorenzo Pazienza, ORCID 0009-0006-1687-0125. Contact: lorenzo.pazienza@gmail.com.
-Paper: <paper citation, arXiv identifier>. Companion record (inputs with ColabFold MSAs, targets, manifests, data freeze, run
-records): 10.5281/zenodo.24057470. This record: 10.5281/zenodo.24057544. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, <commit>.
+Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available). Companion record (inputs with ColabFold MSAs, targets, manifests, data freeze, run
+records): 10.5281/zenodo.24057470. This record: 10.5281/zenodo.24057544. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, the repository commit tagged zenodo-v1.
 
 ## Terms of use of this record
 
@@ -41,12 +39,12 @@ Modifications: we have not modified any model, confidence file, ranking score, e
 each is as AlphaFold3 wrote it (SHA-256 in the per-archive manifests and in the data freeze), and the build stops rather than change
 one. The only changes are the redactions in logs and records listed in `REDACTIONS.tsv` (below).
 
-Please also cite <paper citation> when using these data.
+Please also cite the paper when using these data. Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available).
 
 ## What this record contains
 
 AlphaFold3 v3.0.4 outputs (official model parameters, AlphaFold3's defaults: 10 recycles, 5 diffusion samples per
-seed) from the study "<paper title>", run on TPU v5e, TPU v6e, NVIDIA L4, A100 and H100, and CPU, covering the main study and
+seed) from the study, run on TPU v5e, TPU v6e, NVIDIA L4, A100 and H100, and CPU, covering the main study and
 follow-ups 1 to 12.
 **No model parameters (weights) are included.** They are available only from Google DeepMind
 (https://github.com/google-deepmind/alphafold3).

@@ -1,10 +1,8 @@
-# AlphaFold3 on TPU and GPU: inputs, targets, manifests, data freeze and run records (DRAFT)
-
-**Draft, not yet published.** Fields in angle brackets are to be filled in at publication.
+# AlphaFold3 on TPU and GPU: inputs, targets, manifests, data freeze and run records
 
 Author: Lorenzo Pazienza, ORCID 0009-0006-1687-0125. Contact: lorenzo.pazienza@gmail.com.
-Paper: <paper citation, arXiv identifier>. Companion record with the AlphaFold3 outputs, the results of its data pipeline and the
-follow-up 6 deliveries: 10.5281/zenodo.24057544. This record: 10.5281/zenodo.24057470. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, <commit>.
+Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available). Companion record with the AlphaFold3 outputs, the results of its data pipeline and the
+follow-up 6 deliveries: 10.5281/zenodo.24057544. This record: 10.5281/zenodo.24057470. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, the repository commit tagged zenodo-v1.
 
 The record covers the whole study: the main study and follow-ups 1 to 12.
 

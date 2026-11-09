@@ -10,8 +10,10 @@ Commands are written out in full for zsh on the laptop, from the repository root
 through `gcloud compute ssh --command`. Lorenzo runs every step that creates or deletes a cloud resource.
 
 The two DOIs are reserved (drafts, not published): R1 `10.5281/zenodo.24057470`, R2 `10.5281/zenodo.24057544`; they are already in
-`scripts/release/records/{R1,R2}/README.md` and `zenodo.json`. Before step 0, fill in the other angle brackets of the READMEs (paper
-citation, commit) so that the READMEs the build copies are the final ones, and commit.
+`scripts/release/records/{R1,R2}/README.md` and `zenodo.json`.
+
+Before step 0: commit, then create and push the tag: `git tag -a zenodo-v1 -m "Zenodo release build"` and `git push origin zenodo-v1`;
+build from that tag.
 
 ## 0. Laptop: list the bucket and build the archives made locally
 
@@ -207,12 +209,15 @@ Both forms leave two drafts, with the DOIs reserved before step 0. Lorenzo check
 README that opens) and presses Publish by hand; a published record cannot be deleted. Zenodo's limits apply per record: 50 GB and 100
 files, with no folders.
 
+The arXiv preprint and the conference version are added later as related works ("is supplement to") in the Zenodo metadata of each
+record, with no new version needed. The READMEs and `zenodo.json` already point there.
+
 ### Form 1: the web interface, from the laptop (after steps 7a, 8 and 9)
 
 1. Open the draft of R1 at https://zenodo.org/uploads, the one with the reserved DOI.
 2. Drag in every file of `$HOME/af3_release/R1` (35 files, about 0.5 GB), and wait until each shows as finished.
 3. Fill in the form from `scripts/release/records/R1/zenodo.json` (title, creators and ORCID, description, keywords, licence, related
-   identifiers, notes for the contact), replacing the placeholders.
+   identifiers, notes for the contact).
 4. Save the draft. Do the same for R2 with `$HOME/af3_release/R2` (76 files, about 38 GB). **R2's licence is a custom one:** in the
    Licenses field remove the default licence the draft was saved with, choose "Add custom", title `AlphaFold 3 Output Terms of Use`,
    link `https://github.com/google-deepmind/alphafold3/blob/main/OUTPUT_TERMS_OF_USE.md` (the `rights` entry of R2's `zenodo.json`).
@@ -287,19 +292,16 @@ The metadata: **only R1 goes through this endpoint.** The deposit API takes only
 for a dataset, with no field for a custom licence (developers.zenodo.org, read on 2026-11-08), so sending R2's metadata this way could
 publish it under a licence the Terms do not allow. R2's metadata, licence included, is filled in by hand in the form, as in form 1, steps
 3, 4 and 6. A `PUT` also replaces the whole metadata of the draft: `zenodo.json` has no affiliation or funding, so add them in the form
-afterwards if the draft should carry them. R1, from its `zenodo.json` with the paper's title and arXiv identifier filled in:
+afterwards if the draft should carry them. R1, from its `zenodo.json`:
 
 ```
-TITLE='<paper title>'; ARXIV='<arXiv identifier>'
-sed -e "s|<paper title>|$TITLE|g; s|&lt;paper title&gt;|$TITLE|g; s|<arXiv identifier>|$ARXIV|g" ~/repo/scripts/release/records/R1/zenodo.json > ~/zenodo_R1.json
-grep -c '[<]\|&lt;' ~/zenodo_R1.json
-curl -sS --fail -o ~/put_R1.json -X PUT -H 'Content-Type: application/json' -H "Authorization: Bearer $ZENODO_TOKEN" --data @$HOME/zenodo_R1.json "$API/$R1_ID"
+curl -sS --fail -o ~/put_R1.json -X PUT -H 'Content-Type: application/json' -H "Authorization: Bearer $ZENODO_TOKEN" --data @$HOME/repo/scripts/release/records/R1/zenodo.json "$API/$R1_ID"
 python3 -c "import json,os; m=json.load(open(os.path.expanduser('~/put_R1.json')))['metadata']; print(m.get('license'), m.get('doi') or m.get('prereserve_doi'))"
 unset ZENODO_TOKEN
 exit
 ```
 
-Expected: the `grep` counts only the `<p>` tags of the description, so look at the lines if it prints more than a few; `curl` exits 0 (a 400
+Expected: `curl` exits 0 (a 400
 prints an error naming the field); the last line prints `cc-by-4.0` and `10.5281/zenodo.24057470`. If the DOI differs, stop. Then delete the
 VM (step 9), revoke the token on the same Zenodo page, fill in R2's form (custom licence included) and check both drafts in the browser, and
 publish by hand. The API form leaves no copy of R2 on the
