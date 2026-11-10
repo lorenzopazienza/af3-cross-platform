@@ -8,7 +8,9 @@ New side, as the arm will run: its plans (harness/plans/why), harness/configs.ya
 af3_run.sh's defaults, af3_tpu/, with the provisioning of the specification row (make_fu13_plans.PROPOSED: on demand on
 v5e and L4, Flex-start on v6e). Allowed differences (row of 2026-11-10): the label; the follow-up 13 settings, that is
 the configuration's name and description, its AF3_FU13_* variables and, for the float32 arms, JAX_DEFAULT_MATMUL_
-PRECISION=highest; the seeds and repetitions; the provisioning. The rows that carry those settings are then compared
+PRECISION=highest; for LG (the capture on the L4) JAX_PLATFORMS=cuda,cpu instead of cuda (row of 2026-11-1X: the
+capture's callback needs a local CPU device; cuda stays the default backend); the seeds and repetitions; the
+provisioning. The rows that carry those settings are then compared
 again with them removed ("... without the follow-up 13 settings"), and those must be the same: so nothing else in
 the configuration, the environment or the run_alphafold command may differ. Any other difference is DIFFERS and the
 script exits 1.
@@ -40,10 +42,14 @@ ARMS = {
 OURS = re.compile(r'^(AF3_FU13_\w+)$')
 
 
+CUDA_CPU = 'cuda,cpu'   # LG only: JAX_PLATFORMS of l4_xla_fu13_capture, compared as cuda
+
+
 def strip_cfg(text, float32):
-  """A config entry (JSON) without its AF3_FU13_* variables and, for the float32 arms, JAX_DEFAULT_MATMUL_PRECISION."""
+  """A config entry (JSON) without its AF3_FU13_* variables and, for the float32 arms, JAX_DEFAULT_MATMUL_PRECISION;
+  JAX_PLATFORMS cuda,cpu read as cuda."""
   c = json.loads(text)
-  env = {k: v for k, v in (c.get('env') or {}).items()
+  env = {k: ('cuda' if k == 'JAX_PLATFORMS' and v == CUDA_CPU else v) for k, v in (c.get('env') or {}).items()
          if not OURS.match(k) and not (float32 and k == 'JAX_DEFAULT_MATMUL_PRECISION')}
   if env:
     c['env'] = env
@@ -54,12 +60,12 @@ def strip_cfg(text, float32):
 
 def strip_env(text, float32):
   e = json.loads(text)
-  return json.dumps({k: v for k, v in e.items() if not (float32 and k == 'JAX_DEFAULT_MATMUL_PRECISION')},
-                    sort_keys=True)
+  return json.dumps({k: ('cuda' if k == 'JAX_PLATFORMS' and v == CUDA_CPU else v) for k, v in e.items()
+                     if not (float32 and k == 'JAX_DEFAULT_MATMUL_PRECISION')}, sort_keys=True)
 
 
 def strip_cmd(text, float32):
-  c = re.sub(r' AF3_FU13_\w+=\S+', '', text)
+  c = re.sub(r' AF3_FU13_\w+=\S+', '', text).replace(f'JAX_PLATFORMS={CUDA_CPU} ', 'JAX_PLATFORMS=cuda ')
   return re.sub(r' JAX_DEFAULT_MATMUL_PRECISION=\S+', '', c) if float32 else c
 
 
@@ -68,7 +74,7 @@ def ours(new_cfgs):
   out = set()
   for t in new_cfgs:
     for k, v in (json.loads(t).get('env') or {}).items():
-      if OURS.match(k) or k == 'JAX_DEFAULT_MATMUL_PRECISION':
+      if OURS.match(k) or k == 'JAX_DEFAULT_MATMUL_PRECISION' or (k == 'JAX_PLATFORMS' and v == CUDA_CPU):
         out.add(f'{k}={v}')
   return sorted(out)
 
@@ -82,7 +88,8 @@ def main():
        'Source arm: as recorded in its main-study sessions. New arm: as its plans, harness/configs.yaml, '
        'harness/run_af3.py and cloud/af3_run.sh resolve them, with the provisioning of the row (on demand on v5e and '
        'L4, Flex-start on v6e). Allowed differences: the label, the follow-up 13 settings (configuration name and '
-       'description, AF3_FU13_* variables, JAX_DEFAULT_MATMUL_PRECISION=highest for the float32 arms), the seeds, the '
+       'description, AF3_FU13_* variables, JAX_DEFAULT_MATMUL_PRECISION=highest for the float32 arms, '
+       'JAX_PLATFORMS=cuda,cpu for LG), the seeds, the '
        'repetitions and the provisioning. Rows marked "without the follow-up 13 settings" compare the configuration, '
        'the environment and the command again with those settings removed, and must be the same.', '']
   bad = 0
