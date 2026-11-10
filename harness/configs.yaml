@@ -165,3 +165,103 @@ tpu_xla_highest:
   flash_attention_implementation: xla
   env:
     JAX_DEFAULT_MATMUL_PRECISION: highest
+
+# Follow-up 13 (label why; notes/analysis_plan.md section 10, row of 2026-11-10, item a). Each configuration is
+# tpu_xla or l4_xla with AF3_FU13_* variables added, which only harness/af3_entry.py reads (it then imports
+# harness/fu13_probe.py, where they are described); the run must go through --entry, as every plan does.
+# P: the perturbation of the trunk output at relative size eps (P0: eps = 0, the reference), seed 2026.
+tpu_xla_fu13_p0:
+  description: Cloud TPU, XLA attention, af3_tpu.patch, trunk output perturbed at relative size 0 (follow-up 13, P0)
+  jax_backend: tpu
+  flash_attention_implementation: xla
+  env:
+    AF3_FU13_PERTURB_EPS: 0
+    AF3_FU13_PERTURB_SEED: 2026
+
+tpu_xla_fu13_p14:
+  description: Cloud TPU, XLA attention, af3_tpu.patch, trunk output perturbed at relative size 2^-14 (follow-up 13, P14)
+  jax_backend: tpu
+  flash_attention_implementation: xla
+  env:
+    AF3_FU13_PERTURB_EPS: 2^-14
+    AF3_FU13_PERTURB_SEED: 2026
+
+tpu_xla_fu13_p11:
+  description: Cloud TPU, XLA attention, af3_tpu.patch, trunk output perturbed at relative size 2^-11 (follow-up 13, P11)
+  jax_backend: tpu
+  flash_attention_implementation: xla
+  env:
+    AF3_FU13_PERTURB_EPS: 2^-11
+    AF3_FU13_PERTURB_SEED: 2026
+
+tpu_xla_fu13_p8:
+  description: Cloud TPU, XLA attention, af3_tpu.patch, trunk output perturbed at relative size 2^-8 (follow-up 13, P8)
+  jax_backend: tpu
+  flash_attention_implementation: xla
+  env:
+    AF3_FU13_PERTURB_EPS: 2^-8
+    AF3_FU13_PERTURB_SEED: 2026
+
+tpu_xla_fu13_p7:
+  description: Cloud TPU, XLA attention, af3_tpu.patch, trunk output perturbed at relative size 2^-7 (follow-up 13, P7)
+  jax_backend: tpu
+  flash_attention_implementation: xla
+  env:
+    AF3_FU13_PERTURB_EPS: 2^-7
+    AF3_FU13_PERTURB_SEED: 2026
+
+tpu_xla_fu13_p6:
+  description: Cloud TPU, XLA attention, af3_tpu.patch, trunk output perturbed at relative size 2^-6 (follow-up 13, P6)
+  jax_backend: tpu
+  flash_attention_implementation: xla
+  env:
+    AF3_FU13_PERTURB_EPS: 2^-6
+    AF3_FU13_PERTURB_SEED: 2026
+
+tpu_xla_fu13_p5:
+  description: Cloud TPU, XLA attention, af3_tpu.patch, trunk output perturbed at relative size 2^-5 (follow-up 13, P5)
+  jax_backend: tpu
+  flash_attention_implementation: xla
+  env:
+    AF3_FU13_PERTURB_EPS: 2^-5
+    AF3_FU13_PERTURB_SEED: 2026
+
+# L: the layer-wise capture (fu13_capture_seed-<S>.npz next to af3_output/).
+tpu_xla_fu13_capture:
+  description: Cloud TPU, XLA attention, af3_tpu.patch, layer-wise capture of the trunk (follow-up 13, L)
+  jax_backend: tpu
+  flash_attention_implementation: xla
+  env:
+    AF3_FU13_CAPTURE: 1
+
+l4_xla_fu13_capture:
+  description: NVIDIA L4, XLA attention, layer-wise capture of the trunk (follow-up 13, L)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+    AF3_FU13_CAPTURE: 1
+
+# F: the float32 trunk, AlphaFold3's GlobalConfig.bfloat16 = none with float32 matmuls at highest precision.
+tpu_xla_fu13_f32:
+  description: Cloud TPU, XLA attention, af3_tpu.patch, float32 trunk (bfloat16 none, matmuls highest; follow-up 13, V6f)
+  jax_backend: tpu
+  flash_attention_implementation: xla
+  env:
+    JAX_DEFAULT_MATMUL_PRECISION: highest
+    AF3_FU13_BFLOAT16: none
+
+l4_xla_fu13_f32:
+  description: NVIDIA L4, XLA attention, float32 trunk (bfloat16 none, matmuls highest; follow-up 13, Gf)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+    JAX_DEFAULT_MATMUL_PRECISION: highest
+    AF3_FU13_BFLOAT16: none

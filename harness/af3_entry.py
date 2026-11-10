@@ -152,6 +152,8 @@ def _write_stats():
       'max_rss_bytes': maxrss if sys.platform == 'darwin' else maxrss * 1024,
       'seconds_in_process': round(time.time() - _T0, 2),
   }
+  if _FU13:   # follow-up 13 only (harness/fu13_probe.py); absent otherwise, so earlier records keep their keys
+    out['fu13'] = _FU13
   tmp = path + '.tmp'
   with open(tmp, 'w') as f:
     json.dump(out, f, indent=2)
@@ -160,7 +162,16 @@ def _write_stats():
 
 atexit.register(_write_stats)
 
+# Follow-up 13 (notes/analysis_plan.md section 10, row of 2026-11-10): harness/fu13_probe.py is imported only when
+# an AF3_FU13_* variable is set (configurations tpu_xla_fu13_* and l4_xla_fu13_* of harness/configs.yaml); without
+# one, nothing below runs and AlphaFold3 runs as before. What the probe applied goes to af3_entry_stats.json, "fu13".
+_FU13 = {}
+
 if __name__ == '__main__':
   _install_compile_hook()
+  if any(k.startswith('AF3_FU13_') for k in os.environ):
+    import fu13_probe  # noqa: E402  (harness/, the directory of this script, is on sys.path)
+    _FU13 = fu13_probe.RECORD
+    fu13_probe.install(run_alphafold)
   flags.mark_flags_as_required(['output_dir'])
   app.run(run_alphafold.main)
