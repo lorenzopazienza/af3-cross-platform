@@ -1,0 +1,29 @@
+id,center,systems,url,date_read,page_updated,devices_per_job,one_device_per_job,gpu_types_on_page,same_job_on_several_gpu_types_or_cpu,pin,warning_on_page,warns_same_seed_can_differ
+1,TACC,"Lonestar6, Frontera, Vista",https://docs.tacc.utexas.edu/software/alphafold3/,2026-11-09,2026-10-26,"Not stated, -N 1",not stated,"gpu-a100 (not gpu-a100-small), rtx, CPU normal; Horizon soon",yes,By system,Being benchmarked. CPU inference is for when GPU nodes are unavailable,no
+2,NCSA,"Delta, DeltaAI, ICC",https://docs.ncsa.illinois.edu/en/latest/software/alphafold.html,2026-11-09,,1,yes,"gpuA100x4, ghx4, ICC A100",yes,Flexible,None,no
+3,NIH Biowulf,,https://hpc.nih.gov/apps/alphafold3.html,2026-11-09,,1,yes,"gpu:a100:1; gpu or quick, not gpuh200",no,Pinned,"A100 or newer for Triton, xla below",no
+4,OSC,"Ascend, Cardinal, Pitzer",https://www.osc.edu/resources/available_software/software_list/alphafold_3,2026-11-09,,1,yes,"H100, A100, V100 (known issues)",no,By system,V100 needs extra parameters,no
+5,LBNL Lawrencium,,https://scienceit-docs.lbl.gov/hpc/software/ml/alphafold3/,2026-11-09,2026-09-14,1,yes,"es1, es2 H100/H200, es3 RTX PRO 6000 Blackwell",yes,Flexible,"Load explicit version to stay reproducible (version only, not numerics)",no
+6,Harvard FAS RC,Cannon,https://docs.rc.fas.harvard.edu/kb/alphafold/,2026-11-09,2025-11-07,"Not on page, external scripts not opened",not stated,Not on page,unknown,Unknown,None,no
+7,Harvard Medical O2,,https://harvardmed.atlassian.net/wiki/spaces/O2/pages/3350953987/Using+AlphaFold+3+on+O2,2026-11-09,Apr 07,1,yes,gpu:l40s:1; A100 or newer,no,Pinned in example,"CC 7.x known numerical issues, unsupported",no
+8,Stanford Sherlock,,https://www.sherlock.stanford.edu/docs/software/using/alphafold/,2026-11-09,,1,yes,"H100, L40S, A100, A40, RTX 3090; | constraint over types",yes,Flexible,None. Cache described only as a speedup,no
+9,MIT ORCD,,https://orcd-docs.mit.edu/recipes/af3/,2026-11-09,,1,yes,mit_normal_gpu,no,Partition,Image frozen at one repo version,no
+10,CSC Finland,Mahti,https://docs.csc.fi/apps/alphafold/,2026-11-09,,1,yes,gpu:a100:1,no,Pinned,None,no
+11,NIG/DDBJ Japan,,https://sc.ddbj.nig.ac.jp/en/advanced_guides/AlphaFold/Alphafold_3/,2026-11-09,,1,yes,"L40S only, about 3,500 residues; CPU epyc, rome",no,Pinned,CPU under 1/100 of GPU speed; L40S fee charged per day,no
+12,Calgary ARC,,https://rcs.ucalgary.ca/Running_alphafold3,2026-11-09,,"1, script comment: only 1 usable",yes,gpu-h100,no,Pinned,None,no
+13,Yale YCRC,,https://docs.ycrc.yale.edu/clusters-at-yale/guides/alphafold/,2026-11-09,2026-11-02,1,yes,a100-80g; L40S with memory settings,no,Mostly pinned,None,no
+14,UCL Myriad,,https://github-pages.arc.ucl.ac.uk/mkdocs-rc-docs/Software_Guides/AlphaFold3/,2026-11-09,,1,yes,Mostly V100; A100 job; deleting one line runs on any GPU,yes,Flexible,V100 flags needed for good structures,no
+15,QMUL Apocrita,,https://docs.hpc.qmul.ac.uk/apps/ml/alphafold3/,2026-11-09,,"1, ""of any type""",yes,"A100, H100; -volta module for V100",yes,Flexible,V100 needs its own module. Container for reproducibility (software only),no
+16,bwHPC BinAC2,,https://wiki.bwhpc.de/e/BinAC2/Software/Alphafold,2026-11-09,,"1, page says only one is used",yes,gpu:a100:1,no,Pinned,None,no
+17,Kyushu Genkai,,https://www.cc.kyushu-u.ac.jp/scp/en/system/genkai/software/AlphaFold3/,2026-11-09,2025-06-02,"1, multiple seemed not to help",yes,Not extracted,unknown,Unknown,None,no
+18,Clemson Palmetto,,https://docs.rcd.clemson.edu/software/applications/protein_prediction/alphafold3/,2026-11-09,,1,yes,"Recommends A100 over H100: saves H100s, shorter queues",no,"Pinned, queue reason",None,no
+19,Virginia Tech ARC,,https://www.docs.arc.vt.edu/software/alphafold.html,2026-11-09,,"1, more is wasteful",yes,"a100_normal_q; TinkerCliffs, Falcon",no,Pinned,None,no
+20,TU Dresden ZIH,,https://compendium.hpc.tu-dresden.de/software/life_science/,2026-11-09,,1,yes,"capella; CPU on barnard, chain jobs across clusters",no,Partition,Container for reproducibility (software only),no
+21,USDA SciNet,,https://scinet.usda.gov/guides/application/alphafold3,2026-11-09,,1,yes,gpu-a100,no,Pinned,None,no
+22,JHU ARCH Rockfish,,https://docs.arch.jhu.edu/en/latest/3_Tutorials/specialized/Tutorial_alphafold3.html,2026-11-09,,1,yes,ica100,no,Pinned,None,no
+23,Kansas CRC,,https://docs.crc.ku.edu/software/alphafold,2026-11-09,,1,yes,a100|l40|a40 constraint,yes,Flexible,CC 8.0 or more,no
+24,York Viking,,https://vikingdocs.york.ac.uk/applications/alphafold3.html,2026-11-09,,1,yes,gpuplus H100,no,Pinned,None,no
+25,GMU ORC,,https://wiki.orc.gmu.edu/mkdocs/Running_Alphafold3/,2026-11-09,,1 MIG slice (2g.20gb),yes,gpuq,no,Pinned,None,no
+26,UChicago Midway3,,https://docs.rcc.uchicago.edu/software/apps-and-envs/alphafold/,2026-11-09,,2 A100,no,"a100, all stages in one job",no,Pinned,None,no
+27,Fred Hutch,,https://sciwiki.fredhutch.org/compdemos/alphafold3/,2026-11-09,,2 or 4,no,chorus,no,Partition,None,no
+28,U. Tartu,,https://docs.hpc.ut.ee/public/cluster/Software/alphafold3/,2026-11-09,,2 a100-80g,no,gpu,no,Pinned,None,no
