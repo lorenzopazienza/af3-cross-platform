@@ -75,9 +75,20 @@ def pilot_targets(manifest=REPO / 'inputs' / 'manifest.csv'):
   return sorted(m[m.pilot.astype(str).str.strip().str.lower().isin(['1', 'true', 'yes'])].pdb_id)
 
 
-def session_folders(col):
-  """collect.py's session column is the harness run folder (results/af3/<session>/<run>): its session folder name."""
-  return col.astype(str).map(lambda s: pathlib.PurePosixPath(s).parent.name if '/' in s else s)
+def session_folders(col, model_paths=None):
+  """collect.py's session column is the harness run folder (results/af3/<session>/<run>): its session folder name.
+
+  In a worktree whose results/ is a symlink to the main checkout's, collect.py cannot make the folder relative to the
+  repository and writes the run name alone; the session folder is then read from model_path
+  (.../results/af3/<session>/<run>/...), the part after the first path component named af3."""
+  def one(s, mp):
+    if '/' in s:
+      return pathlib.PurePosixPath(s).parent.name
+    parts = pathlib.PurePosixPath(str(mp)).parts if mp is not None else ()
+    return parts[parts.index('af3') + 1] if 'af3' in parts and parts.index('af3') + 1 < len(parts) else s
+  sess = col.astype(str)
+  mps = list(model_paths) if model_paths is not None else [None] * len(sess)
+  return pd.Series([one(s, mp) for s, mp in zip(sess, mps)], index=col.index)
 
 
 def session_check(d, sessions):
@@ -217,7 +228,7 @@ def main():
     raise SystemExit(f'{args.sessions} lists no session')
   d = pd.read_csv(args.samples, low_memory=False)
   d['condition'] = d.platform
-  d['session_folder'] = session_folders(d.session)
+  d['session_folder'] = session_folders(d.session, d.model_path if 'model_path' in d.columns else None)
   rows = checks(d, sessions, pilot_targets(args.manifest))
   pd.DataFrame(rows).to_csv(out / 'checks.csv', index=False)
   read = [pathlib.Path(args.sessions), pathlib.Path(args.samples), pathlib.Path(args.manifest), REPO / 'cloud' / 'prices.csv']
