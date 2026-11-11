@@ -1,0 +1,4 @@
+# Warm cost on GT and H (label warm_th): the complete session of each part (warm_th_gt_01 on l4, warm_th_h_01 on
+# h100), one per line, from the section 10 launch rows, written once both parts have finished and committed before
+# any analysis run (scripts/analysis_runs/warm_th/reproduce.sh). An interrupted or otherwise incomplete session (a
+# Spot preemption of H, for example) is recorded in section 10 and not listed. Empty until then.

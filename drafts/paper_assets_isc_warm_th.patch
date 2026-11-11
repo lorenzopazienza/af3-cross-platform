@@ -1,0 +1,225 @@
+--- a/analysis/paper_assets_isc.py
++++ b/analysis/paper_assets_isc.py
+@@ -1149,16 +1149,23 @@
+ MONTHS = {9: 'September', 10: 'October', 11: 'November'}
+ 
+ 
+-def table_q2(out, cost, mem, memlimit, gpu_cost=None, gpu_mem=None, price_dates=None, batch1024='', memlimit_ah=None):
++def table_q2(out, cost, mem, memlimit, gpu_cost=None, gpu_mem=None, price_dates=None, batch1024='', memlimit_ah=None,
++             warm_th=None):
+   """Table III (task of 2026-11-10, A3): compilation and inference split, cost per structure fresh, with compilation
+   amortized (plan M6, second variant) and from warm reruns, A100 and H100 rows, and one memory metric on every device
+-  (M7 as the plan defines it: compiled peak plus arguments)."""
++  (M7 as the plan defines it: compiled peak plus arguments). warm_th (warm_th_summary, row of 2026-11-11): the warm
++  rows of the L4 Triton and the H100, added to the warm column; None leaves both cells empty."""
+   if memlimit_ah is not None:
+     memlimit = pd.concat([memlimit, memlimit_ah], ignore_index=True)
+   cost_all = pd.concat([cost, gpu_cost], ignore_index=True) if gpu_cost is not None else cost
+   mem_all = pd.concat([mem, gpu_mem], ignore_index=True) if gpu_mem is not None else mem
+   c = cost_all[cost_all.cache == 'fresh']
+   w = cost_all[cost_all.cache == 'warm']
++  if warm_th is not None:
++    clash = sorted(set(warm_th.platform) & set(w[w.bucket == 1024].platform))
++    if clash:
++      raise SystemExit(f'warm_th: {clash} already have a warm row at 1024')
++    w = pd.concat([w, warm_th], ignore_index=True)
+   rows = []
+   for arm in ('V5', 'V6', 'G', 'GT', 'A', 'H'):
+     r = {'arm': arm}
+@@ -1180,7 +1187,12 @@
+   df = pd.DataFrame(rows)
+   c512 = c[(c.platform == 'C') & (c.bucket == 512)].iloc[0]
+   ct = c[c.platform == 'C']
+-  nwarm = w[(w.platform.isin(['V5', 'V6', 'G'])) & (w.bucket == 1024)].processes
++  nwarm = w[(w.platform.isin(['V5', 'V6', 'G', 'GT', 'H'])) & (w.bucket == 1024)].processes
++  warm_later = ''
++  if warm_th is not None:
++    hs = warm_th[warm_th.platform == 'H'].iloc[0]
++    warm_later = (' The L4 Triton and the H100 were measured the same way in a later run. The H100 ran on Spot; at '
++                  f'its Spot price, its warm cost is {usd3(hs.median_usd_per_structure_spot)} USD.')
+   args_gpu = [float(mem_all[(mem_all.platform == a) & (mem_all.bucket == 1024)].compiled_peak_plus_args_gib.iloc[0]) -
+               float(mem_all[(mem_all.platform == a) & (mem_all.bucket == 1024)].compiled_peak_gib.iloc[0])
+               for a in ('G', 'GT', 'A', 'H')]
+@@ -1196,7 +1208,8 @@
+   if ' to ' in gib:
+     raise SystemExit(f'Table III note: arguments on the GPUs are {gib} GiB, not one value')
+   write_table(out, 'TIII_q2', df, 'Time, Cost, and Memory per Structure (Q2)', 'pre-specified (Q2: M6 and M7) for the '
+-              'v5e, v6e, L4 and L4 Triton; follow-ups 3 and 9 for the A100 and H100; memory limit descriptive',
++              'v5e, v6e, L4 and L4 Triton; follow-ups 3 and 9 for the A100 and H100; memory limit descriptive'
++              + ('; warm cost of the L4 Triton and H100 descriptive, measured later' if warm_th is not None else ''),
+               colspec='lrrrrrrrrrrl',
+               head=[' & \\multicolumn{2}{c}{256 tokens (s)} & \\multicolumn{2}{c}{1024 tokens (s)} & '
+                     '\\multicolumn{4}{c}{USD per structure at 1024} & \\multicolumn{2}{c}{GiB at 1024} & '
+@@ -1212,7 +1225,7 @@
+                      f'The amortized cost spreads one compilation over the {batch1024} targets of bucket 1024, as the plan '
+                      'defines it. The warm cost comes from a new process that loads the model compiled by the first run '
+                      'from a saved cache, measured on seed~1 of the 10 pilot targets '
+-                     f'({int(nwarm.min())} of them at 1024).',
++                     f'({int(nwarm.min())} of them at 1024).' + warm_later,
+                      f'We read list prices on {main_read} ({fu_read}). They exclude VM setup, idle time, and boot disk. '
+                      'Every main-study run was on demand. Memory is the compiled peak plus the arguments on the device, '
+                      'as the plan defines it (M7). On GPUs, XLA\'s compiled peak already includes the arguments, so this '
+@@ -1227,9 +1240,10 @@
+   # when results/analysis/warm_th_<DATE>/ exists (another agent prepares the measurement); until then their warm cells
+   # stay empty. If the measurement does not come, the cells get "--" and the note the sentence "Warm reruns were part of
+   # the main study's checks and of Follow-up~3. The L4 Triton and the H100 did not have them (--)."
+-  nf = out / 'tables' / 'TIII_q2_note.tex'
+-  nf.write_text(nf.read_text() + '% TODO warm_th: the warm cost of the L4 Triton and the H100 (empty cells) is written '
+-                'when results/analysis/warm_th_<DATE>/ exists; see analysis/paper_assets_isc.py, table_q2.\n')
++  if warm_th is None:
++    nf = out / 'tables' / 'TIII_q2_note.tex'
++    nf.write_text(nf.read_text() + '% TODO warm_th: the warm cost of the L4 Triton and the H100 (empty cells) is written '
++                  'when results/analysis/warm_th_<DATE>/ exists; see analysis/paper_assets_isc.py, table_q2.\n')
+   return df
+ 
+ 
+@@ -1558,6 +1572,31 @@
+   if [c for c in MEMLIMIT_COLUMNS if c not in sm.columns] or not set(sm.arm) <= {'A', 'H'} or sm.arm.duplicated().any():
+     raise SystemExit(f'{d.name}/summary.csv: columns {list(sm.columns)}, arms {list(sm.arm)}')
+   return sm
++
++
++WARM_TH_COLUMNS = ['platform', 'bucket', 'cache', 'processes', 'median_usd_per_structure_standard',
++                   'median_usd_per_structure_spot']
++
++
++def warm_th_summary(main_dir):
++  """The warm rows at 1024 of the warm-cost completion on GT and H (results/analysis/warm_th_<DATE>/summary.csv, the
++  columns of the main study's cost_summary.csv; analysis/warm_th.py writes it only when every check passed), or None.
++  Its checks.csv must read pass on every row; one warm row per arm, GT and H, is required. Row of 2026-11-11."""
++  d = one_output_dir(main_dir, 'warm_th', ['summary.csv', 'checks.csv'])
++  if d is None:
++    return None
++  rel = lambda f: str((d / f).relative_to(main_dir))  # noqa: E731
++  ck = read(main_dir, rel('checks.csv'))
++  if not len(ck) or (ck.detail != 'pass').any():
++    raise SystemExit(f'{d.name}/checks.csv: a check did not pass')
++  sm = read(main_dir, rel('summary.csv'))
++  missing = [c for c in WARM_TH_COLUMNS if c not in sm.columns]
++  w = sm[(sm.cache == 'warm') & (sm.bucket == 1024)] if not missing else sm
++  if missing or sorted(w.platform) != ['GT', 'H']:
++    raise SystemExit(f'{d.name}/summary.csv: columns missing {missing}, warm arms at 1024 {sorted(w.platform)}')
++  NOTES.append(f'Table III: warm cells of GT and H from {d.name}/summary.csv (analysis/warm_th.py; every check of '
++               'checks.csv passed).')
++  return w.reset_index(drop=True)
+ 
+ 
+ def memlimit_cell(ml):
+@@ -2839,7 +2878,7 @@
+   import cost as costmod  # noqa: E402
+   table_q2(out, cost, read(main_dir, f'{MAINV2}/cost/memory.csv'), read(main_dir, f'{AN}/memlimit_20261014/summary.csv'),
+            gpu_cost, gpu_mem, price_dates=price_dates, batch1024=costmod.batch_sizes('subset')(1024),
+-           memlimit_ah=memlimit_ah_summary(main_dir))
++           memlimit_ah=memlimit_ah_summary(main_dir), warm_th=warm_th_summary(main_dir))
+   dates = read(main_dir, f'{MAINV2}/contrasts/release_dates.csv')
+   prec_ps = read(main_dir, f'{AN}/prec5_20261107/pairs_seed.csv')
+   fu12 = fu12_cutoff_targets(out, prec_ps, dates)
+--- a/analysis/tests/test_paper_assets_pending.py
++++ b/analysis/tests/test_paper_assets_pending.py
+@@ -1,6 +1,7 @@
+ """analysis/paper_assets_isc.py, the readers of results that do not exist yet (rows of 2026-11-10): follow-up 13
+ (analysis/fu13.py outputs) and the memory limit on A and H (memlimit_ah analysis, the format of memlimit_20261014).
+-Synthetic output folders only; no session and no real follow-up 13 or memlimit_ah output is read."""
++Row of 2026-11-11: the warm cost on GT and H (warm_th analysis, the format of the main study's cost_summary.csv).
++Synthetic output folders only; no session and no real follow-up 13, memlimit_ah or warm_th output is read."""
+ import pathlib
+ import sys
+ 
+@@ -180,3 +181,97 @@
+   assert not info['l_drawn'] and 'not available' in isc.CAPTIONS['capFigFuThirteen']
+   n = pd.read_csv(out / 'tables' / 'fu13_numbers.csv')
+   assert not n.quantity.str.startswith('first depth').any()
++
++
++# ---- warm cost on GT and H (label warm_th, row of 2026-11-11; analysis/warm_th.py)
++
++def cost_rows(arm, warm=True, compile_s=50.0):
++  rows = []
++  for b in (256, 512, 1024):
++    rows.append({'platform': arm, 'bucket': b, 'cache': 'fresh', 'processes': 10, 'targets': 2, 'median_wall_s': 100.0,
++                 'median_inference_s': 60.0, 'median_compile_s': compile_s, 'median_usd_per_structure_standard': 0.1,
++                 'median_usd_per_structure_spot': 0.05, 'median_usd_per_structure_amortised_standard': 0.08,
++                 'median_usd_per_structure_amortised_spot': 0.04})
++  if warm:
++    rows.append({'platform': arm, 'bucket': 1024, 'cache': 'warm', 'processes': 2, 'targets': 2, 'median_wall_s': 70.0,
++                 'median_inference_s': 60.0, 'median_compile_s': 3.0, 'median_usd_per_structure_standard': 0.07,
++                 'median_usd_per_structure_spot': 0.035})
++  return rows
++
++
++PRICE_DATES = {'main': ['2026-10-08', '2026-10-09'], 'a100': ['2026-10-16'], 'h100': ['2026-10-27']}
++
++
++def table_q2_inputs():
++  """Minimal synthetic inputs of table_q2: the main study (V5, V6, G, GT, C), follow-ups 3 and 9 (A, H)."""
++  cost = pd.DataFrame(cost_rows('V5') + cost_rows('V6') + cost_rows('G') + cost_rows('GT', warm=False)
++                      + cost_rows('C', warm=False))
++  gpu = pd.DataFrame(cost_rows('A') + cost_rows('H', warm=False))
++  mem = lambda arms: pd.DataFrame([{'platform': a, 'bucket': 1024, 'compiled_peak_plus_args_gib': 3.0,  # noqa: E731
++                                    'compiled_peak_gib': 2.0, 'device_limit_gib': 20.0} for a in arms])
++  memlimit = pd.DataFrame([{'arm': a, 'session': 's', 'sizes_run': 2, 'largest_completed_size': 3584,
++                            'stopping_size': 4096, 'cause': 'oom'} for a in ('V5', 'V6', 'G', 'GT')])
++  return cost, mem(['V5', 'V6', 'G', 'GT']), memlimit, gpu, mem(['A', 'H'])
++
++
++def warm_th_outputs(main, checks_ok=True, arms=('GT', 'H')):
++  d = main / isc.AN / 'warm_th_20261113'
++  rows = []
++  for a in arms:
++    rows += cost_rows(a)
++  sm = pd.DataFrame(rows)
++  h_warm = (sm.cache == 'warm') & (sm.platform == 'H')
++  sm.loc[h_warm, 'median_usd_per_structure_standard'] = 0.2468
++  sm.loc[h_warm, 'median_usd_per_structure_spot'] = 0.1357
++  write(d, 'summary.csv', sm)
++  write(d, 'checks.csv', pd.DataFrame([{'check': '0', 'condition': 'GT, H', 'value': '', 'detail': 'pass'},
++                                       {'check': '2b', 'condition': 'H', 'value': '',
++                                        'detail': 'pass' if checks_ok else 'FAIL: 7D5C'}]))
++  return d
++
++
++def test_warm_th_absent_keeps_the_cells_empty_and_the_note(tmp_path, clean):
++  main, out = tmp_path / 'main', tmp_path / 'out'
++  (main / isc.AN).mkdir(parents=True)
++  assert isc.warm_th_summary(main) is None
++  (out / 'tables').mkdir(parents=True)
++  df = isc.table_q2(out, *table_q2_inputs(), price_dates=PRICE_DATES, batch1024=8)
++  assert list(df[df.arm.isin(['GT', 'H'])]['USD warm']) == ['', '']
++  assert df[df.arm == 'G'].iloc[0]['USD warm'] == isc.usd3(0.07)
++  note = (out / 'tables' / 'TIII_q2_note.tex').read_text()
++  assert '% TODO warm_th' in note and 'measured the same way in a later run' not in note
++
++
++def test_warm_th_fills_the_two_cells_and_updates_the_note(tmp_path, clean):
++  main, out = tmp_path / 'main', tmp_path / 'out'
++  warm_th_outputs(main)
++  w = isc.warm_th_summary(main)
++  assert sorted(w.platform) == ['GT', 'H'] and (w.cache == 'warm').all() and (w.bucket == 1024).all()
++  assert f'{isc.AN}/warm_th_20261113/summary.csv' in isc.SOURCES and f'{isc.AN}/warm_th_20261113/checks.csv' in isc.SOURCES
++  (out / 'tables').mkdir(parents=True)
++  df = isc.table_q2(out, *table_q2_inputs(), price_dates=PRICE_DATES, batch1024=8, warm_th=w)
++  cell = df.set_index('arm')['USD warm']
++  assert cell['GT'] == isc.usd3(0.07) and cell['H'] == isc.usd3(0.2468) and cell['A'] == isc.usd3(0.07)
++  note = (out / 'tables' / 'TIII_q2_note.tex').read_text()
++  assert 'TODO warm_th' not in note and 'measured the same way in a later run' in note
++  assert f'its warm cost is {isc.usd3(0.1357)} USD' in note and '(2 of them at 1024)' in note
++  assert any('warm_th_20261113' in n for n in isc.NOTES)
++
++
++def test_warm_th_refuses_failed_checks_missing_arms_and_double_rows(tmp_path, clean):
++  main = tmp_path / 'main'
++  warm_th_outputs(main, checks_ok=False)
++  with pytest.raises(SystemExit, match='a check did not pass'):
++    isc.warm_th_summary(main)
++  main = tmp_path / 'main2'
++  warm_th_outputs(main, arms=('GT',))
++  with pytest.raises(SystemExit, match='warm arms'):
++    isc.warm_th_summary(main)
++  main = tmp_path / 'main3'
++  warm_th_outputs(main)
++  w = isc.warm_th_summary(main)
++  cost, mem, memlimit, gpu, gmem = table_q2_inputs()
++  (tmp_path / 'out' / 'tables').mkdir(parents=True)
++  with pytest.raises(SystemExit, match='already have a warm row'):
++    isc.table_q2(tmp_path / 'out', pd.concat([cost, pd.DataFrame(cost_rows('GT'))[lambda x: x.cache == 'warm']]), mem,
++                 memlimit, gpu, gmem, price_dates=PRICE_DATES, warm_th=w)
