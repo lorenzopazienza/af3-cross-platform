@@ -3,6 +3,7 @@ harness/run_plan.py as the VMs read them; the --buckets option and the stop rule
 harness/run_af3.py. End-to-end launches on fake VMs: tests/cloud/suite_7_memlimit.sh."""
 
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -43,7 +44,7 @@ def test_plans_are_what_the_generator_writes():
 
 
 @pytest.mark.parametrize('plan', sorted(p for p in PLANS.rglob('*.yaml') if not {'memlimit', 'embed', 'ppi', 'feat', 'msa', 'msa_smoke', 'sw_smoke', 'h100_smoke', 'eigen_check',
-                                                         'repl', 'large'} & set(p.parts)))
+                                                         'repl', 'large', 'memlimit_ah'} & set(p.parts)))
 def test_other_plans_get_no_new_keys(plan):
   for platform in run_plan.PLATFORMS:
     try:
@@ -101,3 +102,77 @@ def test_stop_rule_logs_later_runs_as_not_run(tmp_path):
   assert stop['stopped_at_bucket'] == 3072 and stop['last_completed_bucket'] == 2560
   assert stop['processes'][0]['failure'] == 'oom' and len(stop['not_run']) == 4
   assert json.loads((tmp_path / 'stop_rule.json').read_text()) == stop
+
+
+# ---- memory limit on A and H (label memlimit_ah; drafts/section10_memlimit_ah.md)
+
+AH = PLANS / 'memlimit_ah'
+
+
+@pytest.mark.skipif(not (REPO / 'results' / 'analysis' / 'a100_20261018' / 'samples.csv').exists(),
+                    reason='follow-up 3 samples.csv not present (results/ is gitignored)')
+def test_memlimit_ah_plans_are_up_to_date():
+  out = subprocess.run([sys.executable, str(AH / 'make_memlimit_ah_plans.py'), '--check'], capture_output=True, text=True)
+  assert out.returncode == 0 and 'up to date' in out.stdout, out.stdout + out.stderr
+
+
+@pytest.mark.parametrize('arm,platform,config', [('a', 'a100', 'a100_xla'), ('h', 'h100', 'h100_xla')])
+def test_memlimit_ah_is_the_memlimit_measurement_with_the_follow_up_configuration(arm, platform, config):
+  new = expand(AH / f'memlimit_ah_{arm}_01.yaml', platform, MANIFEST)
+  ref = expand(PLANS / 'memlimit' / 'memlimit_g.yaml', 'l4', MANIFEST)
+  assert new['label'] == 'memlimit_ah' and new['configs'] == [config] and new['eigen_source'] == 'archive'
+  for k in ('targets', 'seeds', 'buckets', 'stop_rule', 'run_timeout_min', 'num_recycles', 'num_diffusion_samples'):
+    assert new[k] == ref[k], k
+  assert [r['run'].replace(config, 'C') for r in new['runs']] == [r['run'].replace('l4_xla', 'C') for r in ref['runs']]
+
+
+GATE = REPO / 'scripts' / 'monitor' / 'credit_check_memlimit_ah.sh'
+
+
+def gate(tmp_path, quota, gf=None, live_l4=False, balance=574.88, now='2026-11-11T08:00:00Z'):
+  """Runs the gate with a stub gcloud (quota value, or 'fail'), a ledger and a session folder of its own."""
+  g = tmp_path / 'gcloud'
+  body = ('exit 1' if quota == 'fail' else
+          "echo '{\"dimensionsInfos\": [{\"applicableLocations\": [\"global\"], \"details\": {\"value\": \"%s\"}}]}'" % quota)
+  g.write_text('#!/bin/bash\n' + body + '\n')
+  g.chmod(0o755)
+  ledger = tmp_path / 'ledger.tsv'
+  ledger.write_text(''.join(f'2026-11-10T09:20:00Z\tl4\t{a}\tok\t1\n' for a in ('l5', 'l6', 'lg', 'v6f', 'p'))
+                    + (f'2026-11-11T07:00:00Z\tl4\tgf\t{gf}\t281.84\n' if gf else ''))
+  af3 = tmp_path / 'af3'
+  s = af3 / '20261111T070000Z_l4_why_gf_01'
+  s.mkdir(parents=True, exist_ok=True)
+  (s / 'launcher_events.txt').write_text('2026-11-11T07:00:00Z launch: session\n'
+                                         + ('' if live_l4 else '2026-11-11T07:30:00Z launcher: exit 0\n'))
+  env = dict(os.environ, GCLOUD=str(g), LEDGER=str(ledger), RESULTS_AF3=str(af3), GATE_LOG=str(tmp_path / 'gate.tsv'),
+             NOW=now)
+  r = subprocess.run(['bash', str(GATE), str(balance)], capture_output=True, text=True, cwd=REPO, env=env)
+  return r.returncode, r.stdout, (tmp_path / 'gate.tsv').read_text() if (tmp_path / 'gate.tsv').exists() else ''
+
+
+def test_gate_start_condition_quota_of_10_while_gf_runs(tmp_path):
+  rc, out, log = gate(tmp_path, '10', gf=None, live_l4=True)
+  assert rc == 0 and out.strip().endswith('GO') and 'GPUS_ALL_REGIONS=10' in log and log.rstrip().endswith('GO')
+
+
+def test_gate_quota_8_waits_for_gf(tmp_path):
+  rc, out, _ = gate(tmp_path, '8', gf=None, live_l4=True)
+  assert rc == 1 and 'GPUS_ALL_REGIONS 8 < 10' in out and 'Gf has not finished' in out
+  rc, out, _ = gate(tmp_path, '8', gf='ok', live_l4=False)
+  assert rc == 0, out
+  rc, out, _ = gate(tmp_path, '8', gf='stopped', live_l4=True)
+  assert rc == 1 and 'an L4 arm of follow-up 13 is running' in out
+
+
+def test_gate_unreadable_quota_falls_back_to_gf(tmp_path):
+  rc, out, log = gate(tmp_path, 'fail', gf=None)
+  assert rc == 1 and 'GPUS_ALL_REGIONS unread' in out and 'GPUS_ALL_REGIONS=unread' in log
+  assert gate(tmp_path, 'fail', gf='ok')[0] == 0
+
+
+def test_gate_floor_counts_unfinished_follow_up_13_arms_and_dates(tmp_path):
+  rc, out, _ = gate(tmp_path, '10', gf=None, balance=260)    # 260 - 148.99 (gf, not finished) - 94.32 < 25
+  assert rc == 1 and 'not yet finished (follow-up 13) arm gf' in out and '< 25 USD' in out
+  assert gate(tmp_path, '10', gf='ok', balance=260)[0] == 0
+  rc, out, _ = gate(tmp_path, '10', gf='ok', now='2026-12-03T00:00:00Z')
+  assert rc == 1 and 'launch after 2026-12-02' in out

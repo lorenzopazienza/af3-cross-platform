@@ -1,0 +1,6 @@
+# Memory limit on A and H (label memlimit_ah): the complete session of each part (memlimit_ah_a_01 on a100,
+# memlimit_ah_h_01 on h100), one per line, from the section 10 launch rows, written once both parts have finished and
+# committed before any analysis run (scripts/analysis_runs/memlimit_ah/reproduce.sh). A preempted or otherwise
+# incomplete session is recorded in section 10 and not listed. Empty until then.
+20261110T101013Z_a100_memlimit_ah_a_01
+20261110T101018Z_h100_memlimit_ah_h_01
