@@ -283,7 +283,8 @@ def test_earlier_configurations_are_unchanged(tmp_path):
   for k in added:   # each is tpu_xla or l4_xla plus follow-up 13 settings only
     base = old['tpu_xla' if k.startswith('tpu') else 'l4_xla']
     cfg = {kk: v for kk, v in new[k].items() if kk != 'description'}
-    env = {kk: v for kk, v in cfg.pop('env', {}).items()
+    env = {kk: ('cuda' if k == 'l4_xla_fu13_capture' and kk == 'JAX_PLATFORMS' and v == 'cuda,cpu' else v)
+           for kk, v in cfg.pop('env', {}).items()
            if not kk.startswith('AF3_FU13_') and not (k.endswith('f32') and kk == 'JAX_DEFAULT_MATMUL_PRECISION')}
     if env:
       cfg['env'] = env
@@ -307,6 +308,17 @@ def test_plans_are_up_to_date_and_match_the_specification():
     assert cfg in configs and 'fu13' in cfg, p
   p_parts = parts[parts.arm == 'P']
   assert list(p_parts.config) == [f'tpu_xla_fu13_p{k}' for k in (0, 5, 6, 7, 8, 11, 14)]   # P0 first, then 2^-5 down
+
+
+def test_only_the_l4_capture_lists_cpu_and_cuda_stays_first():
+  """Row of 2026-11-1X (LG fix): jax.debug.callback needs a local CPU device; JAX ranks JAX_PLATFORMS in order
+  (jax 0.10.2, xla_bridge.backends()), so cuda, listed first, stays the default backend."""
+  configs = read_configs(REPO / 'harness' / 'configs.yaml')
+  with_cpu = {k for k, c in configs.items() if 'cpu' in c.get('env', {}).get('JAX_PLATFORMS', '').split(',')}
+  assert with_cpu == {'cpu_xla', 'l4_xla_fu13_capture'}
+  assert configs['l4_xla_fu13_capture']['env']['JAX_PLATFORMS'] == 'cuda,cpu'
+  assert all(c['env']['JAX_PLATFORMS'] == 'cuda' for k, c in configs.items()
+             if c.get('jax_backend') == 'gpu' and k != 'l4_xla_fu13_capture')
 
 
 @pytest.mark.parametrize('script', ['make_fu7_10_plans.py', 'make_fu10_plans.py', 'make_fu11_12_plans.py'])
@@ -398,3 +410,44 @@ def test_main_runs_end_to_end_on_relabelled_main_study_rows(tmp_path):
   assert list(f.statistic) == ['flip_top1', 'flip_success', 'flip_matters'] and set(f.reading) <= {'reduced', 'not reduced'}
   rep = (out / 'report.md').read_text()
   assert '## P: perturbation' in rep and '## L: layer-wise' in rep and '## F: float32 trunk' in rep
+
+
+# ---------------------------------------------------------------- LG relaunch gate (row of 2026-11-1X, LG fix)
+
+def lg_gate(tmp_path, sessions, gf=None, credit_ok=True):
+  af3 = tmp_path / 'af3'
+  for name, running in sessions:
+    (af3 / name).mkdir(parents=True, exist_ok=True)
+    (af3 / name / 'launcher_events.txt').write_text('2026-11-10T10:00:00Z launch: session\n'
+                                                     + ('' if running else '2026-11-10T20:00:00Z launcher: exit 0\n'))
+  ledger = tmp_path / 'ledger.tsv'
+  ledger.write_text(f'2026-11-11T07:00:00Z\tl4\tgf\t{gf}\t1\n' if gf else '')
+  stub = tmp_path / 'credit.sh'
+  stub.write_text(f'#!/bin/bash\necho "stub $*"\nexit {0 if credit_ok else 1}\n')
+  env = dict(os.environ, LEDGER=str(ledger), RESULTS_AF3=str(af3), CREDIT_CHECK=str(stub),
+             GATE_LOG=str(tmp_path / 'gate.tsv'), NOW='2026-11-11T08:00:00Z')
+  r = subprocess.run(['bash', str(REPO / 'scripts' / 'monitor' / 'lg_relaunch_gate.sh'), '500'], capture_output=True,
+                     text=True, cwd=REPO, env=env)
+  return r.returncode, r.stdout
+
+
+A, H, GF = '20261110T100000Z_a100_memlimit_ah_a_01', '20261110T100005Z_h100_memlimit_ah_h_01', '20261110T110000Z_l4_why_gf_01'
+
+
+def test_lg_gate_waits_while_a_or_h_and_gf_run(tmp_path):
+  rc, out = lg_gate(tmp_path, [(A, False), (H, True), (GF, True)])
+  assert rc == 1 and 'no GPU free' in out and 'stub' not in out
+
+
+def test_lg_gate_free_after_a_and_h_end(tmp_path):
+  rc, out = lg_gate(tmp_path, [(A, False), (H, False), (GF, True)])
+  assert rc == 0 and 'stub lg 500' in out and out.strip().endswith('GO')
+
+
+def test_lg_gate_free_after_gf_and_budget_rule_applies(tmp_path):
+  rc, out = lg_gate(tmp_path, [(A, False), (H, True), (GF, False)], gf='ok')
+  assert rc == 0
+  rc, out = lg_gate(tmp_path, [(GF, False)], gf='stopped', credit_ok=False)
+  assert rc == 1 and 'budget rule' in out
+  rc, out = lg_gate(tmp_path, [(GF, True)], gf='ok')      # ledger says ok but a Gf launcher still runs
+  assert rc == 1

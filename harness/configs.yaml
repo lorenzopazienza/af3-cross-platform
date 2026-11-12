@@ -234,12 +234,17 @@ tpu_xla_fu13_capture:
   env:
     AF3_FU13_CAPTURE: 1
 
+# On the L4 the capture lists cpu after cuda: jax.debug.callback places its arguments on a local CPU device on the
+# host (jax/_src/debugging.py, debug_callback_impl, jax 0.10.2), and with JAX_PLATFORMS=cuda alone there is none
+# (LG, 2026-11-10: every process exited 1 at the first capture event). JAX ranks the listed platforms in order
+# (jax/_src/xla_bridge.py, backends()), so cuda stays the default backend; AlphaFold3 places the model on
+# jax.local_devices(backend='gpu') (run_alphafold.py), so every computation still runs on the GPU. Only here.
 l4_xla_fu13_capture:
   description: NVIDIA L4, XLA attention, layer-wise capture of the trunk (follow-up 13, L)
   jax_backend: gpu
   flash_attention_implementation: xla
   env:
-    JAX_PLATFORMS: cuda
+    JAX_PLATFORMS: cuda,cpu
     XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
     XLA_PYTHON_CLIENT_PREALLOCATE: true
     XLA_CLIENT_MEM_FRACTION: 0.95
