@@ -270,3 +270,54 @@ l4_xla_fu13_f32:
     XLA_CLIENT_MEM_FRACTION: 0.95
     JAX_DEFAULT_MATMUL_PRECISION: highest
     AF3_FU13_BFLOAT16: none
+
+# Follow-up 14 (label f32; notes/analysis_plan.md section 10, row of 2026-11-12 "Follow-up experiment 14"). F: the
+# float32 trunk of follow-up 13 (AF3_FU13_BFLOAT16=none, read by harness/fu13_probe.py through harness/af3_entry.py,
+# with JAX_DEFAULT_MATMUL_PRECISION=highest) on the A100 and the H100: a100_xla and h100_xla plus those two settings,
+# as l4_xla_fu13_f32 is l4_xla plus them. V5f (TPU v5e) runs tpu_xla_fu13_f32 unchanged.
+a100_xla_fu14_f32:
+  description: NVIDIA A100 80 GB, XLA attention, float32 trunk (bfloat16 none, matmuls highest; follow-up 14, Af)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+    JAX_DEFAULT_MATMUL_PRECISION: highest
+    AF3_FU13_BFLOAT16: none
+
+h100_xla_fu14_f32:
+  description: NVIDIA H100 80 GB, XLA attention, float32 trunk (bfloat16 none, matmuls highest; follow-up 14, Hf)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+    JAX_DEFAULT_MATMUL_PRECISION: highest
+    AF3_FU13_BFLOAT16: none
+
+# Follow-up 14, item b2 (D): XLA's deterministic-ops switch on the A100 and the H100, trunk in bfloat16 as in the
+# main study: a100_xla and h100_xla with --xla_gpu_deterministic_ops=true appended to XLA_FLAGS, as l4_xla_det is
+# l4_xla with it.
+a100_xla_det:
+  description: NVIDIA A100 80 GB, XLA attention, --xla_gpu_deterministic_ops=true (follow-up 14, Ad)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false --xla_gpu_deterministic_ops=true
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+
+h100_xla_det:
+  description: NVIDIA H100 80 GB, XLA attention, --xla_gpu_deterministic_ops=true (follow-up 14, Hd)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false --xla_gpu_deterministic_ops=true
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
