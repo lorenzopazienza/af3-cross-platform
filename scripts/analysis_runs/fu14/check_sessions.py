@@ -45,13 +45,13 @@ def plan_finished_logs():
   return found
 
 
-def check(session, d, finished):
+def check(session, d, finished, local_full=False):
   root = AF3 / session
   try:
     fs = json.loads((root / 'final_status.json').read_text())
   except (OSError, ValueError):
     return 'no final_status.json'
-  if fs.get('exit_code') != 0 or not fs.get('final_upload_complete'):
+  if fs.get('exit_code') != 0 or (not fs.get('final_upload_complete') and not local_full):
     return f'final_status exit {fs.get("exit_code")}, upload complete {fs.get("final_upload_complete")}'
   runs = [json.loads(l) for l in (root / 'plan_runs.jsonl').read_text().splitlines() if l.strip()] \
       if (root / 'plan_runs.jsonl').is_file() else []
@@ -73,6 +73,11 @@ def check(session, d, finished):
       sums = list(out.glob(f'seed-{seed}_sample-*/{t}_seed-{seed}_sample-*_summary_confidences.json'))
       if len(cifs) != 5 or len(sums) != 5:
         return f'{r["run"]}/{t}: {len(cifs)} mmCIFs, {len(sums)} summary confidences locally'
+      if local_full:
+        full = [out / f'{t}_data.json', out / f'{t}_confidences.json'] + [
+            out / f'seed-{seed}_sample-{k}' / f'{t}_seed-{seed}_sample-{k}_confidences.json' for k in range(5)]
+        if not all(f.is_file() for f in full):
+          return f'{r["run"]}/{t}: final upload incomplete and not every full output local'
       n += 1
   if session not in finished:
     return f'no wrapper log prints "{FINISHED}"'
@@ -83,6 +88,7 @@ def main():
   ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
   ap.add_argument('--write', action='store_true')
   ap.add_argument('--float32-only', action='store_true')
+  ap.add_argument('--local-full', action='append', default=[], metavar='SESSION')
   args = ap.parse_args()
   parts = list(csv.DictReader(open(REPO / 'harness' / 'plans' / 'fu14_parts.csv')))
   finished = plan_finished_logs()
@@ -93,7 +99,7 @@ def main():
     cands = sorted(s.name for s in AF3.glob(f'*_{p["platform"]}_{p["part"]}') if s.is_dir())
     ok, notes = [], []
     for s in cands:
-      r = check(s, d, finished)
+      r = check(s, d, finished, local_full=s in args.local_full)
       if isinstance(r, int) and r == expected:
         ok.append((s, r))
       else:
@@ -102,6 +108,7 @@ def main():
       chosen.append(ok[0][0])
       total += ok[0][1]
       print(f'{p["part"]:12s} {ok[0][0]}  {ok[0][1]}/{expected} processes exit 0, outputs local, plan finished'
+            + ('  [final upload incomplete; every output file local, --local-full]' if ok[0][0] in args.local_full else '')
             + (f'  (not listed: {"; ".join(notes)})' if notes else ''))
     elif p['arm'] in DET_ARMS and not cands and args.float32_only:
       print(f'{p["part"]:12s} not run (item b2)')

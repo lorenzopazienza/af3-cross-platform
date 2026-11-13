@@ -1,4 +1,50 @@
 # Follow-up 14 (label f32): the complete session of each part, from the section 10 launch rows, written by
 # scripts/analysis_runs/fu14/check_sessions.py --write (one session per part: final status exit 0 with the final upload
 # complete, every planned harness run and process exit 0, outputs local, "Plan finished" in the wrapper log) and
-# committed before any analysis run (scripts/analysis_runs/fu14/reproduce.sh). Empty until the runs have finished.
+# committed before any analysis run (scripts/analysis_runs/fu14/reproduce.sh). Written on 2026-11-13 with
+# --local-full 20261113T001513Z_v5e_f32_v5f_06 (its final upload to the bucket was terminated; every output file is
+# local, fetched in full from the VM; completion row of 2026-11-13).
+20261112T204902Z_v5e_f32_v5f_01
+20261112T203701Z_v5e_f32_v5f_02
+20261112T203806Z_v5e_f32_v5f_03
+20261112T235548Z_v5e_f32_v5f_04
+20261112T202024Z_v5e_f32_v5f_05
+20261113T001513Z_v5e_f32_v5f_06
+20261112T224159Z_v5e_f32_v5f_07
+20261112T224856Z_v5e_f32_v5f_08
+20261113T023945Z_v5e_f32_v5f_r2_01
+20261113T001728Z_a100_f32_af_01
+20261113T004635Z_a100_f32_af_02
+20261112T201238Z_a100_f32_af_03
+20261112T201242Z_a100_f32_af_04
+20261113T001738Z_a100_f32_af_05
+20261112T214940Z_a100_f32_af_06
+20261112T214957Z_a100_f32_af_07
+20261112T215100Z_a100_f32_af_08
+20261113T001743Z_a100_f32_af_09
+20261112T201415Z_a100_f32_af_10
+20261112T204524Z_a100_f32_af_11
+20261112T203705Z_a100_f32_af_12
+20261113T082916Z_a100_f32_af_13
+20261112T224132Z_a100_f32_af_14
+20261113T104939Z_a100_f32_af_15
+20261112T231415Z_h100_f32_hf_01
+20261112T231420Z_h100_f32_hf_02
+20261112T201208Z_h100_f32_hf_03
+20261112T201213Z_h100_f32_hf_04
+20261112T231425Z_h100_f32_hf_05
+20261112T202047Z_h100_f32_hf_06
+20261112T202104Z_h100_f32_hf_07
+20261112T202109Z_h100_f32_hf_08
+20261112T213515Z_h100_f32_hf_09
+20261112T213531Z_h100_f32_hf_10
+20261113T123933Z_a100_f32_ad_01
+20261113T133628Z_a100_f32_ad_02
+20261113T122629Z_a100_f32_ad_03
+20261113T122634Z_a100_f32_ad_04
+20261113T122746Z_a100_f32_ad_05
+20261113T122638Z_h100_f32_hd_01
+20261113T122643Z_h100_f32_hd_02
+20261113T122649Z_h100_f32_hd_03
+20261113T122654Z_h100_f32_hd_04
+20261113T122659Z_h100_f32_hd_05
