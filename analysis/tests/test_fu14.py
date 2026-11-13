@@ -219,7 +219,7 @@ def session(tmp_path, platform, part, start, end=None, code='0', prov='spot'):
   s.mkdir(parents=True)
   ev = f'{start} launch: session\n{start} vm: running\n'
   if end:
-    ev += f'{end} delete: done\n{end} launcher: exit {code}\n'
+    ev += f'{end} delete: done\n{end} launcher: exit code {code}\n'
   (s / 'launcher_events.txt').write_text(ev)
   (s / 'launch_record.txt').write_text(f'PROVISIONING={prov}\n')
   return s

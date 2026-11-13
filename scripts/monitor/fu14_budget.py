@@ -65,7 +65,7 @@ def events(f):
     if m:
       ev.setdefault(f'{m.group(2)}:{m.group(3)}', dt.datetime.strptime(m.group(1), '%Y-%m-%dT%H:%M:%SZ'))
       if m.group(2) == 'launcher' and m.group(3) == 'exit':
-        code = (m.group(4).split() or [None])[0]
+        code = (m.group(4).split() or [None])[-1]
   return ev, code
 
 
