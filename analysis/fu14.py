@@ -122,7 +122,10 @@ def load_reference(args):
 
 
 def processes(d):
-  return d.drop_duplicates(['session', 'target', 'seed'])
+  """One row per process and condition. The condition is part of the key because the cost references A_pilot and
+  H_pilot are copies of A and H rows (same session, target and seed): without it they were dropped as duplicates of
+  A and H, and Ad/A_pilot and Hd/H_pilot had no reference (analysis of 2026-11-13, corrected 2026-11-13)."""
+  return d.drop_duplicates(['condition', 'session', 'target', 'seed'])
 
 
 # ---------------------------------------------------------------- checks

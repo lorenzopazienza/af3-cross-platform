@@ -352,3 +352,21 @@ def test_follow_up_13_pairs_are_rebuilt_exactly():
     a = sp[sp.contrast == name][cols].sort_values(cols[1:3]).reset_index(drop=True).astype(str)
     b = old[old.contrast == name][cols].sort_values(cols[1:3]).reset_index(drop=True).astype(str)
     assert len(a) == 300 and a.equals(b), name
+
+
+def test_cost_keeps_the_pilot_references_beside_their_full_arms():
+  """A_pilot and H_pilot are copies of A and H rows (same session, target and seed); processes() must keep both, so
+  that Ad / A_pilot and Hd / H_pilot have a reference (the analysis of 2026-11-13 had n_reference 0 there)."""
+  rows = []
+  for t, b in (('T1', 256), ('T2', 512)):
+    for s in (1, 2):
+      rows.append({'condition': 'A', 'session': f'a/{s}', 'target': t, 'seed': s, 'bucket': b, 'exit_code': 0,
+                   'wall_s': 100.0 * s, 'compiled_needed_bytes': 1.0, 'alloc_peak_reserved_bytes': 0.0})
+      rows.append({'condition': 'Ad', 'session': f'd/{s}', 'target': t, 'seed': s, 'bucket': b, 'exit_code': 0,
+                   'wall_s': 110.0 * s, 'compiled_needed_bytes': 1.0, 'alloc_peak_reserved_bytes': 0.0})
+  a = pd.DataFrame(rows)
+  pil = a[a.condition == 'A'].assign(condition='A_pilot')
+  proc = fu14.processes(pd.concat([a, pil], ignore_index=True))
+  assert proc.groupby('condition').size().to_dict() == {'A': 4, 'A_pilot': 4, 'Ad': 4}
+  c = fu13.cost(proc, [('Ad', 'A_pilot')]).set_index('bucket')
+  assert c.loc['all', 'n_reference'] == 4 and c.loc['all', 'wall_ratio'] == pytest.approx(1.1)
