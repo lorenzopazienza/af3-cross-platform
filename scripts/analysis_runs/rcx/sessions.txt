@@ -1,0 +1,4 @@
+# Follow-up 15 (label rcx): the complete session of each part, from the section 10 launch rows, written by
+# scripts/analysis_runs/rcx/check_sessions.py --write (one session per part: final status exit 0 with the final upload
+# complete, every planned harness run and process exit 0, outputs local, every full output for part A4, "Plan
+# finished" in the wrapper log) and committed before any analysis run (scripts/analysis_runs/rcx/reproduce.sh).

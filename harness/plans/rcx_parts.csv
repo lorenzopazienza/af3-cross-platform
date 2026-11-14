@@ -1,0 +1,16 @@
+part,arm,row_part,label,platform,config,what,targets,seeds,repetitions,processes,factor_expected,factor_worst,expected_vm_h,worst_vm_h,deadline_min,lifetime_h,usd_per_h_on_demand,usd_per_h_planned,provisioning,expected_usd_planned,worst_usd_planned,worst_preempted_usd_planned,lifetime_usd_planned,expected_usd_on_demand,worst_usd_on_demand
+rcx_af_r2_01,Af_r2,A4,rcx,a100,a100_xla_fu14_f32,"Af r2, recompilation of Af (follow-up 14)",2,1 2 3 4 5,r2,10,1.0,1.25,1.14,1.39,122,2.53,5.535713,3.01658,spot,3.45,4.18,8.36,7.64,6.32,7.67
+rcx_af_r2_02,Af_r2,A4,rcx,a100,a100_xla_fu14_f32,"Af r2, recompilation of Af (follow-up 14)",2,1 2 3 4 5,r2,10,1.0,1.25,1.14,1.39,122,2.53,5.535713,3.01658,spot,3.45,4.18,8.36,7.64,6.32,7.67
+rcx_af_r2_03,Af_r2,A4,rcx,a100,a100_xla_fu14_f32,"Af r2, recompilation of Af (follow-up 14)",3,1 2 3 4 5,r2,15,1.0,1.25,1.15,1.4,123,2.55,5.535713,3.01658,spot,3.47,4.22,8.44,7.69,6.38,7.74
+rcx_af_r2_04,Af_r2,A4,rcx,a100,a100_xla_fu14_f32,"Af r2, recompilation of Af (follow-up 14)",3,1 2 3 4 5,r2,15,1.0,1.25,1.05,1.27,114,2.4,5.535713,3.01658,spot,3.16,3.83,7.66,7.24,5.81,7.03
+rcx_hf_r2_01,Hf_r2,A4,rcx,h100,h100_xla_fu14_f32,"Hf r2, recompilation of Hf (follow-up 14)",3,1 2 3 4 5,r2,15,1.0,1.25,0.83,1.0,93,2.05,12.365752,6.538448,spot,5.44,6.54,13.08,13.4,10.28,12.37
+rcx_hf_r2_02,Hf_r2,A4,rcx,h100,h100_xla_fu14_f32,"Hf r2, recompilation of Hf (follow-up 14)",3,1 2 3 4 5,r2,15,1.0,1.25,0.83,1.0,93,2.05,12.365752,6.538448,spot,5.44,6.54,13.08,13.4,10.28,12.37
+rcx_hf_r2_03,Hf_r2,A4,rcx,h100,h100_xla_fu14_f32,"Hf r2, recompilation of Hf (follow-up 14)",4,1 2 3 4 5,r2,20,1.0,1.25,0.89,1.08,99,2.15,12.365752,6.538448,spot,5.85,7.06,14.12,14.06,11.06,13.35
+rcx_gt_r2_01,GT_r2,A3,rcx,l4,l4_triton,"GT r2, recompilation of GT (main study)",8,1 2 3 4 5,r2,40,1.0,1.25,2.6,3.16,248,4.63,0.897201806,0.538252,spot,1.4,1.7,3.41,2.49,2.33,2.84
+rcx_gt_r2_02,GT_r2,A3,rcx,l4,l4_triton,"GT r2, recompilation of GT (main study)",8,1 2 3 4 5,r2,40,1.0,1.25,2.6,3.16,248,4.63,0.897201806,0.538252,spot,1.4,1.7,3.41,2.49,2.33,2.84
+rcx_gt_r2_03,GT_r2,A3,rcx,l4,l4_triton,"GT r2, recompilation of GT (main study)",7,1 2 3 4 5,r2,35,1.0,1.25,2.44,2.97,233,4.38,0.897201806,0.538252,spot,1.31,1.6,3.19,2.36,2.19,2.66
+rcx_gt_r2_04,GT_r2,A3,rcx,l4,l4_triton,"GT r2, recompilation of GT (main study)",7,1 2 3 4 5,r2,35,1.0,1.25,2.44,2.97,233,4.38,0.897201806,0.538252,spot,1.31,1.6,3.19,2.36,2.19,2.66
+rcx_gt_r2_05,GT_r2,A3,rcx,l4,l4_triton,"GT r2, recompilation of GT (main study)",7,1 2 3 4 5,r2,35,1.0,1.25,2.44,2.97,233,4.38,0.897201806,0.538252,spot,1.31,1.6,3.19,2.36,2.19,2.66
+rcx_gt_r2_06,GT_r2,A3,rcx,l4,l4_triton,"GT r2, recompilation of GT (main study)",7,1 2 3 4 5,r2,35,1.0,1.25,2.44,2.97,233,4.38,0.897201806,0.538252,spot,1.31,1.6,3.19,2.36,2.19,2.66
+rcx_gt_r2_07,GT_r2,A3,rcx,l4,l4_triton,"GT r2, recompilation of GT (main study)",8,1 2 3 4 5,r2,40,1.0,1.25,2.56,3.11,244,4.57,0.897201806,0.538252,spot,1.38,1.68,3.35,2.46,2.3,2.79
+rcx_gt_r2_08,GT_r2,A3,rcx,l4,l4_triton,"GT r2, recompilation of GT (main study)",8,1 2 3 4 5,r2,40,1.0,1.25,2.47,3.01,236,4.43,0.897201806,0.538252,spot,1.33,1.62,3.24,2.39,2.22,2.7
