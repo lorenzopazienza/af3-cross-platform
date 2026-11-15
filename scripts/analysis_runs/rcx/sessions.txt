@@ -2,3 +2,18 @@
 # scripts/analysis_runs/rcx/check_sessions.py --write (one session per part: final status exit 0 with the final upload
 # complete, every planned harness run and process exit 0, outputs local, every full output for part A4, "Plan
 # finished" in the wrapper log) and committed before any analysis run (scripts/analysis_runs/rcx/reproduce.sh).
+20261114T204816Z_a100_rcx_af_r2_01
+20261114T191339Z_a100_rcx_af_r2_02
+20261114T204810Z_a100_rcx_af_r2_03
+20261114T191343Z_a100_rcx_af_r2_04
+20261114T191345Z_h100_rcx_hf_r2_01
+20261114T191350Z_h100_rcx_hf_r2_02
+20261114T191340Z_h100_rcx_hf_r2_03
+20261114T221351Z_l4_rcx_gt_r2_01
+20261114T221356Z_l4_rcx_gt_r2_02
+20261115T010422Z_l4_rcx_gt_r2_03
+20261115T010426Z_l4_rcx_gt_r2_04
+20261115T010431Z_l4_rcx_gt_r2_05
+20261115T010437Z_l4_rcx_gt_r2_06
+20261114T221402Z_l4_rcx_gt_r2_07
+20261115T034231Z_l4_rcx_gt_r2_08
