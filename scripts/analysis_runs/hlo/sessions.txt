@@ -1,0 +1,4 @@
+# Follow-up 16 (label hlo): the complete session of each part (one v5e, one v6e), from the section 10 launch rows,
+# written by scripts/analysis_runs/hlo/check_sessions.py --write (final status exit 0 with the final upload complete,
+# every planned harness run and process exit 0, every output file and both dumps of jit_apply_fn local, "Plan
+# finished" in the wrapper log) and committed before any analysis run (scripts/analysis_runs/hlo/reproduce.sh).

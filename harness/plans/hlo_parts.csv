@@ -1,0 +1,3 @@
+part,arm,label,platform,config,source,targets,seeds,repetitions,processes,factor_expected,factor_worst,expected_vm_h,worst_vm_h,deadline_min,lifetime_h,usd_per_h_on_demand,usd_per_h_planned,provisioning,expected_usd_planned,worst_usd_planned,lifetime_usd_planned,expected_usd_on_demand,worst_usd_on_demand
+hlo_v5_01,V5dump,hlo,v5e,tpu_xla_hlo,V5,4,1,r1 r2,8,1.1,2.0,0.64,0.94,86,2,1.56,1.56,standard,1.01,1.47,3.12,1.01,1.47
+hlo_v6_01,V6dump,hlo,v6e,tpu_xla_hlo,V6,4,1,r1 r2,8,1.1,2.0,0.56,0.81,75,1.75,2.97,2.97,standard,1.65,2.41,5.2,1.65,2.41

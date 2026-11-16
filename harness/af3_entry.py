@@ -58,6 +58,21 @@ import time
 _T0 = time.time()
 sys.path.insert(0, os.getcwd())
 
+# Follow-up 16 (label hlo; notes/analysis_plan.md section 10, row of 2026-11-16): with AF3_HLO_DUMP_FLAGS set (only
+# the configuration tpu_xla_hlo of harness/configs.yaml sets it), XLA writes the HLO modules it compiles into
+# xla_dump/ next to this process's af3_entry_stats.json: XLA_FLAGS gets --xla_dump_to=<that folder> followed by the
+# variable's flags. It is set here, before AlphaFold3 or JAX is imported, because XLA reads XLA_FLAGS once, when the
+# backend starts. XLA's dump options are debug options that only write files (JAX leaves them out of its persistent
+# cache key because they "do not affect the compile result", jax/_src/cache_key.py, jax 0.10.2). Without the variable
+# nothing here runs and XLA_FLAGS is untouched. What was set goes to af3_entry_stats.json, "hlo_dump".
+_HLO = {}
+if os.environ.get('AF3_HLO_DUMP_FLAGS') and os.environ.get('AF3_ENTRY_STATS'):
+  _HLO['dir'] = os.path.join(os.path.dirname(os.path.abspath(os.environ['AF3_ENTRY_STATS'])), 'xla_dump')
+  os.makedirs(_HLO['dir'], exist_ok=True)
+  os.environ['XLA_FLAGS'] = ' '.join(x for x in (os.environ.get('XLA_FLAGS', '').strip(), f'--xla_dump_to={_HLO["dir"]}',
+                                                  os.environ['AF3_HLO_DUMP_FLAGS'].strip()) if x)
+  _HLO['xla_flags'] = os.environ['XLA_FLAGS'].replace(_HLO['dir'], '<process folder>/xla_dump')
+
 from absl import app  # noqa: E402
 from absl import flags  # noqa: E402
 import run_alphafold  # noqa: E402
@@ -128,6 +143,23 @@ def _device_memory_stats():
     return None, f'{type(e).__name__}: {e}'[:300]
 
 
+def _hlo_dump_summary():
+  """Follow-up 16: the XLA_FLAGS set above and the files XLA wrote into xla_dump/ (count, bytes, the model's
+  optimised modules)."""
+  out = {'xla_flags': _HLO['xla_flags'], 'files': 0, 'bytes': 0, 'model_after_optimizations': []}
+  try:
+    for name in sorted(os.listdir(_HLO['dir'])):
+      p = os.path.join(_HLO['dir'], name)
+      if os.path.isfile(p):
+        out['files'] += 1
+        out['bytes'] += os.path.getsize(p)
+        if _MODEL_MODULE in name and name.endswith('after_optimizations.txt'):
+          out['model_after_optimizations'].append(name)
+  except Exception as e:  # report, never mask AlphaFold3's own exit status
+    out['error'] = f'{type(e).__name__}: {e}'[:300]
+  return out
+
+
 def _write_stats():
   path = os.environ.get('AF3_ENTRY_STATS')
   if not path:
@@ -154,6 +186,8 @@ def _write_stats():
   }
   if _FU13:   # follow-up 13 only (harness/fu13_probe.py); absent otherwise, so earlier records keep their keys
     out['fu13'] = _FU13
+  if _HLO:    # follow-up 16 only (AF3_HLO_DUMP_FLAGS); absent otherwise, so earlier records keep their keys
+    out['hlo_dump'] = _hlo_dump_summary()
   tmp = path + '.tmp'
   with open(tmp, 'w') as f:
     json.dump(out, f, indent=2)

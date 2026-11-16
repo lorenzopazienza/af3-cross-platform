@@ -321,3 +321,14 @@ h100_xla_det:
     XLA_FLAGS: --xla_gpu_enable_triton_gemm=false --xla_gpu_deterministic_ops=true
     XLA_PYTHON_CLIENT_PREALLOCATE: true
     XLA_CLIENT_MEM_FRACTION: 0.95
+
+# Follow-up 16 (label hlo; notes/analysis_plan.md section 10, row of 2026-11-16): tpu_xla (the main study's V5 and V6)
+# with XLA's HLO dump added. AF3_HLO_DUMP_FLAGS is read only by harness/af3_entry.py, which adds
+# --xla_dump_to=<process folder>/xla_dump and these flags to XLA_FLAGS before JAX starts: the model's module
+# (jit_apply_fn) as text before and after XLA's optimisations, with each instruction's op_name and stack frame.
+tpu_xla_hlo:
+  description: Cloud TPU, XLA attention, af3_tpu.patch, HLO of the model dumped as text (follow-up 16)
+  jax_backend: tpu
+  flash_attention_implementation: xla
+  env:
+    AF3_HLO_DUMP_FLAGS: --xla_dump_hlo_as_text --xla_dump_hlo_module_re=jit_apply_fn

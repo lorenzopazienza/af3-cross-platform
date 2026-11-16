@@ -278,7 +278,8 @@ def test_earlier_configurations_are_unchanged(tmp_path):
   old, new = read_configs(tmp_path / 'c.yaml'), read_configs(REPO / 'harness' / 'configs.yaml')
   assert all(new[k] == old[k] for k in old)
   fu14 = {'a100_xla_fu14_f32', 'h100_xla_fu14_f32', 'a100_xla_det', 'h100_xla_det'}   # follow-up 14, test_fu14.py
-  added = set(new) - set(old) - fu14
+  fu16 = {'tpu_xla_hlo'}                                                              # follow-up 16, test_hlo.py
+  added = set(new) - set(old) - fu14 - fu16
   assert added == {f'tpu_xla_fu13_p{k}' for k in (0, 14, 11, 8, 7, 6, 5)} | {
       'tpu_xla_fu13_capture', 'l4_xla_fu13_capture', 'tpu_xla_fu13_f32', 'l4_xla_fu13_f32'}
   for k in added:   # each is tpu_xla or l4_xla plus follow-up 13 settings only
