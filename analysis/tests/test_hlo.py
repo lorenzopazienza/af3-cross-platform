@@ -567,3 +567,49 @@ def test_checks_3_and_4_catch_another_device_and_other_flags(tmp_path):
                                                                                            'FAIL')]
   valid, _ = hlo.analyse(hlo.processes(sessions, af3), tmp_path / 'out', rows)
   assert valid                                   # reported beside the result, not a stop (item c)
+
+
+TPU_NAMES = {   # the file names of one process's xla_dump/ on the TPU (follow-up 16 run of 2026-11-16, from ls)
+    256: ('0530', '0533'), 512: ('0534', '0537')}
+TPU_COMPANIONS = ('after_optimizations-buffer-assignment.txt', 'after_optimizations-buffer-assignment-values.txt',
+                  'after_optimizations-live-range.txt', 'after_optimizations-memory-usage-report.txt',
+                  'after_optimizations_after_buffer_assignment.txt', 'after_optimizations_before_buffer_assignment.txt',
+                  'after_codegen.txt', 'debug_options', 'execution_options.txt', 'flagfile', 'hlo_module_config.txt',
+                  'target_arguments.txt', 'tpu_comp_env.txt', 'basic_compiler_metadata.txt', 'transfer_stats.txt')
+
+
+@pytest.mark.parametrize('bucket', [256, 512])
+def test_tpu_dump_names_with_the_cl_segment_one_of_each_kind(tmp_path, bucket):
+  pre_id, opt_id = TPU_NAMES[bucket]
+  d = tmp_path / 'proc' / 'xla_dump'
+  d.mkdir(parents=True)
+  (d / f'module_{pre_id}.jit_apply_fn.cl_970057490.before_optimizations.txt').write_text('')
+  (d / f'module_{opt_id}.jit_apply_fn.cl_970057490.after_optimizations.txt').write_text('')
+  (d / f'module_{pre_id}.jit_apply_fn.cl_970057490').write_text('')
+  for ident in (pre_id, opt_id):
+    for c in TPU_COMPANIONS:
+      (d / f'module_{ident}.jit_apply_fn.cl_970057490.{c}').write_text('')
+  (d / 'module_0002.jit__threefry_seed.cl_123.after_optimizations.txt').write_text('')   # another module
+  opt, pre = hlo.dump_files(tmp_path / 'proc')
+  assert [p.name for p in opt] == [f'module_{opt_id}.jit_apply_fn.cl_970057490.after_optimizations.txt']
+  assert [p.name for p in pre] == [f'module_{pre_id}.jit_apply_fn.cl_970057490.before_optimizations.txt']
+  sys.path.insert(0, str(REPO / 'scripts' / 'analysis_runs' / 'hlo'))
+  import check_sessions
+  import fetch_dumps
+  assert check_sessions.dumps(tmp_path / 'proc') == (1, 1)
+  assert check_sessions.OPT is hlo.DUMP_OPT and fetch_dumps.OPT is hlo.DUMP_OPT and fetch_dumps.PRE is hlo.DUMP_PRE
+
+
+def test_cpu_and_gzip_dump_names_are_still_recognised():
+  for name in ('module_0006.jit_apply_fn.cpu_after_optimizations.txt', 'module_0006.jit_apply_fn.after_optimizations.txt',
+               'module_0533.jit_apply_fn.cl_970057490.after_optimizations.txt.gz'):
+    assert hlo.DUMP_OPT.search(name), name
+  for name in ('module_0006.jit_apply_fn.before_optimizations.txt',
+               'module_0530.jit_apply_fn.cl_970057490.before_optimizations.txt.gz'):
+    assert hlo.DUMP_PRE.search(name), name
+  for name in ('module_0006.jit_apply_fn.cpu_after_optimizations-buffer-assignment.txt',
+               'module_0533.jit_apply_fn.cl_970057490.after_optimizations_after_buffer_assignment.txt',
+               'module_0533.jit_apply_fn.cl_970057490.after_optimizations_before_buffer_assignment.txt',
+               'module_0533.jit_apply_fn.cl_970057490.after_codegen.txt',
+               'module_0533.jit_apply_fn.cl_x.after_optimizations.txt', 'module_0530.jit_stage.before_optimizations.txt'):
+    assert not hlo.DUMP_OPT.search(name) and not hlo.DUMP_PRE.search(name), name

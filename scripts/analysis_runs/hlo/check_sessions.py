@@ -26,8 +26,8 @@ REPO = pathlib.Path(__file__).resolve().parents[3]
 AF3 = REPO / 'results' / 'af3'
 SESSIONS = REPO / 'scripts' / 'analysis_runs' / 'hlo' / 'sessions.txt'
 FINISHED = 'Plan finished: every harness run exited 0'
-OPT = re.compile(r'module_\d+\.jit_apply_fn\.(?:[a-z0-9_]+_)?after_optimizations\.txt(\.gz)?$')
-PRE = re.compile(r'module_\d+\.jit_apply_fn\.before_optimizations\.txt(\.gz)?$')
+sys.path.insert(0, str(REPO / 'analysis'))
+from hlo import DUMP_OPT as OPT, DUMP_PRE as PRE  # noqa: E402  (standard library only, as this script)
 
 
 def describe(plan, platform):

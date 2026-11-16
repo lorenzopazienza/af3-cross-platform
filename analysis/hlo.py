@@ -7,8 +7,11 @@ compiles it on the v5e and on the v6e, compared per token bucket and per AlphaFo
 Inputs: the sessions listed (one per chip, label hlo), each holding, per target (7U3J, 7NPL, 7XQZ and 7D5C: per token
 bucket 256, 512, 768 and 1,024, the pilot target with the most tokens) and repetition (r1, r2; seed 1), the process folder <session>/tpu_xla_hlo_rep<k>_seed1_fresh/<target>/ with
 af3_output/ and xla_dump/ (harness/af3_entry.py, AF3_HLO_DUMP_FLAGS): XLA's text dump of the model's module
-jit_apply_fn before (module_*.jit_apply_fn.before_optimizations.txt) and after its optimisations
-(module_*.jit_apply_fn.*after_optimizations.txt). Plain or gzip-compressed (.txt.gz) files are read.
+jit_apply_fn before (module_*.jit_apply_fn.[cl_<digits>.]before_optimizations.txt) and after its optimisations
+(module_*.jit_apply_fn.[cl_<digits>.][<prefix>_]after_optimizations.txt; on the TPU the names carry the cl_<digits>
+segment, on the CPU a cpu_ prefix; DUMP_OPT and DUMP_PRE, shared with scripts/analysis_runs/hlo/, leave out the
+companion files such as *after_optimizations-buffer-assignment.txt, *after_optimizations_after_buffer_assignment.txt
+or *after_codegen.txt). Plain or gzip-compressed (.txt.gz) files are read.
 
 Checks (item c of the row), before any HLO is compared (3 and 4 are reported beside the result and do not stop it):
   1. every planned process exited 0 (run.json) and has exactly one optimised and one unoptimised dump of jit_apply_fn;
@@ -78,6 +81,10 @@ REF_PATTERN = {'v5e': r'_v5e_main_v5_\d+$', 'v6e': r'_v6e_main_v6_\d+$'}
 STAGES = ('embedding', 'template', 'msa', 'pairformer', 'diffusion', 'confidence', 'distogram', 'params', 'other',
           'unattributed')
 BEFORE_PAIRFORMER = ('embedding', 'template', 'msa')
+# The model's dumps in a process's xla_dump/ (one each; also read by scripts/analysis_runs/hlo/check_sessions.py and
+# fetch_dumps.py). The optional cl_<digits>. segment is in every TPU dump name (follow-up 16 run of 2026-11-16).
+DUMP_OPT = re.compile(r'module_\d+\.jit_apply_fn\.(?:cl_\d+\.)?(?:[a-z0-9_]+_)?after_optimizations\.txt(\.gz)?$')
+DUMP_PRE = re.compile(r'module_\d+\.jit_apply_fn\.(?:cl_\d+\.)?before_optimizations\.txt(\.gz)?$')
 DEVICE = {'v5e': 'TPU v5 lite', 'v6e': 'TPU v6 lite'}
 STACK = {'jax': '0.10.2', 'jaxlib': '0.10.2', 'libtpu': '0.0.43.2'}
 LIBTPU_BUILD = 'libtpu_lts_20260630_b_RC06'
@@ -545,9 +552,8 @@ def dump_files(proc):
   """(optimised, unoptimised) dump paths of jit_apply_fn in a process folder, as lists."""
   d = pathlib.Path(proc) / 'xla_dump'
   files = sorted(p for p in d.glob('*') if p.is_file()) if d.is_dir() else []
-  opt = [p for p in files if re.search(r'module_\d+\.jit_apply_fn\.(?:[a-z0-9_]+_)?after_optimizations\.txt(\.gz)?$',
-                                       p.name)]
-  pre = [p for p in files if re.search(r'module_\d+\.jit_apply_fn\.before_optimizations\.txt(\.gz)?$', p.name)]
+  opt = [p for p in files if DUMP_OPT.search(p.name)]
+  pre = [p for p in files if DUMP_PRE.search(p.name)]
   return opt, pre
 
 

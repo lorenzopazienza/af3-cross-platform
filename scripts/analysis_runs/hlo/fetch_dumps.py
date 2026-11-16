@@ -23,8 +23,8 @@ SESSIONS = REPO / 'scripts' / 'analysis_runs' / 'hlo' / 'sessions.txt'
 TARGETS = ('7U3J', '7NPL', '7XQZ', '7D5C')
 RUNS = ('tpu_xla_hlo_rep1_seed1_fresh', 'tpu_xla_hlo_rep2_seed1_fresh')
 REF = {'v5e': '20261013T132954Z_v5e_main_v5_01', 'v6e': '20261013T205257Z_v6e_main_v6_01'}
-OPT = re.compile(r'module_\d+\.jit_apply_fn\.(?:[a-z0-9_]+_)?after_optimizations\.txt(\.gz)?$')
-PRE = re.compile(r'module_\d+\.jit_apply_fn\.before_optimizations\.txt(\.gz)?$')
+sys.path.insert(0, str(REPO / 'analysis'))
+from hlo import DUMP_OPT as OPT, DUMP_PRE as PRE  # noqa: E402  (standard library only, as this script)
 
 
 def listed():
