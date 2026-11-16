@@ -239,7 +239,10 @@ class Module:
         self.comps[comp].append(ins)
 
   def stack(self, frame):
-    """[(file, function, line)] from the frame to the root (innermost first)."""
+    """[(file, function, line)] from the frame to the root (innermost first). XLA's text dump prints a frame's
+    parent_frame_id as the parent's id plus one (a root frame prints 1, so 0 after the subtraction ends the chain):
+    checked on the dumps of jax 0.10.2 on the CPU and of libtpu 0.0.43.2, where the chain read this way is the Python
+    call stack of the operation (follow-up 16, correction row of 2026-11-16)."""
     out, seen = [], set()
     while frame and frame in self.frames and frame not in seen:
       seen.add(frame)
@@ -247,10 +250,7 @@ class Module:
       loc = self.locations.get(f.get('file_location_id'), {})
       out.append((self.files.get(loc.get('file_name_id'), ''), self.functions.get(loc.get('function_name_id'), ''),
                   loc.get('line')))
-      parent = f.get('parent_frame_id')
-      if parent == frame:
-        break
-      frame = parent
+      frame = f.get('parent_frame_id', 0) - 1
     return out
 
 
@@ -308,30 +308,65 @@ def op_tokens(op_name):
   return [t for t in op_name.split('/') if t]
 
 
+WRAPPED = re.compile(r'^[a-z_]+\((.*)\)$')
+
+
+def stage_tokens(op_name):
+  """op_name components with transformation wrappers removed (vmap(confidence_head) -> confidence_head), and the
+  name evoformer_conditioning added when a component starts with it (AlphaFold 3 names the modules of its input
+  embedding f'{name}_...' with name evoformer_conditioning, for example evoformer_conditioning_atom_transformer_encoder)."""
+  out = []
+  for t in op_tokens(op_name):
+    m = WRAPPED.match(t)
+    while m:
+      t = m.group(1)
+      m = WRAPPED.match(t)
+    if t:
+      out.append(t)
+  if any(t.startswith('evoformer_conditioning') for t in out):
+    out.append('evoformer_conditioning')
+  return out
+
+
 def stage_of(op_name, stack):
   """The AlphaFold 3 stage of an instruction from its op_name (Haiku module path) and its stack frames
   [(file, function, line)]; None if it has neither."""
   if op_name.startswith('params['):       # reading a weight (its op_name names the module that owns it)
     return 'params'
-  toks = set(op_tokens(op_name))
+  toks = set(stage_tokens(op_name))
   files = {pathlib.PurePath(f).name for f, _, _ in stack}
   funcs = {fn for _, fn, _ in stack}
-  if 'confidence_head' in toks or 'confidence_head.py' in files:
+  # 1. the AlphaFold 3 module the op_name names, most specific first (a function shared between modules, such as
+  # diffusion_transformer.self_attention called by the Pairformer, does not override it)
+  if 'confidence_head' in toks:
     return 'confidence'
-  if 'distogram_head' in toks or 'distogram_head.py' in files:
+  if 'distogram_head' in toks:
     return 'distogram'
-  if ('diffusion_head' in toks or files & {'diffusion_head.py', 'diffusion_transformer.py'}
-          or any(fn.endswith('_sample_diffusion') for fn in funcs)):
+  if 'diffusion_head' in toks:
     return 'diffusion'
-  if 'trunk_pairformer' in toks or any('pairformer_fn' in fn for fn in funcs):
+  if 'trunk_pairformer' in toks:
     return 'pairformer'
-  if toks & {'msa_stack', 'msa_activations', 'extra_msa_target_feat'} or any(fn.endswith('_embed_process_msa')
-                                                                           for fn in funcs):
+  if toks & {'msa_stack', 'msa_activations', 'extra_msa_target_feat'}:
     return 'msa'
-  if 'template_embedding' in toks or 'template_modules.py' in files or any(fn.endswith('_embed_template_pair')
-                                                                           for fn in funcs):
+  if 'template_embedding' in toks:
     return 'template'
-  if toks & {'evoformer', 'evoformer_conditioning'} or 'evoformer.py' in files:
+  if 'evoformer_conditioning' in toks:
+    return 'embedding'
+  # 2. the stack frames, for operations outside those modules' name scopes
+  if 'confidence_head.py' in files:
+    return 'confidence'
+  if 'distogram_head.py' in files:
+    return 'distogram'
+  if files & {'diffusion_head.py', 'diffusion_transformer.py'} or any(fn.endswith('_sample_diffusion') for fn in funcs):
+    return 'diffusion'
+  if any('pairformer_fn' in fn for fn in funcs):
+    return 'pairformer'
+  if any(fn.endswith('_embed_process_msa') for fn in funcs):
+    return 'msa'
+  if 'template_modules.py' in files or any(fn.endswith('_embed_template_pair') for fn in funcs):
+    return 'template'
+  # 3. the rest of the evoformer: its pair and single embeddings
+  if 'evoformer' in toks or 'evoformer.py' in files:
     return 'embedding'
   if op_name or stack:
     return 'other'

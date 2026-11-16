@@ -37,9 +37,9 @@ FileLocations
 
 StackFrames
 1 {file_location_id=1 parent_frame_id=1}
-2 {file_location_id=2 parent_frame_id=1}
-3 {file_location_id=4 parent_frame_id=3}
-4 {file_location_id=3 parent_frame_id=3}
+2 {file_location_id=2 parent_frame_id=2}
+3 {file_location_id=4 parent_frame_id=1}
+4 {file_location_id=3 parent_frame_id=4}
 
 '''
 
@@ -164,6 +164,11 @@ def test_gzip_dumps_are_read(tmp_path):
     ('jit(apply_fn)/diffuser/diffusion_head/diffusion/x/add', [], 'diffusion'),
     ('jit(apply_fn)/diffuser/while/body/add', [('model.py', 'Model._sample_diffusion', 110)], 'diffusion'),
     ('jit(apply_fn)/diffuser/confidence_head/confidence_pairformer/x/add', [], 'confidence'),
+    ('jit(apply_fn)/diffuser/while/body/closed_call/vmap(confidence_head)/while/body/confidence_pairformer/x/add', [],
+     'confidence'),
+    ('jit(apply_fn)/diffuser/evoformer_conditioning_atom_transformer_encoder/x/add', [], 'embedding'),
+    ('jit(apply_fn)/diffuser/x/add', [('stateful.py', 'scan', 644), ('confidence_head.py', 'pairformer_fn', 146)],
+     'confidence'),
     ('jit(apply_fn)/diffuser/distogram_head/half_logits/dot_general', [], 'distogram'),
     ("params['diffuser/evoformer/left_single']['weights']", [], 'params'),
     ('jit(apply_fn)/diffuser/add', [], 'other'),
@@ -552,6 +557,19 @@ def test_a_real_xla_dump_of_a_haiku_model_with_alphafold3_module_names(tmp_path)
   assert {u['path'] for u in mods[0] if u['stage'] == 'pairformer'} >= {'evoformer/trunk_pairformer/ln',
                                                                          'evoformer/trunk_pairformer/proj'}
   assert {v['level'] for v in hlo.compare(mods[0], mods[1]).values()} == {'identical'}
+  # the stack frames, read with parent_frame_id less one, are the Python call stack of the operation
+  m = hlo.Module(hlo.read_text(opt[0]))
+  dots = [i for c in m.comps.values() for i in c if i.op_name.endswith('trunk_pairformer/proj/dot_general') and i.frame]
+  assert dots
+  funcs = [fn for _, fn, _ in m.stack(dots[0].frame)]
+  assert 'Linear.__call__' in funcs and 'Blk.__call__' in funcs and 'Evo.__call__' in funcs
+  assert funcs.index('Blk.__call__') < funcs.index('Evo.__call__') < funcs.index('Diffuser.__call__')
+
+
+def test_stack_frames_follow_parent_id_less_one():
+  m = hlo.Module(module())
+  assert [f for _, f, _ in m.stack(2)] == ['Evoformer._embed_process_msa', 'Evoformer.__call__']
+  assert [f for _, f, _ in m.stack(1)] == ['Evoformer.__call__']
 
 
 def test_checks_3_and_4_catch_another_device_and_other_flags(tmp_path):
