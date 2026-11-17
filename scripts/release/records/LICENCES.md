@@ -1,6 +1,7 @@
 # Licences of the third-party data in records R1 and R2
 
-Prepared on 2026-11-08 from the pages cited below. This table says what each source states; it is not legal advice. "Unclear"
+Prepared on 2026-11-08 from the pages cited below; extended on 2026-11-17 to freeze `4ec185c5` (follow-ups 13 to 16,
+`memlimit_ah`, `warm_th`), with the open point on the XLA dumps of follow-up 16 (last section). This table says what each source states; it is not legal advice. "Unclear"
 means the source does not settle the point, and no guess is made.
 
 "Derived alignments" asks whether alignments computed against the source may be redistributed. No source below speaks of
@@ -25,16 +26,17 @@ sharing and adaptation with attribution.
 | AlphaFold 3 pipeline: PDB mmCIF templates (`mmcif_files`) | in record R2: the template coordinates inside the official inputs | CC0 1.0 | https://www.wwpdb.org/about/usage-policies | yes (CC0) | encouraged, as for the PDB |
 | AlphaFold 3 pipeline: NT, Rfam, RNAcentral | **nothing**: these RNA databases were not used. Every official input holds proteins and ligands only, and the pipeline logs show no `nhmmer` run | not applicable (Rfam and RNAcentral CC0 1.0 and NT not stated, in AlphaFold 3's README) | https://github.com/google-deepmind/alphafold3 | not applicable | not applicable |
 | Chemical Component Dictionary (CCD) | ligand codes in targets and inputs; ligand definitions inside the AlphaFold 3 outputs and features | **unclear**: the CCD page states no licence, and the wwPDB statement covers "data files contained in the PDB archive" without naming the CCD. CC0 is the likely reading, supported only by a mailing-list message | https://www.wwpdb.org/data/ccd, https://www.wwpdb.org/about/usage-policies | not applicable | requested on the page: Westbrook, J. D. et al. *Bioinformatics* (2015), https://doi.org/10.1093/bioinformatics/btu789 |
-| AlphaFold 3 outputs (predicted structures, confidences, ranking scores, embeddings, feature arrays of follow-up 5, data-pipeline results of follow-up 6) and what derives from them | record R2 | AlphaFold 3 Output Terms of Use: non-commercial use only; no training of similar structure-prediction models; conspicuous notice; no additional or conflicting terms; citation | https://github.com/google-deepmind/alphafold3/blob/main/OUTPUT_TERMS_OF_USE.md | not applicable | required: Abramson, J. et al. *Nature* 630, 493-500 (2024) |
+| AlphaFold 3 outputs (predicted structures, confidences, ranking scores, embeddings, feature arrays of follow-up 5, data-pipeline results of follow-up 6, layer captures of follow-up 13) and what derives from them | record R2 | AlphaFold 3 Output Terms of Use: non-commercial use only; no training of similar structure-prediction models; conspicuous notice; no additional or conflicting terms; citation | https://github.com/google-deepmind/alphafold3/blob/main/OUTPUT_TERMS_OF_USE.md | not applicable | required: Abramson, J. et al. *Nature* 630, 493-500 (2024) |
 
 ## The licence line of each archive (proposal)
 
 | record | archives | licence line |
 |---|---|---|
 | R1 | `inputs_targets_manifests.tar.gz`, `inputs_repl_large.tar.gz` | CC BY 4.0, with attribution of the ColabFold databases, UniProt, PoseBusters and Runs N' Poses; PDB data CC0 1.0 |
-| R1 | `msa_provenance.tar.gz`, `freeze.tar.gz`, `session_lists_launch_records.tar.gz`, `session_records.tar.gz`, `session_records_followups.tar.gz`, `attempt_superseded_records.tar.gz`, `outside_freeze_records.tar.gz`, the `release_*` files | CC BY 4.0 (our own records) |
+| R1 | `msa_provenance.tar.gz`, `freeze.tar.gz`, `session_lists_launch_records.tar.gz`, `session_records.tar.gz`, `session_records_followups.tar.gz`, `session_records_followups1316.tar.gz`, `attempt_superseded_records.tar.gz`, `outside_freeze_records.tar.gz`, `outside_freeze_records_followups1316.tar.gz`, the `release_*` files | CC BY 4.0 (our own records) |
 | R2 | `inputs_official_pipeline.tar.gz`, `nas_naspaz8-af3_run1.tar.gz`, `nas_naspaz6-af3_run1.tar.gz`, `nas_naspaz8-af3_run2.tar.gz` | AlphaFold 3 Output Terms of Use, no Creative Commons. The databases behind the alignments are attributed in R2's README: UniRef90, UniProt and small BFD (modified by Google DeepMind), CC BY 4.0 at their sources; MGnify and the PDB, CC0 1.0 |
-| R2 | every other archive, including `af3_feat_features.tar.gz` and `analysis_outputs.tar.gz` | AlphaFold 3 Output Terms of Use, no Creative Commons |
+| R2 | `hlo_xla_dumps.tar.gz` (proposal, pending Lorenzo's decision: last section) | AlphaFold 3 Output Terms of Use, no Creative Commons; the archive also carries the Apache License 2.0 of AlphaFold 3's code it is compiled from |
+| R2 | every other archive, including `af3_feat_features.tar.gz` and `analysis_outputs.tar.gz` (with the paper's `paper/assets/`) | AlphaFold 3 Output Terms of Use, no Creative Commons |
 
 Record R1 as a whole carries CC BY 4.0 on Zenodo, which has one licence field per record: CC0 data can be redistributed inside
 it, and every CC BY 4.0 source is attributed in its README. Record R2 carries a custom licence on Zenodo, title "AlphaFold 3 Output
@@ -61,3 +63,52 @@ The AlphaFold 3 Output Terms apply to these files as AlphaFold 3 output. They do
 2. **The CCD.** Ligand codes and component definitions are treated as PDB archive data, with the citation the CCD page lists. No
    CCD file is redistributed on its own.
 3. **The PoseBusters V2 list.** Only identifiers are used, which are facts about public PDB entries, and the benchmark set is cited.
+4. **The layer captures of follow-up 13** are intermediate activations of AlphaFold 3's trunk recorded while it ran with the
+   official parameters, as the embeddings of follow-up 2 are: Output. They are not released (decision of 2026-11-17: with them
+   R2 would pass 50 GB); if they ever are, it is in a record under the Output Terms, unmodified.
+
+## XLA dumps of follow-up 16: proposal (2026-11-17), for Lorenzo to decide
+
+What they are: 21,696 text files that XLA wrote while JAX compiled AlphaFold 3's model on the v5e and the v6e (HLO and MLIR
+text before and after optimisation, buffer assignment, memory and live-range reports, compiler options and flags; 1.28 GB raw,
+0.16 GB as built on 2026-11-17). They are produced by the compiler from AlphaFold 3's code and from the shapes of the inputs and
+of the parameters; they carry the names and shapes of the parameters and source locations (file and function names) of
+AlphaFold 3's code.
+
+What they are not: they do not hold the model parameters. Checked on 2026-11-17 on every file: the 394 weight tensors
+(1,145,669,864 bytes in the entry of each compiled `jit_apply_fn`, against a weights file of 1,020,545,840 bytes) are
+arguments of the compiled function; no constant printed in the HLO text is longer than 16 characters (XLA elides large
+ones); the hex-encoded constants of the MLIR files total 80,384 bytes in all and at most 5,024 bytes in one file (two
+256-element float vectors and an integer table of the model code; the 1024 x 1024 constants are splats of 1.0); no MLIR
+resource blob. `release.py` refuses any dump file with more than 65,536 characters of printed constants or with a resource
+blob, so the VM build repeats the check. They are not predictions or confidences either.
+
+The licences that could apply:
+
+- **AlphaFold 3's code, Apache License 2.0** (https://github.com/google-deepmind/alphafold3/blob/main/LICENSE): the dumps
+  are a compiled form of that code. Apache 2.0 allows redistribution of derivative works, in any medium, with a copy of the
+  licence, the notices, and a statement of changes, and allows adding other terms for the derivative as a whole (section 4).
+  The archive carries the licence text (`LICENSE_ALPHAFOLD3_CODE_APACHE-2.0.txt`, from `LICENSES/Apache-2.0` in the
+  repository) and `NOTICE_XLA_DUMPS.txt` (what the files are, the copyright of the code, the redaction of home paths).
+- **AlphaFold 3 Output Terms of Use**: Output is "the structure predictions and all related information provided by
+  AlphaFold 3", and "AlphaFold 3" is the Code and the Model Parameters. The dumps are written while AlphaFold 3 runs with the
+  official parameters, so the reading of decision (5) of 2026-11-08 (the data-pipeline results, made by the Code alone,
+  treated as Output) reaches them too; the Terms do not name compiler dumps, so this is a reading, the more restrictive one.
+- **The model parameters' terms** (`WEIGHTS_TERMS_OF_USE.md`): not engaged, since no parameter value is in the files; parameter
+  names and shapes are also in the open-source code.
+- **XLA (Apache License 2.0) and libtpu**: the compilers that wrote the files; the TPU dumps after code generation reflect
+  libtpu's choices (layouts, fusion). Neither licence speaks of compiler output; no restriction found, not checked further.
+
+Options:
+
+1. **R2, under the Output Terms, with the Apache 2.0 text and notice inside the archive (proposed, and what `release.py`
+   builds now: `HLO_DUMPS_RECORD = 'R2'`).** Consistent with decision (5); costs 2 of R2's files and about 0.16 GB; a user who
+   reads the dumps for the compiled program alone is bound by the non-commercial terms, which Apache 2.0 allows a
+   distributor to add.
+2. **R1, under CC BY 4.0 for our part and Apache 2.0 for the code they derive from** (the same licence text and notice inside
+   the archive). Fewer restrictions, closer to what the files are (a compiled program, not a prediction); it departs from the
+   reading of decision (5), and R1 would no longer hold only CC BY 4.0 material. To choose it, set
+   `HLO_DUMPS_RECORD = 'R1'` in `release.py` and move the row of `hlo_xla_dumps.tar.gz` from R2's README to R1's.
+
+Either way the dumps are released as recorded, with home paths replaced by `/home/<user>` (about 6,600 files, one row each
+in `REDACTIONS.tsv`).

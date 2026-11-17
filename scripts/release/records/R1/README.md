@@ -2,9 +2,15 @@
 
 Author: Lorenzo Pazienza, ORCID 0009-0006-1687-0125. Contact: lorenzo.pazienza@gmail.com.
 Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available). Companion record with the AlphaFold3 outputs, the results of its data pipeline and the
-follow-up 6 deliveries: 10.5281/zenodo.24057544. This record: 10.5281/zenodo.24057470. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, the repository commit tagged zenodo-v1.
+follow-up 6 deliveries: 10.5281/zenodo.24057544. This record: 10.5281/zenodo.24057470. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, the repository commit tagged zenodo-4ec185c5.
 
-The record covers the whole study: the main study and follow-ups 1 to 12.
+Pre-registration (OSF, public since 2026-11-17): project https://osf.io/qtz3v; the main study's registration
+https://osf.io/fegsy; the addenda of follow-up 10 (https://osf.io/nsbgp), 11 (https://osf.io/64bpy), 13
+(https://osf.io/c4kh7), 14 (https://osf.io/eafkx), 15 (https://osf.io/h9yw8) and 16 (https://osf.io/hcxm7). Every change
+after registration is in section 10 of the analysis plan (`notes/analysis_plan.md` in the repository).
+
+The record covers the whole study: the main study, follow-ups 1 to 16, and the two later measurements of the memory limit
+on the A100 and H100 (`memlimit_ah`) and of the warm cost on the L4 Triton arm and the H100 (`warm_th`).
 
 ## What this record contains
 
@@ -17,16 +23,20 @@ The record covers the whole study: the main study and follow-ups 1 to 12.
 | `session_lists_launch_records.tar.gz` | every list and record the scripts read besides the session folders: the session lists of the analyses (`results/analysis/**/sessions_*.txt`, `scripts/analysis_runs/*/sessions.txt`), the CCD codes of the build check (`ccd_codes.json`), the wrapper parts files (`results/parts_*.txt`), the wrapper state and logs of every launch (`results/af3/.many/`) and the per-session launch records (`results/af3/.launcher/`) |
 | `session_records.tar.gz` | the run records of every frozen session of the main study and follow-ups 1 and 2, from the frozen local copy: `session.json` (software, configuration, device, weights SHA-256 and file name), `runs.jsonl` and `run.json` (per AlphaFold3 process: exit code, timings, compiled memory, cache evidence, input and output SHA-256), launch and job records, harness and job logs |
 | `session_records_followups.tar.gz` | the same for the frozen sessions of follow-ups 3 to 12 (`cpu60`, `a100`, `feat`, `msa`, `sw`, `seeds`, `h100`, `repl`, `prec5`, `large`) |
+| `session_records_followups1316.tar.gz` | the same for the frozen sessions of follow-ups 13 to 16 and the two later measurements (`fu13`, `fu14`, `rcx`, `hlo`, `memlimit_ah`, `warm_th`; 144 sessions). The XLA dumps of follow-up 16 are in record R2; the layer captures of follow-up 13 are listed in the freeze but not released (R2's README says why) |
 | `attempt_superseded_records.tar.gz` | from the results bucket: the launcher records of launch attempts that never ran (no VM run; for example no TPU capacity), and the run records of the superseded or engineering sessions whose outputs are in R2 (`af3_superseded_engineering.tar.gz`, not used in any reported result) |
 | `outside_freeze_records.tar.gz` | from the results bucket: the launcher and session records of the sessions of follow-ups 3 to 12 outside the freeze (smoke tests, Spot preemptions, interruptions, relaunched-over sessions, `eigen_check`, and attempts of follow-ups 6 to 12 that created no VM). Their AlphaFold3 outputs are not released and enter no analysis. `OUTSIDE_SESSIONS.csv` maps each session to the row of section 10 of the analysis plan that explains it |
+| `outside_freeze_records_followups1316.tar.gz` | the same for follow-ups 13 to 16 (247 sessions: Spot preemptions, setup failures, a first LG session whose processes all failed, and attempts that created no VM), each mapped by `OUTSIDE_SESSIONS.csv` to its row |
 | `REDACTIONS.tsv` (plain file) | every file packaged with a redaction: for each, the archive, the path, the SHA-256 of the original and of the released copy, and what was replaced, never the value. Every other file is packaged byte for byte as recorded |
 | `LICENCES.md` (plain file) | every third-party source, its licence, the official page, and the licence line of each archive |
-| `release_*` (plain files; a Zenodo record has no folders) | `release_release.py` (inventory, privacy scan, layout, input check, archive building and verification), `release_RUNBOOK.md` (how the archives were built), the bucket inventory, the layout, the lists of excluded sessions and files, `release_SUPERSEDED_SESSIONS.csv` and `release_OUTSIDE_SESSIONS.csv` (each session with its row of section 10), and `release_inputs_check.csv` and `release_inputs_check.json` (the check of every `_data.json` against its frozen input) |
+| `release_*` (plain files; a Zenodo record has no folders) | `release_release.py` (inventory, privacy scan, layout, input check, archive building and verification), `release_RUNBOOK.md` (how the archives were built), the bucket inventory, the layout, the lists of excluded sessions and files, `release_SUPERSEDED_SESSIONS.csv` and `release_OUTSIDE_SESSIONS.csv` (each session with its row of section 10), `release_inputs_check.csv` and `release_inputs_check.json` (the check of every `_data.json` against its frozen input, sessions of freeze `68923012`), and `release_inputs_check_followups1316.csv` and `.json` (the same check for the 144 sessions added by freeze `4ec185c5`) |
 
-Data freeze identifier: `689230120499e5ba9d903051553c6554f3412f462456461757398f8fd3560a1a`, the SHA-256 of
-`results/freeze/followups612_20261108/manifest_sha256.tsv`: 295 sessions, cumulative, with the rows of the three earlier session
-freezes as a byte-identical prefix. The AlphaFold3 outputs of the same sessions are in record R2, under the same
-`af3/<session>/...` paths.
+Data freeze identifier: `4ec185c5a929738439de3b916a9c8475c4c3abd218fa140bfd460acf917d4486`, the SHA-256 of
+`results/freeze/followups1316_20261117/manifest_sha256.tsv`: 439 sessions, cumulative. It holds every row of the earlier
+session freezes, in order and byte for byte; the earlier freeze `689230120499...` (295 sessions) is not a byte prefix of it
+only because 700 full outputs of two main-study sessions, which that freeze lists as bucket only, were later copied to
+the local freeze copy (`results/freeze/INDEX.md`: "yes, plus 700 files added later to its sessions"). The AlphaFold3
+outputs of the same sessions are in record R2, under the same `af3/<session>/...` paths.
 
 The follow-up 6 deliveries were never in the results bucket and keep their own freezes. The deliveries are in record R2, whose README
 says what each is and where it ran; their file lists are in `freeze.tar.gz`:
@@ -48,7 +58,9 @@ by `<account>`: the `user_agent` field of 99 MSA provenance files, where it appe
 for, and 202 launch wrapper logs, where `gcloud` printed the account in an "authenticated as" line. Attribution and contact do not
 come from those files. Home paths on the VMs are replaced by `/home/<user>` and any other private network data by a placeholder:
 `REDACTIONS.tsv` has one row per file. So for a redacted file, the SHA-256 in the freeze manifest is the original's, which is the
-first hash in that row; the released copy has the second.
+first hash in that row; the released copy has the second. The job logs of the VMs also name systemd units of the form
+NAME, at sign, INSTANCE, dot, service (the getty service of a terminal, for example); these are not addresses and are
+packaged unchanged.
 
 ## Licence
 
@@ -73,8 +85,9 @@ Attribution for third-party data it contains or derives from:
 No RNA database was used. No AlphaFold 3 Output is in this record: the run records and freeze lists give file names, sizes and
 SHA-256 of the outputs, but no predicted coordinates, scores, confidences, alignments or templates. These are in record R2,
 under the AlphaFold 3 Output Terms of Use (https://github.com/google-deepmind/alphafold3/blob/main/OUTPUT_TERMS_OF_USE.md):
-the outputs, AlphaFold3's logs, the feature arrays of follow-up 5, the results of AlphaFold3's data pipeline with the follow-up 6
-deliveries, and the analysis outputs derived from them. The sequence-only inputs of follow-up 6 are there too, with the pipeline
+the outputs, AlphaFold3's logs, the feature arrays of follow-up 5, the results of
+AlphaFold3's data pipeline with the follow-up 6 deliveries, the XLA dumps of follow-up 16, and the analysis outputs derived
+from them. The sequence-only inputs of follow-up 6 are there too, with the pipeline
 results they led to; their SHA-256 are in `inputs/official/manifest.csv`, here.
 
 ## Verify
@@ -82,7 +95,7 @@ results they led to; their SHA-256 are in `inputs/official/manifest.csv`, here.
 ```
 shasum -a 256 -c SHA256SUMS                          # the archives and their manifests (sha256sum -c on Linux)
 tar xzf freeze.tar.gz
-shasum -a 256 results/freeze/followups612_20261108/manifest_sha256.tsv     # must print the data freeze identifier above
+shasum -a 256 results/freeze/followups1316_20261117/manifest_sha256.tsv    # must print the data freeze identifier above
 tar xzf inputs_targets_manifests.tar.gz
 shasum -a 256 -c inputs_targets_manifests.tar.gz.sha256
 ```

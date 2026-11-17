@@ -1,7 +1,7 @@
 {
  "metadata": {
   "title": "AlphaFold3 on TPU and GPU: predicted structures, confidences and derived analysis outputs",
-  "description": "<p>Record R2 of the study: the AlphaFold3 v3.0.4 outputs of the 295 sessions of the data freeze 689230120499e5ba9d903051553c6554f3412f462456461757398f8fd3560a1a, on TPU v5e, TPU v6e, NVIDIA L4, A100, H100 and CPU, covering the main study and follow-ups 1 to 12: predicted structures, confidences, embeddings of follow-up 2, feature arrays of follow-up 5, AlphaFold3 logs, the results of AlphaFold3's data pipeline with the three deliveries of follow-up 6, the analysis outputs derived from them, and, apart, superseded or engineering sessions not used in any reported result.</p><p><strong>By using this information, you agree to AlphaFold 3 Output Terms of Use found at https://github.com/google-deepmind/alphafold3/blob/main/OUTPUT_TERMS_OF_USE.md.</strong> Non-commercial use only. Any use must cite Abramson, J. et al. Accurate structure prediction of biomolecular interactions with AlphaFold 3. Nature (2024). No Creative Commons licence applies to this record. Every archive holds a Legally Binding Terms of Use text file (LEGALLY_BINDING_TERMS_OF_USE.txt) and a copy of the Terms.</p><p>No model parameters are in this record; they are available only from Google DeepMind. Inputs with ColabFold MSAs, data freeze and run records are in the companion record, 10.5281/zenodo.24057470.</p><p>Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available).</p>",
+  "description": "<p>Record R2 of the study: the AlphaFold3 v3.0.4 outputs of the 439 sessions of the data freeze 4ec185c5a929738439de3b916a9c8475c4c3abd218fa140bfd460acf917d4486, on TPU v5e, TPU v6e, NVIDIA L4, A100, H100 and CPU, covering the main study, follow-ups 1 to 16 and the two later measurements (memlimit_ah, warm_th): predicted structures, confidences, embeddings of follow-up 2, feature arrays of follow-up 5, XLA dumps of follow-up 16, AlphaFold3 logs, the results of AlphaFold3's data pipeline with the three deliveries of follow-up 6, the analysis outputs derived from them with the paper's tables and figures, and, apart, superseded or engineering sessions not used in any reported result.</p><p><strong>By using this information, you agree to AlphaFold 3 Output Terms of Use found at https://github.com/google-deepmind/alphafold3/blob/main/OUTPUT_TERMS_OF_USE.md.</strong> Non-commercial use only. Any use must cite Abramson, J. et al. Accurate structure prediction of biomolecular interactions with AlphaFold 3. Nature (2024). No Creative Commons licence applies to this record. Every archive holds a Legally Binding Terms of Use text file (LEGALLY_BINDING_TERMS_OF_USE.txt) and a copy of the Terms.</p><p>No model parameters are in this record; they are available only from Google DeepMind. Inputs with ColabFold MSAs, data freeze and run records are in the companion record, 10.5281/zenodo.24057470.</p><p>Pre-registration on OSF (public since 2026-11-17): project https://osf.io/qtz3v, main study https://osf.io/fegsy, addenda of follow-ups 10 (https://osf.io/nsbgp), 11 (https://osf.io/64bpy), 13 (https://osf.io/c4kh7), 14 (https://osf.io/eafkx), 15 (https://osf.io/h9yw8) and 16 (https://osf.io/hcxm7).</p><p>Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available).</p>",
   "keywords": [
    "AlphaFold 3",
    "protein structure prediction",
@@ -10,7 +10,8 @@
    "benchmark",
    "reproducibility",
    "predicted structures",
-   "multiple sequence alignment"
+   "multiple sequence alignment",
+   "pre-registration"
   ],
   "rights": [
    {
@@ -35,6 +36,46 @@
     "identifier": "10.1038/s41586-024-07487-w",
     "relation": "references",
     "resource_type": "publication-article"
+   },
+   {
+    "identifier": "https://osf.io/qtz3v",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/fegsy",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/nsbgp",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/64bpy",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/c4kh7",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/eafkx",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/h9yw8",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/hcxm7",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
    }
   ],
   "upload_type": "dataset",

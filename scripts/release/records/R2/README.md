@@ -2,7 +2,11 @@
 
 Author: Lorenzo Pazienza, ORCID 0009-0006-1687-0125. Contact: lorenzo.pazienza@gmail.com.
 Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available). Companion record (inputs with ColabFold MSAs, targets, manifests, data freeze, run
-records): 10.5281/zenodo.24057470. This record: 10.5281/zenodo.24057544. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, the repository commit tagged zenodo-v1.
+records): 10.5281/zenodo.24057470. This record: 10.5281/zenodo.24057544. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, the repository commit tagged zenodo-4ec185c5.
+
+Pre-registration (OSF, public since 2026-11-17): project https://osf.io/qtz3v; the main study's registration
+https://osf.io/fegsy; the addenda of follow-up 10 (https://osf.io/nsbgp), 11 (https://osf.io/64bpy), 13
+(https://osf.io/c4kh7), 14 (https://osf.io/eafkx), 15 (https://osf.io/h9yw8) and 16 (https://osf.io/hcxm7).
 
 ## Terms of use of this record
 
@@ -33,25 +37,26 @@ licence applies to this record.**
 What counts as Output here: the Terms define it as "the structure predictions and all related information provided by AlphaFold 3,
 together with any visual representations, computational predictions, descriptions, modifications, copies, or adaptations that are
 substantially derived from Output", and "AlphaFold 3" as the AlphaFold 3 Code and Model Parameters. So the results of AlphaFold3's
-data pipeline (follow-up 6) and its feature arrays (follow-up 5) are treated as Output, although they involve no model inference.
+data pipeline (follow-up 6), its feature arrays (follow-up 5) and the XLA dumps of follow-up 16 are treated as Output (the dumps are also compiled from AlphaFold 3's code, Apache License 2.0: see the table
+below), although the pipeline and the feature arrays involve no model inference.
 
 Modifications: we have not modified any model, confidence file, ranking score, embedding, feature array or pipeline `_data.json`;
 each is as AlphaFold3 wrote it (SHA-256 in the per-archive manifests and in the data freeze), and the build stops rather than change
-one. The only changes are the redactions in logs and records listed in `REDACTIONS.tsv` (below).
+one. The only changes are the redactions in logs, records and XLA dumps listed in `REDACTIONS.tsv` (below).
 
 Please also cite the paper when using these data. Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available).
 
 ## What this record contains
 
 AlphaFold3 v3.0.4 outputs (official model parameters, AlphaFold3's defaults: 10 recycles, 5 diffusion samples per
-seed) from the study, run on TPU v5e, TPU v6e, NVIDIA L4, A100 and H100, and CPU, covering the main study and
-follow-ups 1 to 12.
+seed) from the study, run on TPU v5e, TPU v6e, NVIDIA L4, A100 and H100, and CPU, covering the main study,
+follow-ups 1 to 16 and the two later measurements `memlimit_ah` and `warm_th`.
 **No model parameters (weights) are included.** They are available only from Google DeepMind
 (https://github.com/google-deepmind/alphafold3).
 
-The outputs of the study come from the 295 sessions of the data freeze
-`689230120499e5ba9d903051553c6554f3412f462456461757398f8fd3560a1a` (the SHA-256 of
-`results/freeze/followups612_20261108/manifest_sha256.tsv` in record R1, which lists every frozen file with its SHA-256). Other
+The outputs of the study come from the 439 sessions of the data freeze
+`4ec185c5a929738439de3b916a9c8475c4c3abd218fa140bfd460acf917d4486` (the SHA-256 of
+`results/freeze/followups1316_20261117/manifest_sha256.tsv` in record R1, which lists every frozen file with its SHA-256). Other
 archives hold other material, under the same terms: the results of AlphaFold3's data pipeline with the three deliveries of follow-up
 6, which have their own freezes (below), the superseded or engineering sessions (not used in any reported result) and the analysis
 outputs derived from the study's outputs.
@@ -80,7 +85,13 @@ outputs derived from the study's outputs.
 | `nas_naspaz6-af3_run1.tar.gz`, `nas_naspaz8-af3_run2.tar.gz` | follow-up 6, the two determinism checks | the pipeline on the 10 pilot targets, each with its freeze; never inference inputs. `failed/7D5C_20261025T223505Z` in `naspaz6-af3_run1` is an empty folder left by a first start stopped by hand after 102 s |
 | `af3_logs.tar.gz` | main study and follow-ups 1 and 2 | `run_alphafold.log` of each AlphaFold3 process |
 | `af3_logs_followups.tar.gz` | follow-ups 3 to 12 | the same |
-| `analysis_outputs.tar.gz` | every analysis of the study and its follow-ups | the derived analysis outputs (`results/analysis/`: per-sample tables such as `samples.csv` with ranking scores, pLDDT, ipTM, M1 and DockQ, contrasts, reports and run logs) and the paper's tables and figures (`results/paper_assets/`, `results/paper_assets_*/`, with `sources.tsv`, the SHA-256 of every input they were made from); they carry values computed from AlphaFold3 outputs, so they are released here under the same terms. The code that made them is in the repository (`analysis/`, `scripts/analysis_runs/`), and the session lists they were run on are in record R1 |
+| `af3_fu13.tar.gz` | follow-up 13, why the top-ranked sample flips (79 sessions) | structures, full confidences and `run_alphafold.log`, in one archive per follow-up from here on |
+| `af3_fu14.tar.gz` | follow-up 14, the float32 trunk (44 sessions) | structures, full confidences and logs |
+| `af3_rcx.tar.gz` | follow-up 15, recompilation of the float32 trunk and of the L4 Triton arm (15 sessions) | structures, full confidences and logs |
+| `af3_hlo.tar.gz` | follow-up 16, the compiled model on the v5e and the v6e (2 sessions) | structures, full confidences and logs |
+| `hlo_xla_dumps.tar.gz` | follow-up 16 | the XLA dumps of every process (`<run>/<target>/xla_dump/`, 21,696 files: HLO and MLIR text, buffer assignment and memory reports, compiler options), with the Apache License 2.0 of AlphaFold 3's code they are compiled from (`LICENSE_ALPHAFOLD3_CODE_APACHE-2.0.txt`) and `NOTICE_XLA_DUMPS.txt`. They hold no model parameters: the parameters are arguments of the compiled model, not constants, and the build refuses any dump with more than 65,536 characters of printed constants. Home paths are redacted |
+| `af3_memlimit_ah_warm_th.tar.gz` | the memory limit on the A100 and H100 (`memlimit_ah`, 2 sessions; 7D5C padded to larger buckets) and the warm cost on the L4 Triton arm and the H100 (`warm_th`, 2 sessions) | structures, full confidences and logs |
+| `analysis_outputs.tar.gz` | every analysis of the study and its follow-ups | the derived analysis outputs (`results/analysis/`: per-sample tables such as `samples.csv` with ranking scores, pLDDT, ipTM, M1 and DockQ, contrasts, reports and run logs, including every analysis after 8 November: `campaign`, `ranking`, `prec5_exploratory`, `memlimit_ah`, `warm_th`, `fu13`, `fu14`, `returned`, `rare`, `rounded`, `winners`, `cpu_matched`, `rcx`, `winners_ext`, `pb_flips`, `best25` and `hlo`), the tables and figures of the earlier analyses (`results/paper_assets/`, `results/paper_assets_*/`, with `sources.tsv`, the SHA-256 of every input they were made from), and the paper's own tables and figures (`paper/assets/`, from the paper commit named in `PAPER_ASSETS_COMMIT.txt`); they carry values computed from AlphaFold3 outputs, so they are released here under the same terms. The code that made them is in the repository (`analysis/`, `scripts/analysis_runs/`), and the session lists they were run on are in record R1 |
 | `af3_superseded_engineering.tar.gz` | **superseded or engineering, not used in any reported result** (15 sessions with the official weights: the first pilot, its V6h and Gh arms and V5 warm completion, the L4 determinism diagnostic, a GT smoke test, and one interrupted pilot session) | structures, full confidences and logs; `SUPERSEDED_SESSIONS.csv` maps each session to the section 10 row of the analysis plan that records it |
 | `REDACTIONS.tsv` (plain file) | every file packaged with a redaction (below) |
 | `LICENCES.md` (plain file) | every third-party source, its licence, the official page, and the licence line of each archive |
@@ -120,12 +131,13 @@ Members of the session archives are `af3/<session>/<run>/<target>/af3_output/<ta
 - `<run>`: `<config>_rep<r>_seed<s>_fresh` (fresh compilation cache, repetition r), or `<config>_seed<s>_warm`
   (warm cache rerun); the config names the arm (`tpu_xla`: V5 or V6 by platform, `l4_xla`: G, `l4_triton`: GT,
   `l4_xla_det`: Gd, `tpu_xla_highest`: V6h, `l4_xla_highest`: Gh, `cpu_xla`: C, `a100_xla`: A, `a100_xla_highest`: Ah,
-  `a100_triton`: AT);
+  `a100_triton`: AT; the configs of follow-ups 13 to 16 and of the two later measurements are named in their plans,
+  `harness/plans/` in the repository, and in each `session.json`);
 - `seed-<s>_sample-<k>/`: one diffusion sample; the top-level `<target>_model.cif` and `<target>_confidences.json`
   are AlphaFold3's copies of its top-ranked sample.
 
 The run records of each session (`session.json`, `runs.jsonl`, `run.json`, launch records) are in record R1
-(`session_records.tar.gz`, `session_records_followups.tar.gz`), under the same paths.
+(`session_records.tar.gz`, `session_records_followups.tar.gz`, `session_records_followups1316.tar.gz`), under the same paths.
 
 ### Left out
 
@@ -138,9 +150,13 @@ The run records of each session (`session.json`, `runs.jsonl`, `run.json`, launc
   the data freeze could not reconcile between the run machine and the results bucket; both lists are in record R1
   (`release_excluded_sessions.csv`, `release_excluded_files.csv`). Launch attempts that never ran have no outputs;
   their launcher records are in R1.
-- The AlphaFold3 outputs of the sessions of follow-ups 3 to 12 outside the freeze (smoke tests, Spot preemptions, interruptions,
-  relaunched-over sessions, `eigen_check`). They enter no analysis. Their records are in R1, each mapped to its row of section 10
-  (`outside_freeze_records.tar.gz`).
+- The AlphaFold3 outputs of the sessions of follow-ups 3 to 16 outside the freeze (smoke tests, Spot preemptions, interruptions,
+  relaunched-over sessions, `eigen_check`, the first LG session of follow-up 13). They enter no analysis. Their records are in
+  R1, each mapped to its row of section 10 (`outside_freeze_records.tar.gz`, `outside_freeze_records_followups1316.tar.gz`).
+- The layer-wise captures of follow-up 13 (arm L: `fu13_capture_seed-<s>.npz`, 40 files, 6.3 GiB): they are bfloat16 values in
+  uncompressed `.npz` files, which gzip shrinks only to 0.80 of their size, so with them this record would pass Zenodo's 50 GB.
+  They are listed with their SHA-256 in the data freeze (record R1), the follow-up 13 analysis outputs computed from them are in
+  `analysis_outputs.tar.gz`, and the files are available from the author on request.
 
 ## Third-party data in the pipeline results
 
@@ -160,7 +176,7 @@ No RNA database was used: every target is proteins and ligands, and the pipeline
 
 ## Redactions
 
-Logs and analysis run logs can record a home path of the machine that ran them, or a bare host name of the follow-up 6 machines. Those
+Logs, analysis run logs and the XLA dumps of follow-up 16 can record a home path of the machine that ran them, or a bare host name of the follow-up 6 machines. Those
 are replaced by `/home/<user>` and `<nas-host>`, and any other private network data by a placeholder, and `REDACTIONS.tsv` has one row
 per file: the archive, the path, the SHA-256 of the original
 and of the released copy, and what was replaced, never the value. So for a redacted log, the SHA-256 in the freeze manifest is

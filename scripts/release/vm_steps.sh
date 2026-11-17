@@ -5,6 +5,8 @@
 # connection does not stop it:
 #   nohup bash ~/repo/scripts/release/vm_steps.sh all > ~/vm_steps.log 2>&1 &
 # One step at a time: vm_steps.sh copy | check | build
+# An incremental version (RUNBOOK.md, "Later versions") sets BATCH (for example BATCH=followups1316): the copy lists then
+# hold only that batch's sessions, and build makes only that batch's VM archives.
 set -eu
 set -o pipefail
 BUCKET=gs://af2-tpu-benchmark-af3-results/af3
@@ -12,8 +14,9 @@ REPO=$HOME/repo
 ROOT=$HOME/bucket/af3
 OUT=$HOME/release
 JOBS=${JOBS:-6}
-# Sessions outside the freeze: records only, so their AlphaFold3 outputs are not copied.
-OUTPUTS='.*(_model\.cif|_confidences\.json|_data\.json|_ranking_scores\.csv|TERMS_OF_USE\.md|run_alphafold\.log|\.npz)$'
+BATCH=${BATCH:-}
+# Sessions outside the freeze: records only, so their AlphaFold3 outputs (and XLA dumps) are not copied.
+OUTPUTS='.*(_model\.cif|_confidences\.json|_data\.json|_ranking_scores\.csv|TERMS_OF_USE\.md|run_alphafold\.log|\.npz|/xla_dump/.*)$'
 export CLOUDSDK_STORAGE_PROCESS_COUNT=2 CLOUDSDK_STORAGE_THREAD_COUNT=8
 
 copy_list() {  # copy_list FILE [gcloud storage rsync options]
@@ -45,7 +48,12 @@ check() {
 
 build() {
   date -u +'%FT%TZ build: start'
-  archives=$(python3 "$REPO/scripts/release/release.py" archives --built_on vm)
+  if [ -n "$BATCH" ]; then
+    archives=$(python3 "$REPO/scripts/release/release.py" archives --built_on vm --batch "$BATCH")
+  else
+    archives=$(python3 "$REPO/scripts/release/release.py" archives --built_on vm)
+  fi
+  echo "archives: $archives"
   python3 "$REPO/scripts/release/release.py" build --root "$ROOT" --repo "$REPO" --out "$OUT" --archives "$archives"
   python3 "$REPO/scripts/release/release.py" verify --out "$OUT"
   du -sh "$OUT/R1" "$OUT/R2"

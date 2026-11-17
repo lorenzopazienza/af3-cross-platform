@@ -6,14 +6,18 @@ only; this script never contacts a bucket or Zenodo). Build plan: scripts/releas
     python3 scripts/release/release.py layout
     python3 scripts/release/release.py scan --root DIR --out DIR [--repo .] [--archives A,B]
     python3 scripts/release/release.py check-inputs --root DIR --out DIR [--sessions S1,S2] [--repo .]
-    python3 scripts/release/release.py build --root DIR --out DIR [--archives A,B] [--sessions S1,S2] [--repo .]
-    python3 scripts/release/release.py archives --built_on laptop|vm
+    python3 scripts/release/release.py build --root DIR --out DIR [--archives A,B] [--sessions S1,S2] [--repo .] [--paper_ref REF]
+    python3 scripts/release/release.py archives --built_on laptop|vm [--batch B]
+    python3 scripts/release/release.py vm-lists --out DIR [--batch B]
     python3 scripts/release/release.py merge-redactions --out DIR --record R1 --from FILE
-    python3 scripts/release/release.py sums --out DIR
-    python3 scripts/release/release.py verify --out DIR
+    python3 scripts/release/release.py sums --out DIR [--previous DIR]
+    python3 scripts/release/release.py verify --out DIR [--previous DIR]
 
-Sessions (classify()): the data freeze's sessions (FREEZE/sessions.tsv: main, pilot2, memlimit, ppi, embed, and the
-follow-ups cpu60, a100, feat, msa, sw, seeds, h100, repl, prec5, large); "superseded" sessions with the official weights
+Sessions (classify()): the data freeze's sessions (FREEZE/sessions.tsv: main, pilot2, memlimit, ppi, embed, the
+follow-ups cpu60, a100, feat, msa, sw, seeds, h100, repl, prec5, large, and the labels added after the first build,
+LATER_LABELS: fu13, fu14, rcx, hlo, memlimit_ah, warm_th, whose sessions outside the freeze are "outside_<batch>",
+records only, each mapped to its row by the label's rules; a session of these labels no rule maps, or any session
+launched after the first build that no label covers, is "unmapped" and stops the build); "superseded" sessions with the official weights
 that no reported result uses (SUPERSEDED, each with its section 10 row; released apart in R2,
 af3_superseded_engineering.tar.gz, after check_official_weights()); "outside" sessions of follow-ups 3 to 12 that are not
 in the freeze (smoke, preempted, interrupted, relaunched-over, eigen_check; each mapped by OUTSIDE_RULES or OUTSIDE_NAMED
@@ -44,7 +48,13 @@ sums: copies scripts/release/records/<record>/README.md and records/LICENCES.md 
 the inventory, the layout, the exclusion lists, SUPERSEDED_SESSIONS.csv and OUTSIDE_SESSIONS.csv, as release_<name>, since
 a Zenodo record has no folders) into each record folder and writes its SHA256SUMS; it stops if a record is over Zenodo's
 limits. Run it after archives built elsewhere are copied in.
-archives: prints the comma-separated names of the archives built on the laptop or on the VM (BUILT_ON).
+archives: prints the comma-separated names of the archives built on the laptop or on the VM (BUILT_ON); with --batch,
+only those of that batch (BATCH_OF), the archives an incremental version builds on the VM.
+vm-lists: the VM's copy lists (sessions_release.txt, sessions_outside.txt) from the inventory, for one batch or all.
+Incremental versions: sums --previous DIR keeps the files of the previous version that are not rebuilt (their SHA-256 in
+SHA256SUMS, their rows in REDACTIONS.tsv) and writes zenodo_changes_<record>.csv (keep, replace, add or delete for each
+file of the Zenodo draft); verify --previous accepts those kept files. build --paper_ref REF puts the paper's assets
+(paper/assets at that git commit, read with git archive) into analysis_outputs.tar.gz.
 merge-redactions: adds the rows of a REDACTIONS.tsv written elsewhere (the other machine's build) to a record's.
 verify: recomputes SHA256SUMS and every member's SHA-256 from the archives.
 
@@ -61,7 +71,9 @@ addresses (<private-ip>), .local and .lan host names (<private-host>), bare NAS 
 (/home/<user>). The labels of the follow-up 6 deliveries (naspaz8-af3_run1 and the like) stay: they are part of frozen
 files, file names and identifiers. The files in results/ and data/ are never changed. Text that records the weights'
 SHA-256 or file name (session.json, run.json, weights.json) is provenance and stays in. After a build, any file over
-1 GiB in --out that is not one of the expected archives is refused too. Standard library only.
+1 GiB in --out that is not one of the expected archives is refused too. Email addresses are found with systemd unit
+names left out (find_emails()). An XLA dump file is refused if its printed constants exceed XLA_DUMP_CONSTANT_LIMIT
+characters or it holds an MLIR resource blob (the model weights must never be inside one). Standard library and git.
 """
 import argparse
 import csv
@@ -72,14 +84,20 @@ import json
 import os
 import pathlib
 import re
+import subprocess
 import sys
 import tarfile
+import tempfile
 
 HERE = pathlib.Path(__file__).resolve().parent            # scripts/release: this script, records/<R>/README.md
 REPO = HERE.parents[1]
 OUT_DIR = REPO / 'results' / 'release'   # inventory and layout outputs
-FREEZE = REPO / 'results' / 'freeze' / 'followups612_20261108'   # the final freeze (results/freeze/INDEX.md)
-FREEZE_ID = '689230120499e5ba9d903051553c6554f3412f462456461757398f8fd3560a1a'
+FREEZE = REPO / 'results' / 'freeze' / 'followups1316_20261117'   # the final freeze (results/freeze/INDEX.md)
+FREEZE_ID = '4ec185c5a929738439de3b916a9c8475c4c3abd218fa140bfd460acf917d4486'
+# The first build (tag zenodo-v1, uploaded to the two drafts on 2026-11-09) was made from freeze 68923012; its archives
+# are kept byte for byte unless a later batch rebuilds them (BATCH_OF, REBUILT_EACH_VERSION; RUNBOOK.md).
+FIRST_BUILD = {'tag': 'zenodo-v1', 'freeze_id': '689230120499e5ba9d903051553c6554f3412f462456461757398f8fd3560a1a',
+               'listing_cut': '20261109T000000Z'}
 WEIGHTS_SHA256 = '74d0258616917cd122f5eab6d076afe4a8930e96823851e65e4f777dfb1f33ff'
 WEIGHTS_BYTES = 1020545840
 WEIGHTS_NAMES = {'af3.bin', 'af3.bin.zst'}
@@ -94,7 +112,11 @@ ZENODO_MAX_BYTES, ZENODO_MAX_FILES = 50 * 10 ** 9, 100
 ARCHIVE_ABOUT_MAX_BYTES = 12 * 10 ** 9   # the plan keeps every archive under about 10 GB: a larger one is reported
 # gzip -6 ratios measured on 12 random local files per category (2026-10-15); embeddings do not compress.
 RATIO = {'model_cif': 0.255, 'ranking_summary': 0.063, 'full_confidences': 0.124, 'terms': 0.35, 'af3_logs': 0.067,
-         'records': 0.15, 'embeddings': 1.0, 'features': 0.92, 'repo': 0.331}
+         'records': 0.15, 'embeddings': 1.0, 'features': 0.92, 'repo': 0.331,
+         # measured on the local build of 2026-11-17: af3_fu13_captures.tar.gz 6,451.0 MiB raw to 5,153.6 MiB (the captures
+         # are bfloat16 bits in an uncompressed .npz; xz and byte shuffling reach 0.70 at best), hlo_xla_dumps.tar.gz
+         # 1,220.9 MiB to 151.3 MiB
+         'captures': 0.799, 'xla_dump': 0.124}
 
 
 def category(path):
@@ -102,6 +124,10 @@ def category(path):
   name = path.rsplit('/', 1)[-1]
   if '/work/' in f'/{path}' or name in {'.uploaded', '.wrapper_done'}:
     return 'work'               # local scratch (inputs with seeds, compile caches): never released
+  if '/xla_dump/' in f'/{path}':
+    return 'xla_dump'           # follow-up 16: XLA's dumps of the compiled model (HLO and MLIR text, options, reports)
+  if name.endswith('.npz') and '_capture' in name:
+    return 'captures'           # follow-up 13: the layer-wise captures (fu13_capture_seed-<s>.npz)
   if name.endswith('_data.json'):
     return 'data_json'
   if name.endswith('_embeddings.npz'):
@@ -220,7 +246,84 @@ OUTSIDE_LABEL = 'outside the freeze: records only, no output released, not used 
 FU612_SESSION = re.compile(r'^(\d{8}T\d{6}Z)_[a-z0-9]+_((?:msa|sw|seeds|h100|repl|prec5|large|eigen_check)(?:_.*)?)$')
 EARLY_KINDS = ('main', 'pilot2', 'memlimit', 'ppi', 'embed')
 FOLLOWUP_KINDS = ('cpu60', 'a100', 'feat', 'msa', 'sw', 'seeds', 'h100', 'repl', 'prec5', 'large')
-RELEASED_KINDS = EARLY_KINDS + FOLLOWUP_KINDS + ('superseded', 'attempt', 'outside')
+
+# ---------------------------------------------------------------- labels released after the first build
+# Adding a label to a later Zenodo version is one entry of LATER_LABELS (and, for a new batch, one of BATCHES):
+# its kind, archives, records, rows and the classification of its sessions all follow from it.
+#   kind      the freeze kind of its frozen sessions (FREEZE/sessions.tsv)
+#   plans     the plan prefixes of its session names (<stamp>_<platform>_<plan>...)
+#   batch     the release batch that adds it (BATCHES): names its R1 archives of run records
+#             (session_records_<batch>.tar.gz) and of sessions outside the freeze (outside_freeze_records_<batch>.tar.gz)
+#   archives  {archive: (record, categories)}: its outputs, grouped by follow-up; labels that name the same archive
+#             share it. Built on the VM (from the bucket), like every archive made from session outputs.
+#   rules     (plan prefix, first and last launch stamp, section 10 row) for each of its sessions outside the freeze:
+#             records only, in R1. A session named like the label that is neither frozen nor mapped stops the build.
+BATCHES = {
+    'followups1316': {'freeze': 'followups1316_20261117', 'freeze_id': FREEZE_ID, 'sessions': 439,
+                      'what': 'follow-ups 13 to 16, memlimit_ah and warm_th'},
+}
+CURRENT_BATCH = 'followups1316'
+OUTPUTS = ['model_cif', 'ranking_summary', 'terms', 'full_confidences', 'af3_logs']
+# The record of follow-up 16's XLA dumps is Lorenzo's decision (records/LICENCES.md, "XLA dumps of follow-up 16"):
+# R2 is the proposal, by the reading of decision (5) of 2026-11-08; set 'R1' here if he decides otherwise.
+HLO_DUMPS_RECORD = 'R2'
+R13 = '2026-11-12, Follow-up 13 (label why), complete'
+R14 = '2026-11-13, Follow-up 14 (label f32), complete'
+R15 = '2026-11-15, Follow-up 15 (label rcx), complete'
+LATER_LABELS = [
+    {'kind': 'fu13', 'plans': ('why_',), 'batch': 'followups1316',
+     'archives': {'af3_fu13.tar.gz': ('R2', OUTPUTS)},   # its layer captures are left out (LEFT_OUT, decision of 2026-11-17)
+     'rules': [('why_l5_', '20261110T091900Z', '20261110T115300Z',
+                f'{R13}, item 1 (L5: the first VM stopped at setup on the apt lock; attempts with no VM, no capacity)'),
+               ('why_lg_', '20261110T092000Z', '20261110T182500Z',
+                '2026-11-10, Follow-up 13, LG stopped, and fix of the layer-wise capture on the L4 and relaunch of LG; '
+                f'{R13}, item 3 (the first LG session, all 20 processes exit 1, kept and not listed; attempts with no VM)'),
+               ('why_gf_', '20261110T101300Z', '20261111T023300Z',
+                f'{R13}, item 5 (Gf: attempts with no VM, no capacity; why_gf_29 without a job, its VM orphaned)'),
+               ('why_p_', '20261111T042400Z', '20261112T110300Z',
+                f'the four rows of 2026-11-12 on arm P; {R13}, item 6 (P: Flex-start and on-demand attempts without '
+                'capacity, quota, a queued request deleted before any job)')]},
+    {'kind': 'fu14', 'plans': ('f32_',), 'batch': 'followups1316',
+     'archives': {'af3_fu14.tar.gz': ('R2', OUTPUTS)},
+     'rules': [('f32_v5f_', '20261112T201200Z', '20261113T024000Z',
+                f'{R14}, items 3 and 4 (v5e: attempts with no VM, no capacity; V5f r2, setup exit 100 on the apt lock)'),
+               ('f32_af_', '20261112T201200Z', '20261113T105000Z',
+                f'rows of 2026-11-12 and 2026-11-13 on the A100; {R14}, items 2 to 9 (A100: Spot preemptions, setup '
+                'exit 100 in us-east4-c, attempts with no VM, the image family 404, a launcher ended during the copy, '
+                'gcloud failures without network)'),
+               ('f32_hf_', '20261112T201100Z', '20261112T231500Z',
+                f'{R14}, item 2 (H100: Spot preemptions before any process finished)'),
+               ('f32_ad_', '20261113T122600Z', '20261113T133700Z',
+                f'{R14}, items 4 and 10 (item b2, Ad: attempts with no VM, no capacity)')]},
+    {'kind': 'rcx', 'plans': ('rcx_',), 'batch': 'followups1316',
+     'archives': {'af3_rcx.tar.gz': ('R2', OUTPUTS)},
+     'rules': [('rcx_af_r2_', '20261114T191300Z', '20261114T204900Z',
+                f'{R15}, item 2 (Af r2: Spot preemptions during setup, before any AlphaFold 3 run)'),
+               ('rcx_gt_r2_', '20261114T221300Z', '20261115T034300Z',
+                f'{R15}, item 4 (GT r2: Spot preemptions; finished processes kept and not used)')]},
+    {'kind': 'hlo', 'plans': ('hlo_',), 'batch': 'followups1316',
+     'archives': {'af3_hlo.tar.gz': ('R2', OUTPUTS), 'hlo_xla_dumps.tar.gz': (HLO_DUMPS_RECORD, ['xla_dump'])},
+     'rules': [('hlo_v5_', '20261116T140100Z', '20261116T141900Z',
+                '2026-11-16, Follow-up 16 (label hlo), complete (v5e: three attempts with no VM, no capacity)')]},
+    {'kind': 'memlimit_ah', 'plans': ('memlimit_ah_',), 'batch': 'followups1316',
+     'archives': {'af3_memlimit_ah_warm_th.tar.gz': ('R2', OUTPUTS)}, 'rules': []},
+    {'kind': 'warm_th', 'plans': ('warm_th_',), 'batch': 'followups1316',
+     'archives': {'af3_memlimit_ah_warm_th.tar.gz': ('R2', OUTPUTS)}, 'rules': []},
+]
+LATER_KINDS = tuple(lab['kind'] for lab in LATER_LABELS)
+OUTSIDE_KINDS = ('outside',) + tuple(f'outside_{b}' for b in BATCHES)
+RELEASED_KINDS = EARLY_KINDS + FOLLOWUP_KINDS + LATER_KINDS + ('superseded', 'attempt') + OUTSIDE_KINDS
+STAMPED_SESSION = re.compile(r'^(\d{8}T\d{6}Z)_[a-z0-9]+_(.+)$')
+
+
+def later_label(session):
+  """(LATER_LABELS entry, launch stamp, plan part of the name) of a session named like a later label, or None."""
+  m = STAMPED_SESSION.match(session)
+  if m:
+    for lab in LATER_LABELS:
+      if m.group(2).startswith(lab['plans']):
+        return lab, m.group(1), m.group(2)
+  return None
 
 
 def outside_row(session):
@@ -232,23 +335,37 @@ def outside_row(session):
     for prefix, first, last, row in OUTSIDE_RULES:
       if m.group(2).startswith(prefix) and first <= m.group(1) <= last:
         return row
+  hit = later_label(session)
+  if hit:
+    lab, stamp, plan = hit
+    for prefix, first, last, row in lab['rules']:
+      if plan.startswith(prefix) and first <= stamp <= last:
+        return row
   return None
 
 
 def classify(session, paths, kinds):
   """(kind, reason): a freeze kind, 'superseded' (SUPERSEDED), 'outside' (a session of follow-ups 3 to 12 outside the
-  freeze, mapped to its row: records only, released in R1), 'unmapped' (a follow-up 6 to 12 session that no row
-  explains: stops the build), 'attempt' (no VM run records: launcher records only, released in R1), or 'out' (not
-  released) with the reason."""
+  freeze, mapped to its row: records only, released in R1), 'outside_<batch>' (the same for a later label, LATER_LABELS),
+  'unmapped' (a session of follow-ups 6 to 12 or of a later label that no row explains, or any session launched after
+  the first build that no label covers: stops the build), 'attempt' (no VM run records: launcher records only, released
+  in R1), or 'out' (not released) with the reason."""
   ran = any(p.endswith(('run.json', 'runs.jsonl')) for p in paths)
   if session in SUPERSEDED:
     return 'superseded', SUPERSEDED[session]
   if session not in kinds:
+    hit = later_label(session)
     row = outside_row(session)
     if row:
-      return 'outside', row
+      return (f'outside_{hit[0]["batch"]}' if hit else 'outside'), row
+    if hit:
+      return 'unmapped', f'named like a {hit[0]["kind"]} session, not in the freeze, and no section 10 row maps it'
     if FU612_SESSION.match(session):
       return 'unmapped', 'named like a follow-up 6 to 12 session, not in the freeze, and no section 10 row maps it'
+    m = STAMPED_SESSION.match(session)
+    if m and m.group(1) >= FIRST_BUILD['listing_cut']:
+      return 'unmapped', ('launched after the first build, not in the freeze and of no label in LATER_LABELS: add its '
+                          'label or decide that it stays out')
   if not ran:
     return 'attempt', 'attempt that never ran (no VM run records); launcher records released in R1'
   if session in kinds:
@@ -429,29 +546,93 @@ ARCHIVES = [
     ('R2', 'inputs_official_pipeline.tar.gz', 'repo', ['data/inputs_official/**', 'data/inputs_official_data/**',
                                                        'data/inputs_official.tar.gz', 'inputs/official_data/**']),
     *[('R2', f'nas_{d}.tar.gz', 'repo', [f'data/nas/{d}/**', f'results/freeze/msa_{d}/**']) for d in NAS_DELIVERIES],
-    # derived analysis outputs carry per-sample values computed from AlphaFold3 outputs: R2, under the Output Terms
+    # derived analysis outputs carry per-sample values computed from AlphaFold3 outputs: R2, under the Output Terms;
+    # the paper's own assets come from a git ref (build --paper_ref, PAPER_ASSETS), not from these folders
     ('R2', 'analysis_outputs.tar.gz', 'repo', ['results/analysis/**', 'results/paper_assets/**',
                                                'results/paper_assets_*/**']),
 ]
-# Files a repo archive's patterns reach but another archive holds: record R1 keeps only CC BY 4.0 material.
-ARCHIVE_EXCLUDES = {'inputs_targets_manifests.tar.gz': ['inputs/official_data/**']}
+FIRST_BUILD_ARCHIVES = [spec[1] for spec in ARCHIVES]
+
+
+def later_archives():
+  """The archive specs LATER_LABELS defines, in table order: per batch, the R1 run records of its frozen sessions and
+  the R1 records of its sessions outside the freeze, then each label's archives (shared ones merged)."""
+  specs, order = {}, []
+  for batch in BATCHES:
+    labs = [lab for lab in LATER_LABELS if lab['batch'] == batch]
+    for name, rec, kinds, cats in ((f'session_records_{batch}.tar.gz', 'R1', [lab['kind'] for lab in labs], ['records']),
+                                   (f'outside_freeze_records_{batch}.tar.gz', 'R1', [f'outside_{batch}'], ['records'])):
+      specs[name] = (rec, name, kinds, cats)
+      order.append(name)
+    for lab in labs:
+      for name, (rec, cats) in lab['archives'].items():
+        if name in specs:
+          assert specs[name][0] == rec and specs[name][3] == cats, name
+          specs[name][2].append(lab['kind'])
+        else:
+          specs[name] = (rec, name, [lab['kind']], list(cats))
+          order.append(name)
+  return [specs[n] for n in order]
+
+
+ARCHIVES += later_archives()
+# Files a repo archive's patterns reach but another archive holds: record R1 keeps only CC BY 4.0 material. The ISC
+# draft's assets (results/paper_assets_isc) are superseded by the paper's own, taken from the tagged paper commit.
+ARCHIVE_EXCLUDES = {'inputs_targets_manifests.tar.gz': ['inputs/official_data/**'],
+                    'analysis_outputs.tar.gz': ['results/paper_assets_isc/**']}
+# The paper's tables and figures (paper/assets of the paper commit that is tagged for the release), read from git with
+# `git archive` (build --paper_ref REF) into analysis_outputs.tar.gz, with PAPER_ASSETS_COMMIT.txt naming the commit.
+PAPER_ASSETS = ('analysis_outputs.tar.gz', 'paper/assets')
+# Further members of an archive, from the repository: (member, repository path or None for the text given).
+ARCHIVE_NOTICES = {'hlo_xla_dumps.tar.gz': [
+    ('LICENSE_ALPHAFOLD3_CODE_APACHE-2.0.txt', 'LICENSES/Apache-2.0'),
+    ('NOTICE_XLA_DUMPS.txt', None)]}
+XLA_DUMPS_NOTICE = '''XLA dumps of follow-up 16 (label hlo): the text files XLA wrote while JAX compiled AlphaFold 3's model
+(AlphaFold 3 v3.0.4) on TPU v5e and v6e: HLO and MLIR text before and after optimisation, buffer assignment and memory
+reports, compiler options and flags. They are compiled from AlphaFold 3's code, Copyright 2024 DeepMind Technologies
+Limited, licensed under the Apache License 2.0 (LICENSE_ALPHAFOLD3_CODE_APACHE-2.0.txt); they carry the names and
+shapes of the model's parameters and the source locations of that code.
+
+They do not hold the model parameters (weights): the parameters are arguments of the compiled function, not
+constants. Checked before release on every one of the 21,696 files: no printed constant in the HLO text is longer than
+16 characters (XLA elides large constants as {...}), the hex-encoded constants in the MLIR files total 80,384 bytes over
+all files and at most 5,024 bytes in one file, against 1,145,669,864 bytes of parameters named like weights in the entry
+of each compiled model and a weights file of 1,020,545,840 bytes. The release build refuses any dump file whose printed
+constants exceed 65,536 characters, or that holds an MLIR resource blob (release.py, XLA_DUMP_CONSTANT_LIMIT).
+
+Changes: home paths are replaced by /home/<user> (REDACTIONS.tsv of the record lists each file, with the SHA-256 of the
+original and of the released copy); nothing else is changed.
+'''
 # Where each archive is built (decision of 2026-10-15): R1 from the repository and the local freeze copy on the
 # laptop; the rest from a copy of the bucket on a VM in the bucket's region (scripts/release/RUNBOOK.md).
 BUILT_ON = {spec[1]: 'laptop' for spec in ARCHIVES if spec[2] == 'repo'}
 BUILT_ON.update({'session_records.tar.gz': 'laptop', 'session_records_followups.tar.gz': 'laptop'})
+BUILT_ON.update({f'session_records_{b}.tar.gz': 'laptop' for b in BATCHES})
+# The batch that made each archive: the first build's archives are kept byte for byte in a later version unless
+# rebuilt; the archives that hold the freeze, the lists and the analyses change with every version.
+BATCH_OF = {name: 'zenodo-v1' for name in FIRST_BUILD_ARCHIVES}
+BATCH_OF.update({spec[1]: lab_batch for spec in ARCHIVES for lab_batch in
+                 {b for b in BATCHES if spec[1] in {f'session_records_{b}.tar.gz', f'outside_freeze_records_{b}.tar.gz'}
+                  or any(spec[1] in lab['archives'] for lab in LATER_LABELS if lab['batch'] == b)}})
+REBUILT_EACH_VERSION = ('freeze.tar.gz', 'session_lists_launch_records.tar.gz', 'analysis_outputs.tar.gz')
 SUPERSEDED_LABEL = 'superseded or engineering, not used in any reported result'
 LEFT_OUT = {'data_json': 'AlphaFold3\'s copy of each run\'s input; check-inputs compares every one with its frozen '
                          'input on the build VM and the R2 build refuses to start unless all match',
             'work': 'local scratch (per-run inputs with seeds, compile caches); not in the bucket',
-            'other_binary': 'engineering dumps (XLA and TPU log archives), none in a study session'}
+            'other_binary': 'engineering dumps (XLA and TPU log archives), none in a study session',
+            'captures': 'the layer captures of follow-up 13 (bfloat16 bits in uncompressed .npz, 0.80 of their size under gzip, '
+                        '0.70 at best): R2 would pass 50 GB with them (decision of 2026-11-17); they stay in the results '
+                        'bucket and in the freeze manifest with their SHA-256, available on request'}
 # Plain files of a record besides the archives and their manifests: README.md, LICENCES.md, REDACTIONS.tsv, SHA256SUMS;
 # R1 also, with the prefix release_ because a Zenodo record has no folders: release.py, RUNBOOK.md, layout.md, layout.csv,
 # inventory.md, summary.csv, sessions.csv, excluded_sessions.csv, excluded_files.csv, SUPERSEDED_SESSIONS.csv,
-# OUTSIDE_SESSIONS.csv, inputs_check.csv and inputs_check.json.
-PLAIN_FILES = {'R1': 17, 'R2': 4}
+# OUTSIDE_SESSIONS.csv, inputs_check.csv and inputs_check.json (the first build's check, kept), and the check of each
+# later batch, inputs_check_<batch>.csv and .json.
+PLAIN_FILES = {'R1': 17 + 2 * len(BATCHES), 'R2': 4}
 RECORDS = {'R1': 'Inputs, targets, manifests, data freeze, session lists and run records (CC BY 4.0)',
-           'R2': 'AlphaFold3 outputs, the results of its data pipeline with the follow-up 6 deliveries, and the analysis '
-                 'outputs derived from them (custom licence: the AlphaFold 3 Output Terms of Use; no Creative Commons)'}
+           'R2': 'AlphaFold3 outputs, the results of its data pipeline with the follow-up 6 deliveries, the XLA dumps of '
+                 'follow-up 16, and the analysis outputs derived from them (custom licence: the AlphaFold 3 Output Terms '
+                 'of Use; no Creative Commons)'}
 
 
 def layout(args):
@@ -491,7 +672,7 @@ def layout(args):
     lines.append('')
   lines += ['## Left out', '', '| category | files | GiB | why |', '|---|---|---|---|']
   lines += [f'| {c} | {v[0]} | {gib(v[1])} | {LEFT_OUT[c]} |' for c, v in sorted(left.items())]
-  lines += ['', 'Also left out: random-weight engineering sessions, the AlphaFold3 outputs of the sessions of follow-ups 3 to 12 outside the freeze (their records are released), the freeze\'s unexplained files '
+  lines += ['', 'Also left out: random-weight engineering sessions, the AlphaFold3 outputs of the sessions of follow-ups 3 to 16 outside the freeze (their records are released), the freeze\'s unexplained files '
             'except launcher records of attempts that never ran (inventory/excluded_sessions.csv, inventory/excluded_files.csv), and the AlphaFold3 model weights, '
             'which are never packaged (guard() in release.py).', '']
   (out / 'layout.md').write_text('\n'.join(lines) + '\n')
@@ -527,6 +708,29 @@ class Refused(Exception):
 GS_URI = re.compile(rb'gs://([a-z0-9][a-z0-9._-]{1,220})')
 EMAIL = re.compile(rb'[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}')
 REDACTED_EMAIL = b'<account>'
+# systemd unit names of template instances (NAME, at sign, INSTANCE, dot, TYPE; in the job logs of the VMs) look like
+# addresses to EMAIL. Only the unit types that are not top-level domains are exempt (IANA root zone list, version
+# 2026111700): `target` is a TLD, so a unit of type target stays an address. A unit is matched as a whole token (systemd's
+# characters: letters, digits, ':', '-', '_', '.', backslash), so an address that merely contains a unit name (with a
+# '+' before it, a domain after the type, or the TLD `services`) is still an address; and at each position the unit is
+# tried first, so it is never half-redacted. Tests: scripts/release/test_release.py.
+SYSTEMD_UNIT_TYPES = (b'service', b'socket', b'device', b'mount', b'automount', b'swap', b'path', b'timer', b'slice',
+                      b'scope')
+SYSTEMD_UNIT = (rb'(?<![A-Za-z0-9_.:\\%+-])[A-Za-z0-9_.:\\-]+@[A-Za-z0-9_.:\\-]*\.(?:' + b'|'.join(SYSTEMD_UNIT_TYPES)
+                + rb')(?!\.?[A-Za-z0-9_\\-])')
+EMAIL_OR_UNIT = re.compile(rb'(?P<unit>' + SYSTEMD_UNIT + rb')|(?P<email>' + EMAIL.pattern + rb')')
+
+
+def find_emails(data):
+  """Every email address in some bytes (EMAIL), systemd unit names left out."""
+  if b'@' not in data:
+    return []
+  return [m.group('email') for m in EMAIL_OR_UNIT.finditer(data) if m.group('email')]
+
+
+def redact_emails(data):
+  """The bytes with every email address replaced by <account>; systemd unit names are kept."""
+  return EMAIL_OR_UNIT.sub(lambda m: m.group(0) if m.group('unit') else REDACTED_EMAIL, data)
 # The contact address, by its SHA-256 so that this script (released in R1) does not carry it: allowed only in a record's
 # README.md, exactly once (decision of 2026-11-08). Attribution and contact do not come from the provenance files.
 CONTACT_SHA256 = '5639004dce512da3abe0761ebfde8c1f960704cdc40e754de1db2c0570ac3dc5'
@@ -583,7 +787,7 @@ PRIVATE_QUICK = {'private_ipv4': lambda d: DOTTED_QUAD.search(d), 'local_host': 
                  'wireguard_key': lambda d: b'=' in d, 'ssh_key': lambda d: b'ssh-' in d or b'ecdsa-' in d or b'PRIVATE KEY' in d,
                  'api_token': lambda d: (lambda low: any(w in low for w in TOKEN_WORDS))(d.lower())}
 # AlphaFold3's own output files are released unmodified: a redaction in one of them stops the build instead.
-UNMODIFIED_CATEGORIES = {'model_cif', 'ranking_summary', 'full_confidences', 'terms', 'embeddings', 'features'}
+UNMODIFIED_CATEGORIES = {'model_cif', 'ranking_summary', 'full_confidences', 'terms', 'embeddings', 'features', 'captures'}
 # The same for the results of its data pipeline, which are treated as Output: the inference inputs and each delivered _data.json.
 PIPELINE_RESULT = re.compile(r'data/inputs_official_data/.*\.json|data/nas/[^/]+/output/.*_data\.json')
 
@@ -614,7 +818,7 @@ def check_nested(path, rel):
       if not m.isfile():
         continue
       data = tar.extractfile(m).read()
-      found = sorted(private_findings(data)) + (['email address'] if b'@' in data and EMAIL.search(data) else [])
+      found = sorted(private_findings(data)) + (['email address'] if find_emails(data) else [])
       others = {g.decode() for g in GS_URI.findall(data)} - ALLOWED_BUCKETS
       if found or others:
         raise Refused(f'{rel}: member {m.name} holds {", ".join(found + sorted(others))}; a nested archive cannot be redacted')
@@ -622,6 +826,41 @@ def check_nested(path, rel):
 
 def is_text_member(name):
   return not name.endswith(BINARY_SUFFIXES)
+
+
+# An XLA dump must not carry the model weights as constants. The weights are arguments of the compiled function; the
+# constants of the dumps of follow-up 16 are small tables and vectors of AlphaFold 3's code (at most 15,411 characters
+# of printed constants in one file, 2026-11-17). Any dump file above this, or with an MLIR resource blob (where MLIR
+# keeps large constants), is refused: look at it before anything is released.
+XLA_DUMP_CONSTANT_LIMIT = 65536
+HLO_CONSTANT = re.compile(rb'\bconstant\(')
+MLIR_DENSE = re.compile(rb'\bdense<')
+
+
+def dump_constant_chars(data):
+  """Characters of printed constant literals in an XLA dump file: HLO text constant(...) and MLIR dense<...>."""
+  total = 0
+  for m in HLO_CONSTANT.finditer(data):
+    i = j = m.end()
+    depth = 1
+    while depth and j < len(data):
+      c = data[j]
+      depth += (c == 40) - (c == 41)   # ( and )
+      j += 1
+    total += j - i
+  for m in MLIR_DENSE.finditer(data):
+    end = data.find(b'>', m.end())
+    total += (end if end >= 0 else len(data)) - m.end()
+  return total
+
+
+def check_dump_constants(data, rel):
+  if b'dense_resource' in data or b'dialect_resources' in data:
+    raise Refused(f'{rel}: an XLA dump with an MLIR resource blob (large constants): look at it for the model weights')
+  n = dump_constant_chars(data)
+  if n > XLA_DUMP_CONSTANT_LIMIT:
+    raise Refused(f'{rel}: an XLA dump with {n} characters of printed constants (limit {XLA_DUMP_CONSTANT_LIMIT}): '
+                  'look at it for the model weights')
 
 
 def inspect(path, rel):
@@ -642,11 +881,13 @@ def inspect(path, rel):
   if not is_text_member(name):
     return size, sha, {}, None
   data = pathlib.Path(path).read_bytes()
+  if '/xla_dump/' in rel:
+    check_dump_constants(data, rel)
   others = {m.decode() for m in GS_URI.findall(data)} - ALLOWED_BUCKETS
   if others:
     raise Refused(f'{rel}: names a bucket other than the results bucket ({", ".join(sorted(others))})')
   if rel not in REDACT and b'@' in data:
-    found = EMAIL.findall(data)
+    found = find_emails(data)
     contact = rel in CONTACT_FILES and len(found) == 1 and hashlib.sha256(found[0]).hexdigest() == CONTACT_SHA256
     if found and not contact:
       raise Refused(f'{rel}: contains an email address and is not on the redaction list')
@@ -674,11 +915,11 @@ def prepare(path, rel, archive):
     return size, sha, None, None
   notes, data = [], original
   if on_list:
-    found = EMAIL.findall(original or b'')
+    found = find_emails(original or b'')
     if not found:
       raise Refused(f'{rel}: on the redaction list but contains no email address (stale list)')
-    data = EMAIL.sub(REDACTED_EMAIL, original)
-    if EMAIL.search(data):
+    data = redact_emails(original)
+    if find_emails(data):
       raise Refused(f'{rel}: an email address survived the redaction')
     notes.append(f'{len(found)} occurrence(s) of {len(set(found))} email address(es) replaced by <account> ({REDACT[rel]})')
   if rel.startswith('af3/') and rel.count('/') >= 2 and category(rel.split('/', 2)[2]) in UNMODIFIED_CATEGORIES:
@@ -819,7 +1060,7 @@ def check_inputs(args):
     return 2
   rows, inputs = [], {}
   for s, kind in sorted(kinds_of.items()):
-    if kind not in EARLY_KINDS + FOLLOWUP_KINDS + ('superseded',):
+    if kind not in EARLY_KINDS + FOLLOWUP_KINDS + LATER_KINDS + ('superseded',):
       continue
     for runs in sorted((root / s).glob('*/runs.jsonl')):
       for line in runs.read_text().splitlines():
@@ -893,8 +1134,17 @@ def build(args):
   sessions_filter = set(args.sessions.split(',')) if args.sessions else None
   odd = unexplained_files()
   written, restore = [], {}   # restore: REDACTIONS.tsv as it was before this build
+  paper_tmp = tempfile.TemporaryDirectory(prefix='af3_paper_assets_')
   try:
     kinds_of = session_kinds(root, sessions_filter)
+    paper = None   # (ref, commit, export root) of the paper assets
+    if not wanted or PAPER_ASSETS[0] in wanted:
+      ref = getattr(args, 'paper_ref', None)
+      if not ref:
+        raise Refused(f'{PAPER_ASSETS[0]} takes the paper assets from git: pass --paper_ref REF (the tagged paper commit), '
+                      'or --paper_ref none for a test build without them')
+      if ref != 'none':
+        paper = (ref, export_paper_assets(repo, ref, pathlib.Path(paper_tmp.name)), pathlib.Path(paper_tmp.name))
     # every R2 archive made from session outputs needs a passing check-inputs on the same root (not the
     # repository-made analysis_outputs.tar.gz, which holds no session file)
     if any(spec[0] == 'R2' and spec[2] != 'repo' and (not wanted or spec[1] in wanted) for spec in ARCHIVES):
@@ -904,6 +1154,8 @@ def build(args):
       if wanted and name not in wanted:
         continue
       cand = members(spec, root, repo, sessions_filter, kinds_of, odd)
+      if name == PAPER_ASSETS[0] and paper:
+        cand = sorted(cand + archive_tree(paper[2], PAPER_ASSETS[1]))
       if not cand:
         print(f'   {record}/{name}: no files in this root, skipped')
         continue
@@ -921,8 +1173,14 @@ def build(args):
       if 'superseded' in kinds:
         present = sorted({m.split('/')[1] for m, _ in cand} & set(SUPERSEDED))
         extra.append(('SUPERSEDED_SESSIONS.csv', superseded_table(present).encode()))
-      if 'outside' in kinds:
+      if kinds != 'repo' and any(k in OUTSIDE_KINDS for k in kinds):
         extra.append(('OUTSIDE_SESSIONS.csv', outside_table(sorted({m.split('/')[1] for m, _ in cand})).encode()))
+      if name == PAPER_ASSETS[0] and paper:
+        extra.append(('PAPER_ASSETS_COMMIT.txt', f'{PAPER_ASSETS[1]}/ from git ref {paper[0]}, commit {paper[1]}\n'.encode()))
+      for member, src in ARCHIVE_NOTICES.get(name, ()):
+        if src and not (repo / src).is_file():
+          raise Refused(f'{name}: {src} is missing from the repository')
+        extra.append((member, (repo / src).read_bytes() if src else XLA_DUMPS_NOTICE.encode()))
       d = out / record
       d.mkdir(parents=True, exist_ok=True)
       write_archive(d / name, items, extra)
@@ -953,7 +1211,36 @@ def build(args):
         f.write_bytes(content)
     print(f'!! refused, nothing kept: {e}', file=sys.stderr)
     return 2
+  finally:
+    paper_tmp.cleanup()
   return finish_or_refuse(sorted({p.parent for p in written} | {f.parent for f in restore}))
+
+
+def export_paper_assets(repo, ref, dest):
+  """Writes the files of PAPER_ASSETS[1] at git ref REF of the repository under dest (`git archive`, so only committed
+  files, as of that commit) and returns the commit."""
+  def git(*a):
+    r = subprocess.run(['git', '-C', str(repo), *a], capture_output=True)
+    if r.returncode:
+      raise Refused(f'git {" ".join(a)}: {r.stderr.decode().strip()}')
+    return r.stdout
+  commit = git('rev-parse', '--verify', '--quiet', f'{ref}^{{commit}}').decode().strip()
+  with tarfile.open(fileobj=io.BytesIO(git('archive', '--format=tar', commit, '--', PAPER_ASSETS[1]))) as tar:
+    for m in tar:
+      if m.isfile():
+        target = (dest / m.name).resolve()
+        if not str(target).startswith(str(dest.resolve()) + os.sep):
+          raise Refused(f'git archive of {ref}: member {m.name} outside {PAPER_ASSETS[1]}')
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(tar.extractfile(m).read())
+  if not any(dest.rglob('*')):
+    raise Refused(f'{ref}: no {PAPER_ASSETS[1]} at commit {commit}')
+  return commit
+
+
+def archive_tree(root, folder):
+  """[(member, source)] of every file below root/folder, members relative to root."""
+  return sorted((str(p.relative_to(root)), p) for p in (pathlib.Path(root) / folder).rglob('*') if p.is_file())
 
 
 def superseded_table(sessions):
@@ -971,17 +1258,51 @@ def plain_guard(src, rel):
     raise Refused(f'{rel}: a plain file of the record with {", ".join(sorted(findings))}')
 
 
-def finish_or_refuse(dirs):
+def finish_or_refuse(dirs, previous=None):
   try:
-    return finish_records(dirs)
+    return finish_records(dirs, previous)
   except Refused as e:
     print(f'!! refused: {e}', file=sys.stderr)
     return 2
 
 
-def finish_records(dirs):
+# A later version keeps the files of the previous one that it does not rebuild (incremental build, RUNBOOK.md): the
+# previous version's record folder is given as --previous DIR, holding <record>/SHA256SUMS, <record>/REDACTIONS.tsv and
+# Zenodo's file listing of each draft, zenodo_files_<id>.json (results/release/vm_build_20261109/ for the first build).
+ZENODO_IDS = {'R1': '24057470', 'R2': '24057544'}
+KEPT_PLAIN = ('release_inputs_check.csv', 'release_inputs_check.json')   # the first build's check-inputs, kept
+
+
+def load_previous(previous, record):
+  """{file name: (SHA-256, bytes)} of a record of the previous version."""
+  prev = pathlib.Path(previous)
+  sums_file = prev / record / 'SHA256SUMS'
+  listing = prev / f'zenodo_files_{ZENODO_IDS[record]}.json'
+  if not sums_file.is_file() or not listing.is_file():
+    raise Refused(f'--previous {previous}: needs {record}/SHA256SUMS and {listing.name}')
+  sizes = {f['filename']: f['filesize'] for f in json.loads(listing.read_text())}
+  out = {}
+  for line in sums_file.read_text().splitlines():
+    sha, name = line.split('  ', 1)
+    out[name] = (sha, sizes.get(name))
+  out['SHA256SUMS'] = (None, sizes.get('SHA256SUMS'))
+  return out
+
+
+def keepable(record, name):
+  """Whether a file of the previous version may be kept unchanged: an archive of this release (or its manifest) or the
+  first build's check-inputs report."""
+  names = {spec[1] for spec in ARCHIVES if spec[0] == record}
+  return name in names or (name.endswith('.sha256') and name[:-7] in names) or (record == 'R1' and name in KEPT_PLAIN)
+
+
+def finish_records(dirs, previous=None):
   """README.md (and for R1 the release tooling and lists) into each record folder, then SHA256SUMS of everything in
-  it. Run again (command sums) after archives built elsewhere are copied in."""
+  it. Run again (command sums) after archives built elsewhere are copied in. With previous (a later version), the files
+  of the previous version that are not here and may be kept (keepable()) are listed in SHA256SUMS with their recorded
+  SHA-256, their rows of REDACTIONS.tsv are carried over, and <out>/zenodo_changes_<record>.csv says what to do with
+  each file of the draft: keep, replace, add or delete. <out>/zenodo_files_<id>.json lists every file the record will
+  hold, with its size: with the record folders' SHA256SUMS and REDACTIONS.tsv, the --previous of the next version."""
   for d in dirs:
     plain = [(HERE / 'records' / d.name / 'README.md', d / 'README.md'), (HERE / 'records' / 'LICENCES.md', d / 'LICENCES.md')]
     if d.name == 'R1':   # the release tooling and its lists travel with record R1, as plain files
@@ -997,36 +1318,92 @@ def finish_records(dirs):
         dst.write_bytes(src.read_bytes())
     if d.name == 'R1':
       (d / 'release_SUPERSEDED_SESSIONS.csv').write_text(superseded_table(sorted(SUPERSEDED)))
+    kept, prev = {}, {}
+    if previous:
+      prev = load_previous(previous, d.name)
+      here = {p.name for p in d.iterdir() if p.is_file()}
+      kept = {n: v for n, v in prev.items() if n not in here and n != 'SHA256SUMS' and keepable(d.name, n)}
+      unknown = [n for n, (_, size) in kept.items() if size is None]
+      if unknown:
+        raise Refused(f'{d.name}: no size in the previous Zenodo listing for {", ".join(sorted(unknown))}')
+      kept_archives = {n for n in kept if not n.endswith('.sha256') and n not in KEPT_PLAIN}
+      f = pathlib.Path(previous) / d.name / 'REDACTIONS.tsv'
+      if f.is_file():
+        rows = [r for r in csv.DictReader(open(f), delimiter='\t') if r['archive'] in kept_archives]
+        if rows:
+          write_redactions(d, rows)
     files = sorted(p for p in d.rglob('*') if p.is_file() and p.name != 'SHA256SUMS')
     nested = [p for p in files if p.parent != d]
     if nested:
       raise Refused(f'{d.name}: {nested[0].relative_to(d)} is in a folder, and a Zenodo record has none')
-    (d / 'SHA256SUMS').write_text(''.join(f'{sha256_file(p)}  {p.relative_to(d)}\n' for p in files))
-    total = sum(p.stat().st_size for p in d.rglob('*') if p.is_file())
-    print(f'   {d.name}/SHA256SUMS: {len(files)} files; record {len(files) + 1} files, {total / 1e9:.2f} GB')
-    if len(files) + 1 > ZENODO_MAX_FILES or total > ZENODO_MAX_BYTES:
-      raise Refused(f'{d.name}: {len(files) + 1} files, {total / 1e9:.1f} GB, over Zenodo\'s {ZENODO_MAX_FILES} files or '
+    rows = {str(p.relative_to(d)): (sha256_file(p), p.stat().st_size) for p in files}
+    rows.update(kept)
+    (d / 'SHA256SUMS').write_text(''.join(f'{sha}  {n}\n' for n, (sha, _) in sorted(rows.items())))
+    n_files = len(rows) + 1
+    total = sum(size for _, size in rows.values()) + (d / 'SHA256SUMS').stat().st_size
+    print(f'   {d.name}/SHA256SUMS: {len(rows)} files ({len(kept)} kept from the previous version); record {n_files} '
+          f'files, {total / 1e9:.2f} GB')
+    # what the draft will hold once uploaded, in the form of Zenodo's listing: the --previous of the next version
+    listing = [{'filename': n, 'filesize': size, 'checksum_sha256': sha} for n, (sha, size) in sorted(rows.items())]
+    listing.append({'filename': 'SHA256SUMS', 'filesize': (d / 'SHA256SUMS').stat().st_size})
+    (d.parent / f'zenodo_files_{ZENODO_IDS[d.name]}.json').write_text(json.dumps(listing, indent=1) + '\n')
+    if previous:
+      changes = []
+      for n in sorted(set(rows) | set(prev) | {'SHA256SUMS'}):
+        if n == 'SHA256SUMS':
+          changes.append({'file': n, 'action': 'replace', 'bytes': (d / n).stat().st_size})
+        elif n not in rows:
+          changes.append({'file': n, 'action': 'delete', 'bytes': prev[n][1]})
+        elif n not in prev:
+          changes.append({'file': n, 'action': 'add', 'bytes': rows[n][1]})
+        else:
+          changes.append({'file': n, 'action': 'keep' if rows[n][0] == prev[n][0] else 'replace', 'bytes': rows[n][1]})
+      write_csv(d.parent / f'zenodo_changes_{d.name}.csv', changes)
+      count = {a: sum(1 for c in changes if c['action'] == a) for a in ('keep', 'replace', 'add', 'delete')}
+      sent = sum(c['bytes'] for c in changes if c['action'] in ('replace', 'add'))
+      print(f'   {d.name}: draft files to keep {count["keep"]}, replace {count["replace"]}, add {count["add"]}, '
+            f'delete {count["delete"]}; to upload {sent / 1e9:.2f} GB ({d.parent}/zenodo_changes_{d.name}.csv)')
+    if n_files > ZENODO_MAX_FILES or total > ZENODO_MAX_BYTES:
+      raise Refused(f'{d.name}: {n_files} files, {total / 1e9:.1f} GB, over Zenodo\'s {ZENODO_MAX_FILES} files or '
                     f'{ZENODO_MAX_BYTES / 1e9:.0f} GB per record')
   return 0
 
 
 def sums(args):
-  return finish_or_refuse(sorted(d for d in pathlib.Path(args.out).iterdir() if d.is_dir() and d.name in RECORDS))
+  previous = getattr(args, 'previous', None)
+  return finish_or_refuse(sorted(d for d in pathlib.Path(args.out).iterdir() if d.is_dir() and d.name in RECORDS), previous)
 
 
 def verify(args):
+  """Every file of each SHA256SUMS and every member of each archive here. With --previous, a file listed but not here
+  must be one the previous version holds with the same SHA-256 (kept, not rebuilt)."""
+  previous = getattr(args, 'previous', None)
   bad = 0
-  for sums in sorted(pathlib.Path(args.out).glob('*/SHA256SUMS')):
-    d = sums.parent
-    for line in sums.read_text().splitlines():
+  for sums_file in sorted(pathlib.Path(args.out).glob('*/SHA256SUMS')):
+    d = sums_file.parent
+    prev = load_previous(previous, d.name) if previous else {}
+    kept = 0
+    for line in sums_file.read_text().splitlines():
       sha, name = line.split('  ', 1)
-      if sha256_file(d / name) != sha:
-        print(f'!! {d.name}/{name}: SHA-256 differs')
+      if not (d / name).is_file() and prev.get(name, (None,))[0] == sha:
+        kept += 1
+        continue
+      if not (d / name).is_file() or sha256_file(d / name) != sha:
+        print(f'!! {d.name}/{name}: SHA-256 differs or file missing')
         bad += 1
+    if kept:
+      print(f'   {d.name}: {kept} file(s) kept from the previous version, SHA-256 as it recorded')
     for man in sorted(d.glob('*.sha256')):
+      archive = d / man.name[:-len('.sha256')]
+      if not archive.is_file():
+        if prev.get(archive.name, (None,))[0]:
+          continue   # the archive is kept from the previous version
+        print(f'!! {d.name}/{archive.name}: missing')
+        bad += 1
+        continue
       want = dict(reversed(l.split('  ', 1)) for l in man.read_text().splitlines())
       got = {}
-      with tarfile.open(d / man.name[:-len('.sha256')]) as tar:
+      with tarfile.open(archive) as tar:
         for m in tar:
           got[m.name] = hashlib.sha256(tar.extractfile(m).read()).hexdigest()
       if got != want:
@@ -1047,7 +1424,7 @@ def scan_member(item):
     return archive, rel, {}, str(e)
   found = dict(findings)
   if data is not None and b'@' in data:
-    emails = EMAIL.findall(data)
+    emails = find_emails(data)
     if emails:
       found['email'] = len(emails)
   return archive, rel, found, None
@@ -1096,7 +1473,33 @@ def scan(args):
 
 
 def archives(args):
-  print(','.join(spec[1] for spec in ARCHIVES if BUILT_ON.get(spec[1], 'vm') == args.built_on))
+  """The archives built on one machine; with --batch, only those of that batch (an incremental version)."""
+  batch = getattr(args, 'batch', None)
+  print(','.join(spec[1] for spec in ARCHIVES if BUILT_ON.get(spec[1], 'vm') == args.built_on
+                 and (not batch or BATCH_OF[spec[1]] == batch)))
+  return 0
+
+
+def vm_lists(args):
+  """The VM's copy lists from the inventory's sessions.csv: sessions_release.txt (sessions whose outputs and records
+  are released) and sessions_outside.txt (sessions outside the freeze: records only, copied without outputs). With
+  --batch, only the sessions of that batch's labels; without it, every released session (a full rebuild)."""
+  rows = list(csv.DictReader(open(pathlib.Path(args.inventory) / 'sessions.csv')))
+  if args.batch:
+    if args.batch not in BATCHES:
+      print(f'!! unknown batch {args.batch}', file=sys.stderr)
+      return 2
+    inside = {lab['kind'] for lab in LATER_LABELS if lab['batch'] == args.batch}
+    outside = {f'outside_{args.batch}'}
+  else:
+    outside = set(OUTSIDE_KINDS)
+    inside = {r['kind'] for r in rows} - outside
+  out = pathlib.Path(args.out)
+  out.mkdir(parents=True, exist_ok=True)
+  for name, kinds in (('sessions_release.txt', inside), ('sessions_outside.txt', outside)):
+    sel = sorted(r['session'] for r in rows if r['kind'] in kinds)
+    (out / name).write_text(''.join(f'{s}\n' for s in sel))
+    print(f'{out / name}: {len(sel)} sessions')
   return 0
 
 
@@ -1126,6 +1529,8 @@ def main():
   p.add_argument('--out', required=True)
   p.add_argument('--archives')
   p.add_argument('--sessions')
+  p.add_argument('--paper_ref', help=f'git ref of the paper commit whose {PAPER_ASSETS[1]}/ goes into {PAPER_ASSETS[0]} '
+                 '(needed when that archive is built; "none" for a test build without them)')
   p.add_argument('--allow_incomplete_inputs_check', action='store_true',
                  help='test subsets only: accept a check-inputs run that found processes without a data JSON')
   p = sub.add_parser('check-inputs')
@@ -1141,17 +1546,24 @@ def main():
   p.add_argument('--jobs', type=int, default=6)
   p = sub.add_parser('archives')
   p.add_argument('--built_on', required=True, choices=['laptop', 'vm'])
+  p.add_argument('--batch', choices=sorted(set(BATCH_OF.values())), help='only the archives of this batch')
+  p = sub.add_parser('vm-lists')
+  p.add_argument('--inventory', default=str(OUT_DIR / 'inventory'))
+  p.add_argument('--out', required=True)
+  p.add_argument('--batch', help='a batch of BATCHES (incremental build); omit for every released session')
   p = sub.add_parser('merge-redactions')
   p.add_argument('--out', required=True)
   p.add_argument('--record', required=True, choices=sorted(RECORDS))
   p.add_argument('--from', required=True)
   p = sub.add_parser('sums')
   p.add_argument('--out', required=True)
+  p.add_argument('--previous', help='the previous version (incremental build): keep its files that are not rebuilt')
   p = sub.add_parser('verify')
   p.add_argument('--out', required=True)
+  p.add_argument('--previous', help='the previous version: files listed but not here must be its, unchanged')
   args = ap.parse_args()
   return {'inventory': inventory, 'layout': layout, 'build': build, 'check-inputs': check_inputs, 'scan': scan, 'sums': sums,
-          'archives': archives, 'merge-redactions': merge_redactions, 'verify': verify}[args.cmd](args)
+          'archives': archives, 'vm-lists': vm_lists, 'merge-redactions': merge_redactions, 'verify': verify}[args.cmd](args)
 
 
 if __name__ == '__main__':

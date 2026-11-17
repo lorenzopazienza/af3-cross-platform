@@ -27,7 +27,10 @@ import release  # noqa: E402
     ('r/7U3J/af3_output/7U3J/TERMS_OF_USE.md', 'terms'), ('r/7U3J/run_alphafold.log', 'af3_logs'),
     ('r/7U3J/run.json', 'records'), ('session.json', 'records'), ('launch_record.txt', 'records'),
     ('r/7U3J/work/input_seeds.json', 'work'), ('r/7U3J/work/jax_cache/jit_apply_fn-abc-cache', 'work'),
-    ('xla_dump.tgz', 'other_binary')])
+    ('xla_dump.tgz', 'other_binary'),
+    ('r/7XQZ/xla_dump/module_0537.jit_apply_fn.cl_970057490.after_codegen.txt', 'xla_dump'),
+    ('r/7XQZ/xla_dump/module_0534.jit_apply_fn.cl_970057490/module.mlir', 'xla_dump'),
+    ('r/8EYE/fu13_capture_seed-1.npz', 'captures'), ('featurise/7T6A/arrays/seed-1.npz', 'features')])
 def test_category(path, cat):
   assert release.category(path) == cat
 
@@ -108,7 +111,8 @@ def _session(root, name='S_l4_main_g_01', weights=None, data=None):
 
 def _args(root, out, **kw):
   return types.SimpleNamespace(root=str(root), repo=str(root.parent / 'repo'), out=str(out), archives=kw.get('archives'),
-                               sessions=kw.get('sessions'), allow_incomplete_inputs_check=False)
+                               sessions=kw.get('sessions'), allow_incomplete_inputs_check=False,
+                               paper_ref=kw.get('paper_ref', 'none'))
 
 
 def _passed_check(root, out):
@@ -842,6 +846,10 @@ def test_vm_steps_script_is_valid_and_copies_outputs_only_for_released_sessions(
 
 
 DOI = {'R1': '10.5281/zenodo.24057470', 'R2': '10.5281/zenodo.24057544'}
+TAG = 'zenodo-4ec185c5'   # the repository tag of this release (the first build's was zenodo-v1)
+# The OSF registrations, public since 2026-11-17: the project, the main study and the addenda of follow-ups 10, 11, 13 to 16.
+OSF = ['https://osf.io/qtz3v', 'https://osf.io/fegsy', 'https://osf.io/nsbgp', 'https://osf.io/64bpy', 'https://osf.io/c4kh7',
+       'https://osf.io/eafkx', 'https://osf.io/h9yw8', 'https://osf.io/hcxm7']
 PAPER_POINTER = 'Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available).'
 # The relations of Zenodo's deposit metadata reference (developers.zenodo.org, read on 2026-11-08); isRelatedTo is not one.
 ZENODO_RELATIONS = {'isCitedBy', 'cites', 'isSupplementTo', 'isSupplementedBy', 'isContinuedBy', 'continues', 'isDescribedBy',
@@ -854,7 +862,7 @@ ZENODO_RELATIONS = {'isCitedBy', 'cites', 'isSupplementTo', 'isSupplementedBy', 
 def test_runbook_tags_the_build_and_fills_in_no_paper_field():
   text = (release.HERE / 'RUNBOOK.md').read_text()
   flat = ' '.join(text.split())
-  assert 'git tag -a zenodo-v1 -m "Zenodo release build"' in text and 'git push origin zenodo-v1' in text
+  assert f'git tag -a {TAG} -m "Zenodo release build"' in text and f'git push origin {TAG}' in text
   assert 'build from that tag' in flat
   assert 'TITLE=' not in text and '<paper' not in text and '<arXiv' not in text and 'angle bracket' not in text and 'placeholder' not in text
   assert 'added later as related works ("is supplement to")' in flat and 'no new version needed' in flat
@@ -893,16 +901,19 @@ def test_zenodo_metadata(record):
   assert links[DOI[other]] == {'R1': 'isSourceOf', 'R2': 'isDerivedFrom'}[record]
   assert set(links.values()) <= ZENODO_RELATIONS
   assert '<DOI of record' not in str(m) and '&lt;DOI' not in str(m)
-  assert release.FREEZE_ID in m['description'] and DOI[other] in m['description']
+  assert release.FREEZE_ID in m['description'] and DOI[other] in m['description'] and '439 sessions' in m['description']
+  for url in OSF:
+    assert links[url] == 'isDocumentedBy', url
 
 
 @pytest.mark.parametrize('record', ['R1', 'R2'])
 def test_readme_carries_the_decisions(record):
   text = (release.HERE / 'records' / record / 'README.md').read_text()
-  for needed in (release.FREEZE_ID, '0009-0006-1687-0125', DOI['R1'], DOI['R2'], 'REDACTIONS.tsv', 'LICENCES.md'):
+  for needed in (release.FREEZE_ID, '0009-0006-1687-0125', DOI['R1'], DOI['R2'], 'REDACTIONS.tsv', 'LICENCES.md',
+                 '439 sessions', *OSF):
     assert needed in text
   assert '<DOI of record' not in text
-  assert PAPER_POINTER in text and 'alphafold-on-tpu, the repository commit tagged zenodo-v1.' in text
+  assert PAPER_POINTER in text and f'alphafold-on-tpu, the repository commit tagged {TAG}.' in text
   assert 'DRAFT' not in text and 'not yet published' not in text and 'angle brackets' not in text
   assert not re.search(r'<paper|<arXiv|<commit', text)
   address = release.EMAIL.findall(text.encode())
@@ -947,3 +958,368 @@ def test_redaction_note_names_the_class_and_never_the_user(tmp_path):
   p = _file(tmp_path, 'job.log', b'cd /Users/someone/x\n')
   note = release.prepare(p, 'results/af3/.many/W/job.log', 'A')[3]['replaced']
   assert note == '1 home_path replaced by .../<user>'
+
+
+# ---------------------------------------------------------------- labels after the first build (freeze 4ec185c5, 2026-11-17)
+
+# The archives of the first build (tag zenodo-v1), as uploaded to the drafts on 2026-11-09: name, record, kinds or
+# 'repo', categories or patterns.
+FIRST_BUILD = {spec[1]: spec for spec in release.ARCHIVES[:len(release.FIRST_BUILD_ARCHIVES)]}
+
+
+def test_first_build_archives_are_first_and_unchanged():
+  assert len(release.FIRST_BUILD_ARCHIVES) == 45
+  assert release.FIRST_BUILD_ARCHIVES == [a[1] for a in release.ARCHIVES[:45]]
+  assert {n for n in release.FIRST_BUILD_ARCHIVES if n.startswith('af3_')} >= {
+      'af3_main_structures.tar.gz', 'af3_large_full_confidences.tar.gz', 'af3_logs_followups.tar.gz', 'af3_feat_features.tar.gz'}
+  for name, spec in FIRST_BUILD.items():
+    if spec[2] != 'repo':
+      assert not set(spec[2]) & set(release.LATER_KINDS + release.OUTSIDE_KINDS[1:]), name
+  assert set(release.BATCH_OF) == {a[1] for a in release.ARCHIVES}
+  assert {release.BATCH_OF[n] for n in release.FIRST_BUILD_ARCHIVES} == {'zenodo-v1'}
+
+
+def test_first_build_archives_keep_their_members_without_the_new_kinds(tmp_path):
+  old = {'S_main': 'main', 'S_pilot': 'pilot2', 'S_mem': 'memlimit', 'S_ppi': 'ppi', 'S_embed': 'embed',
+         'S_att': 'attempt', 'S_out': 'outside', **{f'S_{k}': k for k in release.FOLLOWUP_KINDS}}
+  new = {f'S_{k}': k for k in release.LATER_KINDS + ('outside_followups1316',)}
+  root = tmp_path / 'af3'
+  for s in list(old) + list(new):
+    _old_session(root, s)
+    _file(root / s / 'run1' / 'T1' / 'xla_dump', 'module_0001.jit_apply_fn.after_codegen.txt', b'HloModule m\n')
+    _file(root / s / 'run1' / 'T1', 'fu13_capture_seed-1.npz', b'PK\x03\x04')
+  monkey = dict(old)
+  before = {n: release.members(FIRST_BUILD[n], root, tmp_path, None, monkey, {}) for n in FIRST_BUILD if FIRST_BUILD[n][2] != 'repo'}
+  monkey.update(new)
+  after = {n: release.members(FIRST_BUILD[n], root, tmp_path, None, monkey, {}) for n in before}
+  assert before == after and any(before.values())
+  for n, m in after.items():
+    assert not [x for x, _ in m if '/xla_dump/' in x or '_capture' in x], n   # the new categories reach no old archive
+
+
+@pytest.mark.parametrize('kind', ['fu13', 'fu14', 'rcx', 'hlo', 'memlimit_ah', 'warm_th'])
+def test_later_labels_have_their_archives_and_records(tmp_path, kind):
+  assert kind in release.RELEASED_KINDS and kind in release.LATER_KINDS
+  specs = {a[1]: a for a in release.ARCHIVES}
+  root = tmp_path / 'af3'
+  _old_session(root, f'S_{kind}')
+  kinds_of = {f'S_{kind}': kind}
+  lab = next(x for x in release.LATER_LABELS if x['kind'] == kind)
+  outputs = [n for n, (rec, cats) in lab['archives'].items() if 'model_cif' in cats]
+  assert len(outputs) == 1 and specs[outputs[0]][0] == 'R2'
+  got = [m for m, _ in release.members(specs[outputs[0]], root, tmp_path, None, kinds_of, {})]
+  assert [m for m in got if m.endswith('_model.cif')] and [m for m in got if m.endswith('_confidences.json')]
+  assert [m for m in got if m.endswith('run_alphafold.log')] and not [m for m in got if m.endswith(('job.log', 'run.json'))]
+  recs = [m for m, _ in release.members(specs['session_records_followups1316.tar.gz'], root, tmp_path, None, kinds_of, {})]
+  assert f'af3/S_{kind}/job.log' in recs and not [m for m in recs if m.endswith('_model.cif')]
+  assert release.BUILT_ON[outputs[0]] if outputs[0] in release.BUILT_ON else True
+  assert release.BUILT_ON.get(outputs[0], 'vm') == 'vm' and release.BUILT_ON['session_records_followups1316.tar.gz'] == 'laptop'
+
+
+def test_grouped_archives_and_their_contents(tmp_path):
+  specs = {a[1]: a for a in release.ARCHIVES}
+  assert specs['af3_memlimit_ah_warm_th.tar.gz'][2] == ['memlimit_ah', 'warm_th']
+  assert 'af3_fu13_captures.tar.gz' not in specs                      # left out (decision of 2026-11-17)
+  assert not [a for a in release.ARCHIVES if a[2] != 'repo' and 'captures' in a[3]] and 'captures' in release.LEFT_OUT
+  assert specs['hlo_xla_dumps.tar.gz'][2:] == (['hlo'], ['xla_dump']) and specs['hlo_xla_dumps.tar.gz'][0] == release.HLO_DUMPS_RECORD
+  root = tmp_path / 'af3'
+  _old_session(root, 'S_hlo')
+  _file(root / 'S_hlo' / 'run1' / 'T1' / 'xla_dump', 'module_0001.jit_apply_fn.after_codegen.txt', b'HloModule m\n')
+  _old_session(root, 'S_fu13')
+  _file(root / 'S_fu13' / 'run1' / 'T1', 'fu13_capture_seed-1.npz', b'PK\x03\x04')
+  kinds_of = {'S_hlo': 'hlo', 'S_fu13': 'fu13'}
+  dumps = [m for m, _ in release.members(specs['hlo_xla_dumps.tar.gz'], root, tmp_path, None, kinds_of, {})]
+  assert dumps == ['af3/S_hlo/run1/T1/xla_dump/module_0001.jit_apply_fn.after_codegen.txt']
+  for spec in release.ARCHIVES:
+    if spec[2] != 'repo':
+      assert not [m for m, _ in release.members(spec, root, tmp_path, None, kinds_of, {}) if '_capture' in m], spec[1]
+  recs = [m for m, _ in release.members(specs['session_records_followups1316.tar.gz'], root, tmp_path, None, kinds_of, {})]
+  assert not [m for m in recs if '/xla_dump/' in m or m.endswith('.npz')]
+
+
+@pytest.mark.parametrize('session,row', [
+    ('20261110T092603Z_v5e_why_l5_01', '2026-11-12, Follow-up 13 (label why), complete, item 1'),
+    ('20261110T092001Z_l4_why_lg_01', '2026-11-10, Follow-up 13, LG stopped'),
+    ('20261110T190412Z_l4_why_gf_29', '2026-11-12, Follow-up 13 (label why), complete, item 5'),
+    ('20261112T094029Z_v6e_why_p_06', 'the four rows of 2026-11-12 on arm P'),
+    ('20261112T203854Z_v5e_f32_v5f_r2_01', '2026-11-13, Follow-up 14 (label f32), complete, items 3 and 4'),
+    ('20261113T102625Z_a100_f32_af_15', 'rows of 2026-11-12 and 2026-11-13 on the A100'),
+    ('20261112T201157Z_h100_f32_hf_01', '2026-11-13, Follow-up 14 (label f32), complete, item 2'),
+    ('20261113T122618Z_a100_f32_ad_01', '2026-11-13, Follow-up 14 (label f32), complete, items 4 and 10'),
+    ('20261114T191329Z_a100_rcx_af_r2_03', '2026-11-15, Follow-up 15 (label rcx), complete, item 2'),
+    ('20261115T010417Z_l4_rcx_gt_r2_08', '2026-11-15, Follow-up 15 (label rcx), complete, item 4'),
+    ('20261116T140122Z_v5e_hlo_v5_01', '2026-11-16, Follow-up 16 (label hlo), complete')])
+def test_later_outside_sessions_map_to_their_row(session, row):
+  for paths in (['r/runs.jsonl'], ['launch_record.txt']):
+    kind, why = release.classify(session, paths, {})
+    assert kind == 'outside_followups1316' and why.startswith(row)
+  assert release.classify(session, ['r/runs.jsonl'], {session: 'fu13'})[0] == 'fu13'   # a frozen session keeps its kind
+
+
+@pytest.mark.parametrize('session', ['20261120T000000Z_l4_why_gf_01', '20261116T150000Z_v5e_hlo_v5_01',
+                                     '20261110T101013Z_a100_memlimit_ah_a_01', '20261112T000000Z_h100_f32_hd_01',
+                                     '20261125T000000Z_l4_newlabel_01', '20261109T000001Z_v5e_pilot'])
+def test_later_sessions_no_row_maps_are_unmapped(session):
+  assert release.classify(session, ['r/runs.jsonl'], {})[0] == 'unmapped'
+  assert release.classify(session, ['launch_record.txt'], {})[0] == 'unmapped'
+
+
+def test_sessions_before_the_first_build_keep_their_old_classes():
+  assert release.classify('20261108T235959Z_v5e_pilot', ['launch_record.txt'], {})[0] == 'attempt'
+  assert release.classify('20261008T205351Z_v5e_bisect', ['r/runs.jsonl'], {})[0] == 'out'
+  assert release.classify('S_l4_main_g_01', ['r/runs.jsonl'], {})[0] == 'out'   # names without a stamp: as before
+
+
+def test_later_mapping_covers_the_local_launcher_records():
+  lau = release.REPO / 'results' / 'af3' / '.launcher'
+  if not lau.is_dir() or not (release.FREEZE / 'sessions.tsv').is_file():
+    pytest.skip('no local launcher records')
+  frozen = release.freeze_sessions()
+  kinds = [release.classify(d.name, ['launch_record.txt'], frozen)[0] for d in lau.iterdir() if d.is_dir()]
+  assert 'unmapped' not in kinds and kinds.count('outside_followups1316') == 247
+
+
+def test_later_outside_archive_holds_records_only_and_its_table(tmp_path, monkeypatch):
+  monkeypatch.setattr(release, 'freeze_sessions', lambda: {})
+  monkeypatch.setattr(release, 'unexplained_files', lambda: {})
+  root, out = tmp_path / 'af3', tmp_path / 'out'
+  name = '20261114T221412Z_l4_rcx_gt_r2_03'
+  _old_session(root, name)
+  (tmp_path / 'repo').mkdir()
+  assert release.build(_args(root, out, archives='outside_freeze_records_followups1316.tar.gz,outside_freeze_records.tar.gz')) == 0
+  import tarfile
+  assert not (out / 'R1' / 'outside_freeze_records.tar.gz').exists()      # the first build's archive takes none of them
+  with tarfile.open(out / 'R1' / 'outside_freeze_records_followups1316.tar.gz') as t:
+    names = t.getnames()
+    table = t.extractfile('OUTSIDE_SESSIONS.csv').read().decode()
+  assert f'af3/{name}/job.log' in names and not [n for n in names if n.endswith(('_model.cif', '_confidences.json'))]
+  assert f'{name},"{release.OUTSIDE_LABEL}","2026-11-15, Follow-up 15 (label rcx), complete, item 4' in table
+
+
+def test_check_inputs_covers_the_later_kinds(tmp_path, monkeypatch):
+  monkeypatch.setattr(release, 'freeze_sessions', lambda: {'S_fu14': 'fu14'})
+  monkeypatch.setattr(release, 'unexplained_files', lambda: {})
+  _session(tmp_path / 'af3', name='S_fu14', data=_data_json(unpairedMsa='>q\nMKV\n>x\nMKL\n'))
+  rc = release.check_inputs(types.SimpleNamespace(root=str(tmp_path / 'af3'), repo=str(tmp_path / 'repo'),
+                                                  out=str(tmp_path / 'out'), sessions=None))
+  assert rc == 2 and json.loads((tmp_path / 'out' / 'inputs_check.json').read_text())['processes'] == 1
+
+
+# ---------------------------------------------------------------- systemd unit names are not addresses
+
+@pytest.mark.parametrize('text', [
+    b'Stopping getty@tty1.service - Getty on tty1...', b'Stopped serial-getty@ttyS0.service.', b'user@1000.service: done',
+    b'"unit": "user-runtime-dir@1000.service"', b'systemd-fsck@dev-disk-by\\x2duuid-12ab.service ok',
+    b'container-getty@1.service', b'dbus-:1.2-org.freedesktop.problems@0.service', b'lvm2-pvscan@8:1.service',
+    b'run-user@0.mount', b'sshd@3-10.0.0.2:22.socket', b'x@y.timer', b'x@y.slice', b'x@y.scope', b'x@y.path',
+    b'x@y.swap', b'x@y.device', b'x@y.automount'])
+def test_systemd_unit_names_are_not_addresses(tmp_path, text):
+  assert release.find_emails(text) == [] and release.redact_emails(text) == text
+  if b'10.0.0.2' not in text:
+    release.guard(_file(tmp_path, 'job.log', text + b'\n'), 'af3/S/job.log')
+
+
+@pytest.mark.parametrize('text,address', [
+    (b'mail a.b@example.org now', b'a.b@example.org'), (b'x@corp.target', b'x@corp.target'),       # target is a TLD
+    (b'getty@tty1.services', b'getty@tty1.services'), (b'a+getty@tty1.service', b'a+getty@tty1.service'),
+    (b'ops@db.service.example.com', b'ops@db.service.example.com'), (b'%u@tty1.service', b'%u@tty1.service'),
+    (b'getty@tty1.service and a.b@example.org', b'a.b@example.org'),
+    (b'authenticated as a.b@example.org which', b'a.b@example.org')])
+def test_addresses_are_still_found_next_to_unit_names(tmp_path, text, address):
+  assert address in release.find_emails(text)
+  assert set(release.EMAIL.findall(text)) >= set(release.find_emails(text))   # never more than the plain pattern
+  with pytest.raises(release.Refused, match='email address'):
+    release.guard(_file(tmp_path, 'job.log', text), 'af3/S/job.log')
+  assert address not in release.redact_emails(text)
+
+
+def test_unit_names_survive_the_redaction_of_a_listed_file(tmp_path, monkeypatch):
+  rel = 'results/af3/.many/W/x.log'
+  monkeypatch.setattr(release, 'REDACT', {rel: 'gcloud account email'})
+  p = _file(tmp_path, 'x.log', b'authenticated as a.b@example.org\nStopped getty@tty1.service.\n')
+  data, row = release.prepare(p, rel, 'session_lists_launch_records.tar.gz')[2:]
+  assert data == b'authenticated as <account>\nStopped getty@tty1.service.\n'
+  assert row['replaced'].startswith('1 occurrence(s) of 1 email address(es)')
+
+
+def test_the_unit_types_are_not_top_level_domains():
+  # IANA root zone list, version 2026111700: SERVICES and TARGET are TLDs; none of the exempt unit types is.
+  tlds_seen = {'services', 'target'}
+  assert not {t.decode() for t in release.SYSTEMD_UNIT_TYPES} & tlds_seen
+  assert b'target' not in release.SYSTEMD_UNIT_TYPES
+
+
+# ---------------------------------------------------------------- XLA dumps of follow-up 16
+
+def test_dump_constants_are_measured_and_large_ones_refused(tmp_path):
+  small = b'ENTRY %main (p: bf16[384,384]) -> f32[] {\n  %c = f32[] constant(0)\n  %d = s32[3]{0} constant({1, 2, 3})\n}\n'
+  assert release.dump_constant_chars(small) == len(b'0)') + len(b'{1, 2, 3})')
+  release.guard(_file(tmp_path / 'a', 'm.after_codegen.txt', small), 'af3/S/r/T/xla_dump/m.after_codegen.txt')
+  big = b'%w = f32[128,128]{1,0} constant({' + b', '.join([b'0.12345'] * 16384) + b'})\n'
+  with pytest.raises(release.Refused, match='printed constants'):
+    release.guard(_file(tmp_path / 'b', 'm.after_codegen.txt', big), 'af3/S/r/T/xla_dump/m.after_codegen.txt')
+  mlir = b'%c = stablehlo.constant dense<"0x' + b'AB' * 40000 + b'"> : tensor<20000xf32>\n'
+  with pytest.raises(release.Refused, match='printed constants'):
+    release.guard(_file(tmp_path / 'c', 'module.mlir', mlir), 'af3/S/r/T/xla_dump/m/module.mlir')
+  blob = b'%c = stablehlo.constant dense_resource<__elided__> : tensor<4xf32>\n{-#\n  dialect_resources: {}\n#-}\n'
+  with pytest.raises(release.Refused, match='resource blob'):
+    release.guard(_file(tmp_path / 'd', 'module.mlir', blob), 'af3/S/r/T/xla_dump/m/module.mlir')
+  # the same text outside an XLA dump is not measured
+  release.guard(_file(tmp_path / 'e', 'notes.txt', big), 'af3/S/r/T/notes.txt')
+
+
+def test_real_dumps_pass_the_constant_check():
+  folders = sorted((release.REPO / 'results' / 'af3').glob('*_hlo_v*_01/*/*/xla_dump'))
+  if not folders:
+    pytest.skip('no local follow-up 16 dumps')
+  for f in folders[:2]:
+    for p in f.rglob('*'):
+      if p.is_file() and ('jit_apply_fn' in str(p)):
+        release.check_dump_constants(p.read_bytes(), str(p))
+
+
+def test_dumps_archive_carries_the_apache_licence_and_the_notice(tmp_path, monkeypatch):
+  import tarfile
+  monkeypatch.setattr(release, 'freeze_sessions', lambda: {'S_hlo': 'hlo'})
+  monkeypatch.setattr(release, 'unexplained_files', lambda: {})
+  root, repo, out = tmp_path / 'af3', tmp_path / 'repo', tmp_path / 'out'
+  s = _session(root, name='S_hlo')
+  _file(s / 'xla_dump', 'module_0537.jit_apply_fn.after_codegen.txt', b'HloModule m\n// /home/someone/af3/model.py:12\n')
+  _passed_check(root, out)
+  assert release.build(_args(root, out, archives='hlo_xla_dumps.tar.gz')) == 2        # no LICENSES/Apache-2.0
+  _file(repo / 'LICENSES', 'Apache-2.0', b'Apache License\nVersion 2.0, January 2004\n')
+  assert release.build(_args(root, out, archives='hlo_xla_dumps.tar.gz')) == 0
+  rec = release.HLO_DUMPS_RECORD
+  with tarfile.open(out / rec / 'hlo_xla_dumps.tar.gz') as t:
+    assert t.extractfile('LICENSE_ALPHAFOLD3_CODE_APACHE-2.0.txt').read().startswith(b'Apache License')
+    notice = t.extractfile('NOTICE_XLA_DUMPS.txt').read().decode()
+    dump = t.extractfile('af3/S_hlo/l4_xla_rep1_seed1_fresh/7U3J/xla_dump/module_0537.jit_apply_fn.after_codegen.txt').read()
+  assert 'Apache License 2.0' in notice and 'do not hold the model parameters' in notice
+  assert b'/home/<user>/af3' in dump and b'someone' not in dump
+  rows = list(release.csv.DictReader(open(out / rec / 'REDACTIONS.tsv'), delimiter='\t'))
+  assert [r['archive'] for r in rows] == ['hlo_xla_dumps.tar.gz']
+
+
+def test_repository_has_the_apache_licence_text():
+  text = (release.REPO / 'LICENSES' / 'Apache-2.0').read_text()
+  assert text.lstrip().startswith('Apache License') and 'Version 2.0, January 2004' in text
+  assert 'END OF TERMS AND CONDITIONS' in text
+
+
+# ---------------------------------------------------------------- paper assets from git
+
+def _git(repo, *a):
+  import subprocess
+  subprocess.run(['git', '-C', str(repo), *a], check=True, capture_output=True)
+
+
+def test_paper_assets_come_from_a_git_ref(tmp_path, monkeypatch):
+  import tarfile
+  monkeypatch.setattr(release, 'freeze_sessions', lambda: {})
+  monkeypatch.setattr(release, 'unexplained_files', lambda: {})
+  root, repo, out = tmp_path / 'af3', tmp_path / 'repo', tmp_path / 'out'
+  root.mkdir()
+  _file(repo / 'results' / 'analysis' / 'fu13_20261112', 'report.md', b'# fu13\n')
+  _file(repo / 'results' / 'paper_assets_isc' / 'tables', 'T1.tex', b'old\n')
+  _file(repo / 'results' / 'paper_assets_fu9', 'README.md', b'r\n')
+  _file(root / 'S', 'TERMS_OF_USE.md', b'# ALPHAFOLD 3 OUTPUT TERMS OF USE\n')
+  _git(repo, 'init', '-q')
+  _file(repo / 'paper' / 'assets' / 'tables', 'Tmain.tex', b'committed\n')
+  _git(repo, 'add', 'paper/assets')
+  _git(repo, '-c', 'user.name=t', '-c', 'user.email=t@example.org', 'commit', '-q', '-m', 'assets')
+  _git(repo, 'tag', 'paper-test')
+  _file(repo / 'paper' / 'assets' / 'tables', 'Tmain.tex', b'uncommitted change\n')
+  _file(repo / 'paper' / 'assets', 'untracked.tex', b'never committed\n')
+  args = _args(root, out, archives='analysis_outputs.tar.gz', paper_ref=None)
+  args.repo = str(repo)
+  assert release.build(args) == 2                                   # the ref must be given
+  args.paper_ref = 'no-such-ref'
+  assert release.build(args) == 2
+  args.paper_ref = 'paper-test'
+  assert release.build(args) == 0
+  with tarfile.open(out / 'R2' / 'analysis_outputs.tar.gz') as t:
+    names = set(t.getnames())
+    assert t.extractfile('paper/assets/tables/Tmain.tex').read() == b'committed\n'
+    commit = t.extractfile('PAPER_ASSETS_COMMIT.txt').read().decode()
+  assert 'paper/assets/untracked.tex' not in names and 'results/analysis/fu13_20261112/report.md' in names
+  assert 'results/paper_assets_fu9/README.md' in names and not [n for n in names if 'paper_assets_isc' in n]
+  assert commit.startswith('paper/assets/ from git ref paper-test, commit ') and len(commit.split()[-1]) == 40
+
+
+# ---------------------------------------------------------------- incremental versions
+
+def _previous(tmp_path, files):
+  """A previous version's record folders: {record: {name: bytes}}; SHA256SUMS, Zenodo listings, REDACTIONS.tsv."""
+  prev = tmp_path / 'prev'
+  for rec, items in files.items():
+    d = prev / rec
+    d.mkdir(parents=True)
+    (d / 'SHA256SUMS').write_text(''.join(f'{hashlib.sha256(b).hexdigest()}  {n}\n' for n, b in sorted(items.items())))
+    listing = [{'filename': n, 'filesize': len(b)} for n, b in items.items()] + [{'filename': 'SHA256SUMS', 'filesize': 10}]
+    (prev / f'zenodo_files_{release.ZENODO_IDS[rec]}.json').write_text(json.dumps(listing))
+    release.write_redactions(d, [{'archive': 'af3_main_structures.tar.gz', 'path': 'af3/S/job.log', 'original_sha256': 'a',
+                                  'released_sha256': 'b', 'replaced': '1 home_path'},
+                                 {'archive': 'analysis_outputs.tar.gz', 'path': 'results/analysis/x/log', 'original_sha256': 'c',
+                                  'released_sha256': 'd', 'replaced': '1 home_path'}])
+  return prev
+
+
+def test_a_later_version_keeps_what_it_does_not_rebuild(tmp_path):
+  prev = _previous(tmp_path, {'R2': {'af3_main_structures.tar.gz': b'old main', 'af3_main_structures.tar.gz.sha256': b'm',
+                                     'analysis_outputs.tar.gz': b'old analysis', 'analysis_outputs.tar.gz.sha256': b'a',
+                                     'af3_retired.tar.gz': b'gone', 'README.md': b'old readme', 'LICENCES.md': b'l'}})
+  out = tmp_path / 'out'
+  (out / 'R2').mkdir(parents=True)
+  release.write_archive(out / 'R2' / 'analysis_outputs.tar.gz', [], [('results/analysis/y/log', b'new log\n')])
+  _file(out / 'R2', 'analysis_outputs.tar.gz.sha256', f'{hashlib.sha256(b"new log\n").hexdigest()}  results/analysis/y/log\n'.encode())
+  new_analysis = (out / 'R2' / 'analysis_outputs.tar.gz').read_bytes()
+  release.write_archive(out / 'R2' / 'af3_fu13.tar.gz', [], [('af3/S/x', b'x')])
+  release.write_redactions(out / 'R2', [{'archive': 'analysis_outputs.tar.gz', 'path': 'results/analysis/y/log',
+                                         'original_sha256': 'e', 'released_sha256': 'f', 'replaced': '1 home_path'}])
+  assert release.sums(types.SimpleNamespace(out=str(out), previous=str(prev))) == 0
+  sums = dict(reversed(l.split('  ', 1)) for l in (out / 'R2' / 'SHA256SUMS').read_text().splitlines())
+  assert sums['af3_main_structures.tar.gz'] == hashlib.sha256(b'old main').hexdigest()          # kept, not here
+  assert sums['analysis_outputs.tar.gz'] == hashlib.sha256(new_analysis).hexdigest()            # rebuilt
+  assert 'af3_retired.tar.gz' not in sums and 'af3_fu13.tar.gz' in sums
+  rows = {(r['archive'], r['path']) for r in release.csv.DictReader(open(out / 'R2' / 'REDACTIONS.tsv'), delimiter='\t')}
+  assert rows == {('af3_main_structures.tar.gz', 'af3/S/job.log'), ('analysis_outputs.tar.gz', 'results/analysis/y/log')}
+  changes = {r['file']: r['action'] for r in release.csv.DictReader(open(out / 'zenodo_changes_R2.csv'))}
+  assert changes['af3_main_structures.tar.gz'] == 'keep' and changes['af3_main_structures.tar.gz.sha256'] == 'keep'
+  assert changes['analysis_outputs.tar.gz'] == 'replace' and changes['analysis_outputs.tar.gz.sha256'] == 'replace'
+  assert changes['af3_fu13.tar.gz'] == 'add' and changes['af3_retired.tar.gz'] == 'delete'
+  assert changes['README.md'] == 'replace' and changes['SHA256SUMS'] == 'replace'
+  assert release.verify(types.SimpleNamespace(out=str(out), previous=str(prev))) == 0
+  assert release.verify(types.SimpleNamespace(out=str(out), previous=None)) == 1           # without it, the kept files are missing
+
+
+def test_a_later_version_over_the_limits_counts_the_kept_files(tmp_path, monkeypatch):
+  prev = _previous(tmp_path, {'R2': {'af3_main_structures.tar.gz': b'x' * 100}})
+  _file(tmp_path / 'out' / 'R2', 'af3_fu13.tar.gz', b'y')
+  monkeypatch.setattr(release, 'ZENODO_MAX_BYTES', 50)
+  assert release.sums(types.SimpleNamespace(out=str(tmp_path / 'out'), previous=str(prev))) == 2
+
+
+def test_archives_of_a_batch_and_the_vm_lists(tmp_path, capsys):
+  release.archives(types.SimpleNamespace(built_on='vm', batch='followups1316'))
+  vm = capsys.readouterr().out.strip().split(',')
+  assert vm == ['outside_freeze_records_followups1316.tar.gz', 'af3_fu13.tar.gz',
+                'af3_fu14.tar.gz', 'af3_rcx.tar.gz', 'af3_hlo.tar.gz', 'hlo_xla_dumps.tar.gz', 'af3_memlimit_ah_warm_th.tar.gz']
+  release.archives(types.SimpleNamespace(built_on='laptop', batch='followups1316'))
+  assert capsys.readouterr().out.strip() == 'session_records_followups1316.tar.gz'
+  inv = tmp_path / 'inv'
+  release.write_csv(_file(inv, 'sessions.csv').parent / 'sessions.csv',
+                    [{'session': 'A', 'kind': 'main'}, {'session': 'B', 'kind': 'fu13'}, {'session': 'C', 'kind': 'outside'},
+                     {'session': 'D', 'kind': 'outside_followups1316'}, {'session': 'E', 'kind': 'warm_th'}])
+  assert release.vm_lists(types.SimpleNamespace(inventory=str(inv), out=str(tmp_path / 'b'), batch='followups1316')) == 0
+  assert (tmp_path / 'b' / 'sessions_release.txt').read_text() == 'B\nE\n'
+  assert (tmp_path / 'b' / 'sessions_outside.txt').read_text() == 'D\n'
+  assert release.vm_lists(types.SimpleNamespace(inventory=str(inv), out=str(tmp_path / 'c'), batch=None)) == 0
+  assert (tmp_path / 'c' / 'sessions_release.txt').read_text() == 'A\nB\nE\n'
+  assert (tmp_path / 'c' / 'sessions_outside.txt').read_text() == 'C\nD\n'
+
+
+def test_the_records_stay_within_the_limits_with_the_new_archives():
+  r1 = sum(1 for a in release.ARCHIVES if a[0] == 'R1')
+  r2 = sum(1 for a in release.ARCHIVES if a[0] == 'R2')
+  assert (r1, r2) == ({'R2': 11, 'R1': 12}[release.HLO_DUMPS_RECORD], {'R2': 42, 'R1': 41}[release.HLO_DUMPS_RECORD])
+  assert 2 * r1 + release.PLAIN_FILES['R1'] <= 43 and 2 * r2 + release.PLAIN_FILES['R2'] <= 88

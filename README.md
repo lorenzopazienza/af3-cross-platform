@@ -52,6 +52,9 @@ Lorenzo Pazienza (LUISS Guido Carli University).
 
 - Licence: MIT for this repository's code.
 - `af3_tpu/af3_tpu.patch` modifies AlphaFold3's `run_alphafold.py`, which is
-  under the Apache License 2.0.
+  under the Apache License 2.0; the lines of AlphaFold3 it carries stay under
+  that licence, whose text is in [`LICENSES/Apache-2.0`](LICENSES/Apache-2.0).
+- Third-party data in the Zenodo records and their licences: see
+  [`scripts/release/records/LICENCES.md`](scripts/release/records/LICENCES.md).
 - AlphaFold3 model parameters are never included in this repository and are
   subject to DeepMind's own terms of use.
