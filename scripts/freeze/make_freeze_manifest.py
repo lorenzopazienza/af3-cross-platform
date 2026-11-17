@@ -2,8 +2,9 @@
 results bucket.
 
     analysis/.venv/bin/python scripts/freeze/make_freeze_manifest.py --bucket gs://BUCKET [--out results/freeze]
-        [--followups34] [--feat] [--followups612]
+        [--followups34] [--feat] [--followups612] [--followups1316]
     analysis/.venv/bin/python scripts/freeze/make_freeze_manifest.py --local_only --out FOLDER [--followups612]
+        [--followups1316]
 
 Sessions: the 13 pilot2 sessions of results/analysis/pilot2_20261012/sessions_pilot2.txt, the pilot2 sessions
 excluded there, the 53 main sessions of results/analysis/main_20261014/sessions_main.txt, and the 4 memory-limit
@@ -26,6 +27,21 @@ session of those lists without a local folder, a session in two lists or in an e
 length stops the script before anything is hashed. The follow-up 6 NAS deliveries are not in the bucket and keep their
 own freezes (results/freeze/msa_<host>_<run>/): the SHA-256 of each files_sha256.tsv is computed again, must equal the
 identifier in NAS_FREEZES and in its summary.md, and is listed in the new summary.md; they are not refrozen.
+With --followups1316 (added 2026-11-17, implies --followups612, so the freeze stays cumulative and one identifier covers
+everything; section 10, the launch, relaunch, completion, correction and analysis rows of follow-ups 13 to 16, of the
+memory limit on A and H and of the warm cost on GT and H, 2026-11-10 to 2026-11-17), also exactly the 144 sessions of
+scripts/analysis_runs/{fu13,fu14,rcx,hlo,memlimit_ah,warm_th}/sessions.txt (79, 44, 15, 2, 2, 2), labelled by those
+names, with the same checks and the same prefix check. Their smoke, preempted, interrupted, relaunched-over and
+retried sessions are in no list and are not frozen: every local folder named like a session of those labels
+(NAME_TAG_1316) that no list holds must be in NOT_FROZEN_1316 with the section 10 row that explains it, and is listed in
+summary.md; one that is not stops the script before anything is hashed, as does an explained session that a list holds.
+The local-only files of 20261113T001513Z_v5e_f32_v5f_06 (FINAL_UPLOAD_CUT: its final upload was cut off and the
+launcher fetched every file from the VM; row of 2026-11-13, follow-up 14 complete) are labelled expected. Follow-up 16's
+XLA dumps (<run>/<target>/xla_dump/ of the hlo sessions) are frozen like every other file; their count and bytes are
+in summary.md. summary.md also lists the files of the sessions of freeze 68923012 (PREVIOUS_1316) added, changed or
+removed locally since it was made (since_previous): added files are frozen with the rest (the full outputs that
+scripts/analysis_runs/fu13/fetch_full_outputs.py copied from the bucket into two main-study sessions on 2026-11-12);
+a changed or removed one is flagged there for the row.
 --local_only (added 2026-11-08, a dry run, not a freeze): no gcloud at all, no bucket, no CRC32C; writes sessions.tsv,
 manifest_sha256.tsv (crc32c empty, so its SHA-256 is not a freeze identifier), session_check.tsv (session_problems: what looks
 incomplete next to each session's final_status.json, plan_runs.jsonl, runs.jsonl and run.json files) and summary.md, into an
@@ -37,7 +53,8 @@ folder under <bucket>/af3/ named like a pilot2 or main session (listed, not comp
 written to the bucket.
 Comparison per file (path relative to the session folder): same (both sides, equal CRC32C and size), mismatch,
 local only, bucket only. Expected differences are labelled: bucket-only *_data.json and full *_confidences.json
-(FETCH=light leaves them in the bucket), local-only files the launcher writes after the VM's last upload.
+(FETCH=light leaves them in the bucket), local-only files the launcher writes after the VM's last upload, and with
+--followups1316 the local-only files of the FINAL_UPLOAD_CUT session.
 Outputs in --out: sessions.tsv, manifest_sha256.tsv (the frozen local files), bucket_objects.tsv, comparison.tsv,
 summary.md; the SHA-256 of manifest_sha256.tsv, which identifies the freeze, is in summary.md.
 """
@@ -64,7 +81,56 @@ FREEZE_DIR = REPO / 'results' / 'freeze'
 ANALYSIS_RUNS = REPO / 'scripts' / 'analysis_runs'
 # Follow-ups 6 to 12: label and number of sessions of scripts/analysis_runs/<label>/sessions.txt.
 FOLLOWUP612 = {'msa': 20, 'sw': 9, 'seeds': 27, 'h100': 6, 'repl': 18, 'prec5': 6, 'large': 49}
-PREFIX_CHECKED = ('cpu60', 'a100', 'feat') + tuple(FOLLOWUP612)    # labels whose appended logs get the prefix check
+# Follow-ups 13 to 16 and the two later measurements (--followups1316): label, number of sessions of
+# scripts/analysis_runs/<label>/sessions.txt, and the word the session folder names carry.
+FOLLOWUP1316 = {'fu13': 79, 'fu14': 44, 'rcx': 15, 'hlo': 2, 'memlimit_ah': 2, 'warm_th': 2}
+NAME_TAG_1316 = {'fu13': 'why', 'fu14': 'f32', 'rcx': 'rcx', 'hlo': 'hlo', 'memlimit_ah': 'memlimit_ah', 'warm_th': 'warm_th'}
+# Local session folders of those labels that no list holds, each with the section 10 row that explains it; not frozen.
+# A local folder of those labels that is neither listed nor here stops the script before anything is hashed.
+NOT_FROZEN_1316 = {
+    '20261110T092001Z_l4_why_lg_01': 'fu13 LG, all 20 processes exit 1 (jax.debug.callback without a CPU device); '
+                                     'rows of 2026-11-10 (LG stopped; fix and relaunch) and 2026-11-12 (complete, item 3)',
+    '20261110T092603Z_v5e_why_l5_01': 'fu13 L5, setup exit 100 (apt lock) before any harness run; row of 2026-11-12 '
+                                      '(complete, item 1)',
+    '20261112T201157Z_h100_f32_hf_01': 'fu14 Hf, Spot preemption before any process finished; row of 2026-11-13 '
+                                       '(complete, item 2)',
+    '20261112T201203Z_h100_f32_hf_02': 'fu14 Hf, Spot preemption before any process finished; row of 2026-11-13 '
+                                       '(complete, item 2)',
+    '20261112T201217Z_h100_f32_hf_05': 'fu14 Hf, Spot preemption before any process finished; row of 2026-11-13 '
+                                       '(complete, item 2)',
+    '20261112T201228Z_a100_f32_af_01': 'fu14 Af, Spot preemption; row of 2026-11-13 (complete, item 2)',
+    '20261112T201248Z_a100_f32_af_09': 'fu14 Af, Spot preemption; row of 2026-11-13 (complete, item 2)',
+    '20261112T223637Z_a100_f32_af_15': 'fu14 Af, Spot preemption; row of 2026-11-13 (complete, item 2)',
+    '20261113T001931Z_a100_f32_af_13': 'fu14 Af, Spot preemption; row of 2026-11-13 (complete, item 2)',
+    '20261112T203710Z_a100_f32_af_13': 'fu14 Af, setup exit 100 (apt, us-east4-c) before any AlphaFold 3 run; rows of '
+                                       '2026-11-12 (supervision) and 2026-11-13 (complete, item 3)',
+    '20261112T204116Z_a100_f32_af_02': 'fu14 Af, setup exit 100 (apt, us-east4-c) before any AlphaFold 3 run; rows of '
+                                       '2026-11-12 (relaunches without us-east4) and 2026-11-13 (complete, item 3)',
+    '20261112T203854Z_v5e_f32_v5f_r2_01': 'fu14 V5f r2, setup exit 100 (apt lock) before any AlphaFold 3 run; rows of '
+                                          '2026-11-12 (relaunches without us-east4) and 2026-11-13 (complete, item 3)',
+    '20261114T191329Z_a100_rcx_af_r2_03': 'rcx Af r2, Spot preemption during setup, before any AlphaFold 3 run; row of '
+                                          '2026-11-15 (complete, item 2)',
+    '20261114T191334Z_a100_rcx_af_r2_01': 'rcx Af r2, Spot preemption during setup, before any AlphaFold 3 run; row of '
+                                          '2026-11-15 (complete, item 2)',
+    '20261114T221407Z_l4_rcx_gt_r2_08': 'rcx GT r2, Spot preemption after AlphaFold 3 runs had started (its finished '
+                                        'processes not used); row of 2026-11-15 (complete, item 4)',
+    '20261114T221412Z_l4_rcx_gt_r2_03': 'rcx GT r2, Spot preemption after AlphaFold 3 runs had started (its finished '
+                                        'processes not used); row of 2026-11-15 (complete, item 4)',
+    '20261114T221417Z_l4_rcx_gt_r2_04': 'rcx GT r2, Spot preemption after AlphaFold 3 runs had started (its finished '
+                                        'processes not used); row of 2026-11-15 (complete, item 4)',
+    '20261114T221422Z_l4_rcx_gt_r2_05': 'rcx GT r2, Spot preemption after AlphaFold 3 runs had started (its finished '
+                                        'processes not used); row of 2026-11-15 (complete, item 4)',
+    '20261114T221426Z_l4_rcx_gt_r2_06': 'rcx GT r2, Spot preemption after AlphaFold 3 runs had started (its finished '
+                                        'processes not used); row of 2026-11-15 (complete, item 4)',
+    '20261115T010417Z_l4_rcx_gt_r2_08': 'rcx GT r2, Spot preemption 3 min after the job started, before any AlphaFold 3 '
+                                        'run; row of 2026-11-15 (complete, item 4)',
+}
+# A listed session whose final upload to the bucket was cut off and whose launcher fetched every file from the VM: its
+# local-only files are expected (row of 2026-11-13, follow-up 14 complete).
+FINAL_UPLOAD_CUT = {'20261113T001513Z_v5e_f32_v5f_06': 'fu14'}
+# The freeze that --followups1316 extends: its files are compared with the local ones of the same sessions (summary.md).
+PREVIOUS_1316 = FREEZE_DIR / 'followups612_20261108' / 'manifest_sha256.tsv'
+PREFIX_CHECKED = ('cpu60', 'a100', 'feat') + tuple(FOLLOWUP612) + tuple(FOLLOWUP1316)   # appended logs: prefix check
 # Follow-up 6 data-pipeline deliveries: not in the bucket; their own freezes (scripts/nas/ingest_official.py).
 NAS_FREEZES = {'msa_naspaz8-af3_run1': '3c21b4afbdfbcf310e7e289ea7ff326c2e1579ed18cea425a1616dd8f1c7b9da',
                'msa_naspaz6-af3_run1': '781f4ee3221df5f2e8f09b9dec91ad919a87c80480eba838eedb946cf0c131b2',
@@ -82,7 +148,23 @@ def session_list(label):
   return [line.split('#')[0].strip() for line in path.read_text().splitlines() if line.split('#')[0].strip()]
 
 
-def sessions(followups34=False, feat=False, followups612=False):
+def add_lists(out, labels):
+  """Appends the sessions of scripts/analysis_runs/<label>/sessions.txt for each label, in order; stops on a list of
+  another length, a session listed twice or a session already in the freeze."""
+  earlier = {s for s, _ in out}
+  for label, want in labels.items():
+    listed = session_list(label)
+    if len(listed) != want:
+      raise SystemExit(f'scripts/analysis_runs/{label}/sessions.txt lists {len(listed)} sessions, not {want}')
+    again = sorted(s for s in listed if s in earlier) + sorted({s for s in listed if listed.count(s) > 1})
+    if again:
+      raise SystemExit(f'{label}: sessions already in the freeze or listed twice: {", ".join(again)}')
+    earlier |= set(listed)
+    out += [(s, label) for s in listed]
+
+
+def sessions(followups34=False, feat=False, followups612=False, followups1316=False):
+  followups612 = followups612 or followups1316
   feat = feat or followups612
   out = [(s, 'pilot2') for s in (PILOT2 / 'sessions_pilot2.txt').read_text().split()]
   for line in (PILOT2 / 'sessions_excluded.txt').read_text().splitlines():
@@ -98,26 +180,62 @@ def sessions(followups34=False, feat=False, followups612=False):
       out += [(s, kind) for s in re.findall(r'ok: launcher exit 0, session (\S+)',
                                             (AF3 / '.many' / w / 'summary.txt').read_text())]
   if followups612:
-    earlier = {s for s, _ in out}
-    for label, want in FOLLOWUP612.items():
-      listed = session_list(label)
-      if len(listed) != want:
-        raise SystemExit(f'scripts/analysis_runs/{label}/sessions.txt lists {len(listed)} sessions, not {want}')
-      again = sorted(s for s in listed if s in earlier) + sorted({s for s in listed if listed.count(s) > 1})
-      if again:
-        raise SystemExit(f'{label}: sessions already in the freeze or listed twice: {", ".join(again)}')
-      earlier |= set(listed)
-      out += [(s, label) for s in listed]
+    add_lists(out, FOLLOWUP612)
+  if followups1316:
+    add_lists(out, FOLLOWUP1316)
   return out
 
 
 def check_local_folders(selection):
-  """Stops if a session of follow-ups 6 to 12 has no local folder. Earlier labels keep their record: sessions without
-  a folder are listed in summary.md (the excluded pilot2 attempts of freeze 14e1fc4c)."""
-  missing = [f'{s} ({k})' for s, k in selection if k in FOLLOWUP612 and not (AF3 / s).is_dir()]
+  """Stops if a session of follow-ups 6 to 16 (lists of --followups612 and --followups1316) has no local folder. Earlier
+  labels keep their record: sessions without a folder are listed in summary.md (the excluded pilot2 attempts of freeze
+  14e1fc4c)."""
+  missing = [f'{s} ({k})' for s, k in selection if (k in FOLLOWUP612 or k in FOLLOWUP1316) and not (AF3 / s).is_dir()]
   if missing:
-    raise SystemExit(f'{len(missing)} session(s) of the follow-up 6 to 12 lists have no folder under results/af3/, nothing '
+    raise SystemExit(f'{len(missing)} session(s) of the follow-up lists have no folder under results/af3/, nothing '
                      'was frozen: ' + ', '.join(missing))
+
+
+def label_of_1316(name):
+  """The --followups1316 label whose word the session folder name carries, or None."""
+  for label, tag in NAME_TAG_1316.items():
+    if re.search(rf'^\d{{8}}T\d{{6}}Z_[a-z0-9]+_{tag}_', name):
+      return label
+  return None
+
+
+def not_frozen_1316(selection):
+  """[(session, label, reason)] of the local folders of the --followups1316 labels that no list holds, each explained by
+  NOT_FROZEN_1316. Stops, before anything is hashed, on a folder that no list holds and no row explains, or on an
+  explained session that a list holds."""
+  listed = {s for s, _ in selection}
+  both = sorted(s for s in NOT_FROZEN_1316 if s in listed)
+  if both:
+    raise SystemExit('sessions both listed and recorded as not frozen: ' + ', '.join(both))
+  out, odd = [], []
+  for d in sorted(p for p in AF3.iterdir() if p.is_dir()):
+    label = label_of_1316(d.name)
+    if label is None or d.name in listed:
+      continue
+    if d.name in NOT_FROZEN_1316:
+      out.append((d.name, label, NOT_FROZEN_1316[d.name]))
+    else:
+      odd.append(f'{d.name} ({label})')
+  if odd:
+    raise SystemExit(f'{len(odd)} local session folder(s) of the follow-up 13 to 16 labels are in no list and no section '
+                     '10 row explains them (NOT_FROZEN_1316), nothing was frozen: ' + ', '.join(odd))
+  return out
+
+
+def hlo_dumps(selection):
+  """[(session, files, bytes)] of the xla_dump/ folders of each hlo session (follow-up 16's HLO dumps)."""
+  out = []
+  for s, k in selection:
+    if k != 'hlo':
+      continue
+    files = [p for p in (AF3 / s).glob('*/*/xla_dump/**/*') if p.is_file()]
+    out.append((s, len(files), sum(p.stat().st_size for p in files)))
+  return out
 
 
 def nas_freezes():
@@ -242,19 +360,25 @@ def main():
   ap.add_argument('--followups34', action='store_true', help='also freeze the follow-up 3 and 4 sessions')
   ap.add_argument('--feat', action='store_true', help='also freeze the follow-up 3, 4 and 5 sessions')
   ap.add_argument('--followups612', action='store_true', help='also freeze the follow-up 3 to 12 sessions (implies --feat)')
+  ap.add_argument('--followups1316', action='store_true',
+                  help='also freeze the follow-up 13 to 16, memlimit_ah and warm_th sessions (implies --followups612)')
   ap.add_argument('--local_only', action='store_true', help='dry run: no bucket and no gcloud; not a freeze')
   args = ap.parse_args()
   if bool(args.bucket) == args.local_only:
     ap.error('give --bucket, or --local_only without it')
+  args.followups612 = args.followups612 or args.followups1316
   args.feat = args.feat or args.followups612
-  selection = sessions(args.followups34, args.feat, args.followups612)
+  selection = sessions(args.followups34, args.feat, args.followups612, args.followups1316)
   check_local_folders(selection)
+  skipped = not_frozen_1316(selection) if args.followups1316 else []
+  dumps = hlo_dumps(selection) if args.followups1316 else []
   nas = nas_freezes() if args.followups612 else []
+  flag = '--followups1316' if args.followups1316 else '--followups612'
   out = pathlib.Path(args.out)
   if args.local_only:
     if out.resolve().is_relative_to(FREEZE_DIR.resolve()):
       raise SystemExit('--local_only does not write under results/freeze: its output is not a freeze')
-    return local_only(selection, nas, out)
+    return local_only(selection, nas, out, skipped, dumps, flag)
   out.mkdir(parents=True, exist_ok=True)
   started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
   rows_s, rows_m, rows_b, rows_c = [], [], [], []
@@ -288,6 +412,8 @@ def main():
       elif l:
         status = 'local only'
         note = 'expected: written after the final upload' if AFTER_UPLOAD_LOCAL.match(rel) else ''
+        if not note and FINAL_UPLOAD_CUT.get(session) == kind:
+          note = 'expected: the final upload was cut off, every file fetched from the VM (row of 2026-11-13)'
       else:
         status = 'bucket only'
         note = 'expected: FETCH=light leaves it in the bucket' if FETCH_LIGHT.search(rel) else ''
@@ -312,7 +438,9 @@ def main():
   tsv('bucket_objects.tsv', ['session', 'path', 'bytes', 'crc32c'], rows_b)
   tsv('comparison.tsv', ['session', 'path', 'status', 'note'], rows_c)
   ours = {s for s, _, *_ in rows_s}
-  named = (r'_(pilot|main|memlimit|embed|ppi|cpu60|a100|feat|msa|sw|seeds|h100|repl|prec5|large)_?' if args.followups612 else
+  named = (r'_(pilot|main|memlimit|embed|ppi|cpu60|a100|feat|msa|sw|seeds|h100|repl|prec5|large|why|f32|rcx|hlo|warm_th)_?'
+           if args.followups1316 else
+           r'_(pilot|main|memlimit|embed|ppi|cpu60|a100|feat|msa|sw|seeds|h100|repl|prec5|large)_?' if args.followups612 else
            r'_(pilot|main|memlimit|embed|ppi|cpu60|a100|feat)_?' if args.feat else
            r'_(pilot|main|memlimit|embed|ppi|cpu60|a100)_?' if args.followups34 else r'_(pilot|main|memlimit|embed|ppi)_?')
   others = [s for s in bucket_sessions(args.bucket) if s not in ours and re.search(named, s) and s >= '20261010T2']
@@ -324,7 +452,7 @@ def main():
            '| sessions | local files | local bytes | bucket objects | bucket bytes |', '|---|---|---|---|---|']
   for kind in ('pilot2', 'pilot2, excluded', 'main', 'memlimit', 'embed', 'ppi') + (
       ('cpu60', 'a100') if args.followups34 or args.feat else ()) + (('feat',) if args.feat else ()) + (
-      tuple(FOLLOWUP612) if args.followups612 else ()):
+      tuple(FOLLOWUP612) if args.followups612 else ()) + (tuple(FOLLOWUP1316) if args.followups1316 else ()):
     sel = [r for r in rows_s if (r[1].startswith('pilot2, excluded') if kind == 'pilot2, excluded' else r[1] == kind)]
     lines.append(f'| {kind}: {len(sel)} | {sum(r[3] for r in sel)} | {sum(r[4] for r in sel):,} | '
                  f'{sum(r[5] for r in sel)} | {sum(r[6] for r in sel):,} |')
@@ -345,9 +473,12 @@ def main():
     lines += ['', 'Sessions without a local folder: ' + ', '.join(f'{r[0]} ({r[1]})' for r in sel)]
   lines += ['', f'Other session folders in the bucket named like pilot2, main, memory-limit or follow-up sessions, not in the lists above: '
             f'{", ".join(others) if others else "none"}']
+  lines += report_1316(skipped, dumps)
+  if args.followups1316:
+    lines += since_previous(rows_m)
   if nas:
     lines += ['', '## Follow-up 6 NAS deliveries: not in the bucket, not refrozen; each its own freeze', '',
-              '(Flag of this freeze: --followups612. SHA-256 of each files_sha256.tsv computed again for this summary.)', '',
+              f'(Flag of this freeze: {flag}. SHA-256 of each files_sha256.tsv computed again for this summary.)', '',
               '| freeze folder | identifier | files | made |', '|---|---|---|---|']
     lines += [f'| results/freeze/{n} | `{i}` | {f} | {m} |' for n, i, f, m in nas]
   (out / 'summary.md').write_text('\n'.join(lines) + '\n')
@@ -355,7 +486,51 @@ def main():
   return 0
 
 
-def local_only(selection, nas, out):
+def since_previous(rows_m, previous=None):
+  """summary.md lines: the files of the sessions of the freeze --followups1316 extends that were added, changed (bytes or
+  SHA-256) or removed locally since it was made, by session and kind of file. Added files are frozen with the rest."""
+  previous = previous or PREVIOUS_1316
+  old = {}
+  with open(previous) as f:
+    next(f)
+    for line in f:
+      s, rel, size, sha, _ = line.rstrip('\n').split('\t')
+      old[(s, rel)] = (int(size), sha)
+  sessions = {s for s, _ in old}
+  new = {(s, rel): (int(size), sha) for s, rel, size, sha, _ in rows_m if s in sessions}
+  added = sorted(k for k in new if k not in old)
+  changed = sorted(k for k in new if k in old and new[k] != old[k])
+  gone = sorted(k for k in old if k not in new)
+  name = previous.parent.name
+  lines = ['', f'## Sessions of results/freeze/{name}: files added, changed or removed locally since it was made', '',
+           f'added {len(added)} ({sum(new[k][0] for k in added):,} bytes), changed {len(changed)}, removed {len(gone)}'
+           + ('' if not (changed or gone) else ': CHANGED OR REMOVED FROZEN FILES, explain each in the row'), '']
+  groups = {}
+  for what, keys in (('added', added), ('changed', changed), ('removed', gone)):
+    for s, rel in keys:
+      kind = FETCH_LIGHT.search(rel)
+      groups.setdefault((what, s, kind.group(1) if kind else rel.rsplit('/', 1)[-1]), []).append(rel)
+  if groups:
+    lines += ['| change | session | file | files |', '|---|---|---|---|']
+    lines += [f'| {w} | {s} | {k} | {len(v)} |' for (w, s, k), v in sorted(groups.items())]
+  return lines
+
+
+def report_1316(skipped, dumps):
+  """summary.md lines of --followups1316: the local folders not frozen, with their rows, and follow-up 16's HLO dumps."""
+  if not skipped and not dumps:
+    return []
+  lines = ['', f'## Follow-ups 13 to 16: local session folders in no list, not frozen: {len(skipped)}', '',
+           '| session | label | why not frozen (section 10) |', '|---|---|---|']
+  lines += [f'| {s} | {k} | {why} |' for s, k, why in skipped]
+  lines += ['', '## Follow-up 16 (hlo): XLA dumps, frozen like every other file', '',
+            '| session | dump files | dump bytes |', '|---|---|---|']
+  lines += [f'| {s} | {n} | {b:,} |' for s, n, b in dumps]
+  lines.append(f'| all | {sum(d[1] for d in dumps)} | {sum(d[2] for d in dumps):,} |')
+  return lines
+
+
+def local_only(selection, nas, out, skipped=(), dumps=(), flag='--followups612'):
   """The dry run: local files only, no gcloud, no CRC32C, no comparison. Not a freeze."""
   out.mkdir(parents=True, exist_ok=True)
   started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
@@ -371,7 +546,7 @@ def local_only(selection, nas, out):
       if '/' not in rel:
         names.setdefault(kind, {}).setdefault(rel, set()).add(session)
     rows_s.append((session, kind, folder.is_dir(), len(local), size))
-    if kind in FOLLOWUP612:
+    if kind in FOLLOWUP612 or kind in FOLLOWUP1316:
       rows_p += [(session, kind, x) for x in session_problems(folder)]
     print(f'{session:44} {kind[:16]:16} local {len(local):6} files', flush=True)
 
@@ -391,13 +566,18 @@ def local_only(selection, nas, out):
     lines.append(f'| {kind} | {len(sel)} | {sum(r[3] for r in sel)} | {sum(r[4] for r in sel):,} |')
   new = [r for r in rows_s if r[1] in FOLLOWUP612]
   lines.append(f'| follow-ups 6 to 12 | {len(new)} | {sum(r[3] for r in new)} | {sum(r[4] for r in new):,} |')
+  new = [r for r in rows_s if r[1] in FOLLOWUP1316]
+  if new:
+    lines.append(f'| follow-ups 13 to 16 | {len(new)} | {sum(r[3] for r in new)} | {sum(r[4] for r in new):,} |')
   lines.append(f'| all | {len(rows_s)} | {sum(r[3] for r in rows_s)} | {sum(r[4] for r in rows_s):,} |')
-  lines += ['', f'## Follow-ups 6 to 12: what looks incomplete next to the session records: {len(rows_p)} (session_check.tsv)', '']
+  lines += ['', f'## Follow-ups 6 to {16 if flag == "--followups1316" else 12}: what looks incomplete next to the session '
+            f'records: {len(rows_p)} (session_check.tsv)', '']
   for session in dict.fromkeys(r[0] for r in rows_p):
     sel = [r[2] for r in rows_p if r[0] == session]
     lines.append(f'- {session}: {len(sel)}: ' + '; '.join(sel[:3]) + (' ...' if len(sel) > 3 else ''))
-  lines += ['', '## Follow-ups 6 to 12: top-level files not in every session of the label', '']
-  for kind in FOLLOWUP612:
+  lines += ['', f'## Follow-ups 6 to {16 if flag == "--followups1316" else 12}: top-level files not in every session of '
+            'the label', '']
+  for kind in tuple(FOLLOWUP612) + (tuple(FOLLOWUP1316) if flag == '--followups1316' else ()):
     n = sum(1 for r in rows_s if r[1] == kind)
     odd = {f: v for f, v in names.get(kind, {}).items() if len(v) != n}
     if odd:
@@ -405,6 +585,9 @@ def local_only(selection, nas, out):
   if nas:
     lines += ['', '## Follow-up 6 NAS deliveries (identifiers computed again)', '']
     lines += [f'- results/freeze/{n}: `{i}`, {f}, made {m}' for n, i, f, m in nas]
+  lines += report_1316(skipped, dumps)
+  if flag == '--followups1316':
+    lines += since_previous(rows_m)
   (out / 'summary.md').write_text('\n'.join(lines) + '\n')
   print('\n'.join(lines))
   return 0

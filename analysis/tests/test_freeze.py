@@ -1,6 +1,6 @@
 """The data freeze (scripts/freeze/make_freeze_manifest.py, freeze_index.py): the session selection of each flag, against the
-local records of the three earlier freezes; the follow-up 6 to 12 extension; the comparison and the index on synthetic
-folders. No bucket and no gcloud: every gcloud helper is replaced, and subprocess is refused."""
+local records of the four earlier freezes; the follow-up 6 to 12 and 13 to 16 extensions; the comparison and the index on
+synthetic folders. No bucket and no gcloud: every gcloud helper is replaced, and subprocess is refused."""
 import csv
 import hashlib
 import importlib.util
@@ -24,10 +24,11 @@ def load(name):
 mf = load('make_freeze_manifest')
 fi = load('freeze_index')
 EARLIER = [('sessions.tsv', {}), ('followups34_20261018/sessions.tsv', {'followups34': True}),
-           ('feat_20261018/sessions.tsv', {'feat': True})]
-HAVE_RECORDS = (FREEZE / 'feat_20261018' / 'sessions.tsv').is_file() and (mf.AF3 / '.many').is_dir()
+           ('feat_20261018/sessions.tsv', {'feat': True}), ('followups612_20261108/sessions.tsv', {'followups612': True})]
+HAVE_RECORDS = (FREEZE / 'followups612_20261108' / 'sessions.tsv').is_file() and (mf.AF3 / '.many').is_dir()
 needs_records = pytest.mark.skipif(not HAVE_RECORDS, reason='results/freeze or results/af3/.many is absent')
 LABELS = {'msa': 20, 'sw': 9, 'seeds': 27, 'h100': 6, 'repl': 18, 'prec5': 6, 'large': 49}
+LABELS_1316 = {'fu13': 79, 'fu14': 44, 'rcx': 15, 'hlo': 2, 'memlimit_ah': 2, 'warm_th': 2}
 
 
 def recorded(rel):
@@ -47,10 +48,44 @@ def expected_identifier(rel, want):
 
 
 @needs_records
-def test_the_three_earlier_freezes_are_untouched():
+def test_the_four_earlier_freezes_are_untouched():
   expected_identifier('manifest_sha256.tsv', '14e1fc4c12b6573de9389d9aba079d5fb5f30b290c9303f75c5de4f478b9d8f9')
   expected_identifier('followups34_20261018/manifest_sha256.tsv', 'fc297328ae079155da0f9e2ac0781b5d207f75e1fafd8d5ccfd7f5f7a8edd9c8')
   expected_identifier('feat_20261018/manifest_sha256.tsv', 'a4fb532a2e3ba7a9e691fb35e43feeadd004497af0f6749ff0327039bc5d31bf')
+  expected_identifier('followups612_20261108/manifest_sha256.tsv', '689230120499e5ba9d903051553c6554f3412f462456461757398f8fd3560a1a')
+
+
+@needs_records
+@pytest.mark.parametrize('rel,kw', EARLIER)
+def test_earlier_session_lists_are_byte_identical_to_their_sessions_tsv(rel, kw):
+  # The first two columns of each earlier freeze's sessions.tsv, byte for byte, as the selection writes them.
+  want = ''.join('\t'.join(l.split('\t')[:2]) + '\n' for l in (FREEZE / rel).read_text().splitlines()[1:])
+  assert ''.join(f'{s}\t{k}\n' for s, k in mf.sessions(**kw)) == want
+
+
+@needs_records
+def test_new_flag_1316_adds_exactly_the_144_sessions_after_the_612_list():
+  old, new = mf.sessions(followups612=True), mf.sessions(followups1316=True)
+  assert new[:len(old)] == old                                # implies --followups612, in the same order
+  added = new[len(old):]
+  assert len(added) == 144 == sum(LABELS_1316.values()) and mf.FOLLOWUP1316 == LABELS_1316
+  for label, n in LABELS_1316.items():
+    assert [s for s, k in added if k == label] == mf.session_list(label) and len(mf.session_list(label)) == n
+    assert all(mf.label_of_1316(s) == label for s, k in added if k == label)   # the name carries the label's word
+  names = [s for s, _ in new]
+  assert len(set(names)) == len(names)                        # no duplicates, no overlap with earlier labels
+  assert not {k for _, k in old} & set(LABELS_1316)
+  assert not any('_smoke' in s for s, _ in added)
+  assert mf.check_local_folders(new) is None                  # every listed session has a local folder
+
+
+@needs_records
+def test_every_unlisted_local_folder_of_the_new_labels_is_explained():
+  skipped = mf.not_frozen_1316(mf.sessions(followups1316=True))
+  assert {s for s, _, _ in skipped} == set(mf.NOT_FROZEN_1316) and len(skipped) == 20
+  assert {k for _, k, _ in skipped} == {'fu13', 'fu14', 'rcx'}
+  assert all(mf.label_of_1316(s) == k for s, k, _ in skipped)
+  assert mf.label_of_1316('20261014T123400Z_v5e_memlimit_01') is None          # the earlier memlimit label is not memlimit_ah
 
 
 @needs_records
@@ -69,15 +104,23 @@ def test_new_flag_adds_exactly_the_135_sessions_after_the_feat_list():
     assert '_smoke' not in s
 
 
-def world(tmp_path, monkeypatch, lists):
-  """A results tree with sessions.txt lists and no earlier freeze's records (the base list is empty)."""
+def world(tmp_path, monkeypatch, lists, lists1316=None, tags=None):
+  """A results tree with sessions.txt lists and no earlier freeze's records (the base list is empty); lists1316 are the
+  --followups1316 labels, tags the words their session names carry."""
+  lists1316 = lists1316 or {}
   runs = tmp_path / 'scripts' / 'analysis_runs'
-  for label, names in lists.items():
+  for label, names in {**lists, **lists1316}.items():
     (runs / label).mkdir(parents=True)
     (runs / label / 'sessions.txt').write_text('# header\n\n' + ''.join(f'{n}  # note\n' for n in names))
   monkeypatch.setattr(mf, 'ANALYSIS_RUNS', runs)
   monkeypatch.setattr(mf, 'AF3', tmp_path / 'results' / 'af3')
   monkeypatch.setattr(mf, 'FOLLOWUP612', {k: len(v) for k, v in lists.items()})
+  monkeypatch.setattr(mf, 'FOLLOWUP1316', {k: len(v) for k, v in lists1316.items()})
+  monkeypatch.setattr(mf, 'NAME_TAG_1316', tags or {k: k for k in lists1316})
+  monkeypatch.setattr(mf, 'NOT_FROZEN_1316', {})
+  monkeypatch.setattr(mf, 'FINAL_UPLOAD_CUT', {})
+  (tmp_path / 'previous.tsv').write_text('session\tpath\tbytes\tsha256\tcrc32c\n')
+  monkeypatch.setattr(mf, 'PREVIOUS_1316', tmp_path / 'previous.tsv')
   (tmp_path / 'results' / 'af3').mkdir(parents=True)
   pil = tmp_path / 'p'
   pil.mkdir()
@@ -91,7 +134,7 @@ def world(tmp_path, monkeypatch, lists):
   monkeypatch.setattr(mf, 'FOLLOWUP_WRAPPER', pil / 'summary.txt')
   monkeypatch.setattr(mf, 'FOLLOWUP34_WRAPPERS', [])
   monkeypatch.setattr(mf, 'FEAT_WRAPPERS', [])
-  monkeypatch.setattr(mf, 'PREFIX_CHECKED', tuple(lists))
+  monkeypatch.setattr(mf, 'PREFIX_CHECKED', tuple(lists) + tuple(lists1316))
   monkeypatch.setattr(subprocess, 'run', lambda *a, **k: (_ for _ in ()).throw(AssertionError(f'no subprocess: {a}')))
   return tmp_path
 
@@ -256,3 +299,152 @@ def test_index_of_the_local_freezes():
   assert ids['14e1fc4c']['flag'] == '(none)' and ids['fc297328']['flag'] == '--followups34' and ids['a4fb532a']['flag'] == '--feat'
   assert ids['fc297328']['holds_previous'] == 'yes' and ids['a4fb532a']['holds_previous'] == 'yes'
   assert {n['identifier'][:8] for n in nas} >= {'3c21b4af', '781f4ee3', 'ed7f634e'}
+
+
+S13 = '20261110T000000Z_l4_why_gf_01'
+S13B = '20261110T000001Z_l4_why_gf_02'
+S16 = '20261116T000000Z_v6e_hlo_v6_01'
+
+
+def world1316(tmp_path, monkeypatch):
+  return world(tmp_path, monkeypatch, {'msa': ['M1']}, {'fu13': [S13], 'hlo': [S16]}, {'fu13': 'why', 'hlo': 'hlo'})
+
+
+def test_1316_selection_and_missing_folder(tmp_path, monkeypatch):
+  w = world1316(tmp_path, monkeypatch)
+  sel = mf.sessions(followups1316=True)
+  assert sel == [('M1', 'msa'), (S13, 'fu13'), (S16, 'hlo')]           # implies --followups612, then the new labels
+  assert mf.sessions(followups612=True) == [('M1', 'msa')]              # without the flag, nothing new
+  for s in ('M1', S13):
+    (w / 'results' / 'af3' / s).mkdir()
+  with pytest.raises(SystemExit, match=rf'1 session\(s\).*{S16} \(hlo\)'):
+    mf.check_local_folders(sel)
+
+
+def test_1316_duplicates_with_earlier_labels_and_other_lengths(tmp_path, monkeypatch):
+  world(tmp_path, monkeypatch, {'msa': ['M1']}, {'fu13': ['M1']})
+  with pytest.raises(SystemExit, match='fu13: sessions already in the freeze'):
+    mf.sessions(followups1316=True)
+  monkeypatch.setattr(mf, 'FOLLOWUP1316', {'fu13': 2})
+  with pytest.raises(SystemExit, match='lists 1 sessions, not 2'):
+    mf.sessions(followups1316=True)
+
+
+def test_unlisted_local_folders_need_a_row(tmp_path, monkeypatch):
+  w = world1316(tmp_path, monkeypatch)
+  sel = mf.sessions(followups1316=True)
+  for s in ('M1', S13, S16, S13B, '20261014T000000Z_v5e_main_01'):
+    (w / 'results' / 'af3' / s).mkdir()
+  with pytest.raises(SystemExit, match=rf'1 local session folder.*{S13B} \(fu13\)'):
+    mf.not_frozen_1316(sel)
+  monkeypatch.setattr(mf, 'NOT_FROZEN_1316', {S13B: 'preempted; row of 2026-11-10'})
+  assert mf.not_frozen_1316(sel) == [(S13B, 'fu13', 'preempted; row of 2026-11-10')]
+  monkeypatch.setattr(mf, 'NOT_FROZEN_1316', {S13: 'contradiction'})
+  with pytest.raises(SystemExit, match='both listed and recorded as not frozen'):
+    mf.not_frozen_1316(sel)
+
+
+def test_1316_real_mode_labels_the_cut_upload_and_counts_the_dumps(tmp_path, monkeypatch):
+  w = world1316(tmp_path, monkeypatch)
+  nas_world(tmp_path, monkeypatch)
+  for s in ('M1', S13, S16):
+    session_folder(w, s)
+  dump = w / 'results' / 'af3' / S16 / 'run1' / 'T1' / 'xla_dump'
+  dump.mkdir()
+  (dump / 'module_0001.jit_apply_fn.after_optimizations.txt').write_text('HloModule x\n')
+  (dump / 'module_0001.jit_apply_fn.before_optimizations.txt').write_text('HloModule\n')
+  (w / 'results' / 'af3' / S13B).mkdir()
+  monkeypatch.setattr(mf, 'NOT_FROZEN_1316', {S13B: 'preempted; row of 2026-11-10'})
+  monkeypatch.setattr(mf, 'FINAL_UPLOAD_CUT', {S13: 'fu13'})
+  def local_crc(folder):
+    return {str(p.relative_to(folder)): 'crc' for p in folder.rglob('*') if p.is_file()}
+  monkeypatch.setattr(mf, 'local_crc32c', local_crc)
+  def remote(b, sess):
+    folder = w / 'results' / 'af3' / sess
+    got = {r: (( folder / r).stat().st_size, c) for r, c in local_crc(folder).items()}
+    if sess == S13:
+      got.pop('setup.json', None)
+      got.pop('run1/runs.jsonl')                             # local only, explained by the cut final upload
+    return got
+  monkeypatch.setattr(mf, 'bucket_objects', remote)
+  monkeypatch.setattr(mf, 'bucket_sessions', lambda b: ['M1', S13, S13B, S16, '20261112T000000Z_a100_f32_af_01'])
+  out = tmp_path / 'out'
+  monkeypatch.setattr(sys, 'argv', ['m', '--bucket', 'gs://b', '--followups1316', '--out', str(out)])
+  assert mf.main() == 0
+  rows = {(r['session'], r['path']): r for r in csv.DictReader(open(out / 'comparison.tsv'), delimiter='\t')}
+  assert rows[(S13, 'run1/runs.jsonl')]['note'].startswith('expected: the final upload was cut off')
+  assert rows[(S16, 'run1/runs.jsonl')]['status'] == 'same'
+  text = (out / 'summary.md').read_text()
+  assert 'not labelled expected above: 0' in text and '| fu13: 1 |' in text and '| hlo: 1 |' in text
+  assert f'| {S13B} | fu13 | preempted; row of 2026-11-10 |' in text
+  assert f'| {S16} | 2 | 22 |' in text and 'Flag of this freeze: --followups1316' in text
+  assert S13B in text.split('not in the lists above:')[1] and '_f32_af_01' in text   # listed, not compared
+  manifest = (out / 'manifest_sha256.tsv').read_text()
+  assert 'run1/T1/xla_dump/module_0001.jit_apply_fn.after_optimizations.txt' in manifest   # dumps frozen like any file
+  assert S13B not in manifest
+
+
+def test_1316_local_only(tmp_path, monkeypatch):
+  w = world1316(tmp_path, monkeypatch)
+  nas_world(tmp_path, monkeypatch)
+  for s in ('M1', S13):
+    session_folder(w, s)
+  session_folder(w, S16, plan_ok=False)
+  out = tmp_path / 'dry'
+  monkeypatch.setattr(sys, 'argv', ['m', '--local_only', '--followups1316', '--out', str(out)])
+  assert mf.main() == 0
+  text = (out / 'summary.md').read_text()
+  assert '| follow-ups 13 to 16 | 2 |' in text and 'Follow-ups 6 to 16: what looks incomplete' in text
+  assert {r['session'] for r in csv.DictReader(open(out / 'session_check.tsv'), delimiter='\t')} == {S16}
+  assert f'| {S16} | 0 | 0 |' in text
+
+
+def test_index_prefers_the_1316_freeze(tmp_path):
+  root = tmp_path / 'freeze'
+  h = 'session\tpath\n'
+  session_freeze(root, '2026-10-15T09:00:00+00:00', ['main'], h + 'a\n')
+  old = session_freeze(root / 'followups612_20261108', '2026-11-08T16:00:00+00:00', ['main'] + list(LABELS), h + 'a\nb\n')
+  some = session_freeze(root / 'partial', '2026-11-09T16:00:00+00:00', ['main', 'fu13'], h + 'a\nb\nc\n')
+  text, sessions, _, final = fi.build(root)
+  assert final['identifier'] == old and sessions[-1]['flag'].startswith('unknown')
+  (root / 'partial' / 'sessions.tsv').unlink()
+  (root / 'partial' / 'manifest_sha256.tsv').unlink()
+  new = session_freeze(root / 'followups1316_20261118', '2026-11-18T10:00:00+00:00',
+                       ['main'] + list(LABELS) + list(LABELS_1316), h + 'a\nb\nc\n')
+  text, sessions, _, final = fi.build(root)
+  assert final['identifier'] == new and f'**Final freeze for the paper:** `{new}`' in text
+  assert [s['flag'] for s in sessions] == ['(none)', '--followups612', '--followups1316']
+  assert [s['holds_previous'] for s in sessions] == ['-', 'yes', 'yes']
+  assert 'followups1316_20261118 (final)' in text
+
+
+@needs_records
+def test_index_of_the_local_freezes_is_unchanged_until_the_new_freeze():
+  text, sessions, _, final = fi.build(FREEZE)
+  if not any(s['flag'] == '--followups1316' for s in sessions):
+    assert final['identifier'].startswith('68923012') and text == (FREEZE / 'INDEX.md').read_text()
+
+
+def test_files_added_changed_or_removed_since_the_previous_freeze(tmp_path):
+  prev = tmp_path / 'followups612_x' / 'manifest_sha256.tsv'
+  prev.parent.mkdir()
+  prev.write_text('session\tpath\tbytes\tsha256\tcrc32c\nA\ta.cif\t1\taa\t\nA\tb.cif\t2\tbb\t\nB\tc.cif\t3\tcc\t\n')
+  same = [('A', 'a.cif', 1, 'aa', ''), ('A', 'b.cif', 2, 'bb', ''), ('B', 'c.cif', 3, 'cc', ''), ('N', 'new.cif', 9, 'nn', '')]
+  text = '\n'.join(mf.since_previous(same, prev))
+  assert 'added 0 (0 bytes), changed 0, removed 0' in text and 'CHANGED' not in text      # a new session is not "added"
+  rows = same[:2] + [('A', 'r/T_data.json', 5, 'dd', ''), ('A', 'r/T_seed-1_sample-0_confidences.json', 7, 'ee', '')]
+  text = '\n'.join(mf.since_previous(rows, prev))
+  assert 'added 2 (12 bytes), changed 0, removed 1: CHANGED OR REMOVED' in text
+  assert '| added | A | _data.json | 1 |' in text and '| added | A | _confidences.json | 1 |' in text
+  assert '| removed | B | c.cif | 1 |' in text
+  rows = [('A', 'a.cif', 1, 'zz', '')] + same[1:]
+  assert 'changed 1' in '\n'.join(mf.since_previous(rows, prev))
+
+
+def test_index_accepts_files_added_later_to_earlier_sessions():
+  h = b'session\tpath\n'
+  old = h + b'A\ta\nB\tb\n'
+  assert fi.holds(old, old + b'C\tc\n') == 'yes'
+  assert fi.holds(old, h + b'A\ta\nA\ta2\nB\tb\nC\tc\n') == 'yes, plus 1 files added later to its sessions'
+  assert fi.holds(old, h + b'A\ta\nB\tb changed\nC\tc\n') == 'NO'
+  assert fi.holds(old, h + b'B\tb\nA\ta\n') == 'NO'                                  # order kept
