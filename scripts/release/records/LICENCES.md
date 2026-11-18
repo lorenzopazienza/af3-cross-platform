@@ -1,7 +1,8 @@
 # Licences of the third-party data in records R1 and R2
 
 Prepared on 2026-11-08 from the pages cited below; extended on 2026-11-17 to freeze `4ec185c5` (follow-ups 13 to 16,
-`memlimit_ah`, `warm_th`), with the open point on the XLA dumps of follow-up 16 (last section). This table says what each source states; it is not legal advice. "Unclear"
+`memlimit_ah`, `warm_th`), with the open point on the XLA dumps of follow-up 16 (last section), and on 2026-11-18 to the
+copy of the code in R1. This table says what each source states; it is not legal advice. "Unclear"
 means the source does not settle the point, and no guess is made.
 
 "Derived alignments" asks whether alignments computed against the source may be redistributed. No source below speaks of
@@ -34,6 +35,7 @@ sharing and adaptation with attribution.
 |---|---|---|
 | R1 | `inputs_targets_manifests.tar.gz`, `inputs_repl_large.tar.gz` | CC BY 4.0, with attribution of the ColabFold databases, UniProt, PoseBusters and Runs N' Poses; PDB data CC0 1.0 |
 | R1 | `msa_provenance.tar.gz`, `freeze.tar.gz`, `session_lists_launch_records.tar.gz`, `session_records.tar.gz`, `session_records_followups.tar.gz`, `session_records_followups1316.tar.gz`, `attempt_superseded_records.tar.gz`, `outside_freeze_records.tar.gz`, `outside_freeze_records_followups1316.tar.gz`, the `release_*` files | CC BY 4.0 (our own records) |
+| R1 | `code_alphafold-on-tpu_zenodo-v1.tar.gz` (the copy of the code, without `paper/assets/`) | MIT, as in the repository (`LICENSE` in the archive); the files `NOTICE` lists, copied from github.com/lorenzopazienza/alphafold-tpu-benchmark, under that repository's MIT licence (Lorenzo Pazienza and Ihab El Bani, `LICENSES/MIT-alphafold-tpu-benchmark` in the archive); the lines of AlphaFold 3's `run_alphafold.py` that `af3_tpu/af3_tpu.patch` carries, under the Apache License 2.0 (`LICENSES/Apache-2.0` in the archive). It holds no AlphaFold 3 output file and no model parameters |
 | R2 | `inputs_official_pipeline.tar.gz`, `nas_naspaz8-af3_run1.tar.gz`, `nas_naspaz6-af3_run1.tar.gz`, `nas_naspaz8-af3_run2.tar.gz` | AlphaFold 3 Output Terms of Use, no Creative Commons. The databases behind the alignments are attributed in R2's README: UniRef90, UniProt and small BFD (modified by Google DeepMind), CC BY 4.0 at their sources; MGnify and the PDB, CC0 1.0 |
 | R2 | `hlo_xla_dumps.tar.gz` (proposal, pending Lorenzo's decision: last section) | AlphaFold 3 Output Terms of Use, no Creative Commons; the archive also carries the Apache License 2.0 of AlphaFold 3's code it is compiled from |
 | R2 | every other archive, including `af3_feat_features.tar.gz` and `analysis_outputs.tar.gz` (with the paper's `paper/assets/`) | AlphaFold 3 Output Terms of Use, no Creative Commons |

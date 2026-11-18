@@ -62,8 +62,8 @@ results/cloud/<session>/
   <label>/repNN/        result_*.json written by the spike script + stdout_stderr.log
 ```
 
-New numbers enter `catalogue.md` as **new rows** citing
-`results/cloud/<session>/...`. The summer 2026 numbers stay in the archived
+A number taken from a session cites `results/cloud/<session>/...`; the paper's
+numbers and their sources are listed in `paper/NUMBERS.md`. The summer 2026 numbers stay in the archived
 repository and are not overwritten: a
 different JAX build, AF2 commit or host can shift absolute times (see the
 Colab August→September level shift).

@@ -2,7 +2,8 @@
 
 Author: Lorenzo Pazienza, ORCID 0009-0006-1687-0125. Contact: lorenzo.pazienza@gmail.com.
 Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available). Companion record with the AlphaFold3 outputs, the results of its data pipeline and the
-follow-up 6 deliveries: 10.5281/zenodo.24057544. This record: 10.5281/zenodo.24057470. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, the repository commit tagged zenodo-4ec185c5.
+follow-up 6 deliveries: 10.5281/zenodo.24057544. This record: 10.5281/zenodo.24057470. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, the repository commit tagged zenodo-v1.
+A copy of that commit is in this record (`code_alphafold-on-tpu_zenodo-v1.tar.gz`).
 
 Pre-registration (OSF, public since 2026-11-17): project https://osf.io/qtz3v; the main study's registration
 https://osf.io/fegsy; the addenda of follow-up 10 (https://osf.io/nsbgp), 11 (https://osf.io/64bpy), 13
@@ -27,6 +28,7 @@ on the A100 and H100 (`memlimit_ah`) and of the warm cost on the L4 Triton arm a
 | `attempt_superseded_records.tar.gz` | from the results bucket: the launcher records of launch attempts that never ran (no VM run; for example no TPU capacity), and the run records of the superseded or engineering sessions whose outputs are in R2 (`af3_superseded_engineering.tar.gz`, not used in any reported result) |
 | `outside_freeze_records.tar.gz` | from the results bucket: the launcher and session records of the sessions of follow-ups 3 to 12 outside the freeze (smoke tests, Spot preemptions, interruptions, relaunched-over sessions, `eigen_check`, and attempts of follow-ups 6 to 12 that created no VM). Their AlphaFold3 outputs are not released and enter no analysis. `OUTSIDE_SESSIONS.csv` maps each session to the row of section 10 of the analysis plan that explains it |
 | `outside_freeze_records_followups1316.tar.gz` | the same for follow-ups 13 to 16 (247 sessions: Spot preemptions, setup failures, a first LG session whose processes all failed, and attempts that created no VM), each mapped by `OUTSIDE_SESSIONS.csv` to its row |
+| `code_alphafold-on-tpu_zenodo-v1.tar.gz` | a copy of the code: the files of the repository commit tagged `zenodo-v1`, under `alphafold-on-tpu-zenodo-v1/`, read with `git archive` and packaged byte for byte, never redacted (the harness, the analyses, the pre-registered plan `notes/analysis_plan.md`, the freeze and release scripts, the generators of the paper's tables and figures; the text of the paper is on arXiv). `paper/assets/` is left out: its tables and figures are computed from AlphaFold 3 outputs, so they are in record R2 (`analysis_outputs.tar.gz`, from the same commit). `CODE_COMMIT.txt` gives the full commit hash. MIT licence (`LICENSE` inside); the files `NOTICE` lists come from github.com/lorenzopazienza/alphafold-tpu-benchmark under its MIT licence (`LICENSES/MIT-alphafold-tpu-benchmark` inside), and the AlphaFold 3 lines of `af3_tpu/af3_tpu.patch` stay under the Apache License 2.0 (`LICENSES/Apache-2.0` inside) |
 | `REDACTIONS.tsv` (plain file) | every file packaged with a redaction: for each, the archive, the path, the SHA-256 of the original and of the released copy, and what was replaced, never the value. Every other file is packaged byte for byte as recorded |
 | `LICENCES.md` (plain file) | every third-party source, its licence, the official page, and the licence line of each archive |
 | `release_*` (plain files; a Zenodo record has no folders) | `release_release.py` (inventory, privacy scan, layout, input check, archive building and verification), `release_RUNBOOK.md` (how the archives were built), the bucket inventory, the layout, the lists of excluded sessions and files, `release_SUPERSEDED_SESSIONS.csv` and `release_OUTSIDE_SESSIONS.csv` (each session with its row of section 10), `release_inputs_check.csv` and `release_inputs_check.json` (the check of every `_data.json` against its frozen input, sessions of freeze `68923012`), and `release_inputs_check_followups1316.csv` and `.json` (the same check for the 144 sessions added by freeze `4ec185c5`) |
@@ -98,6 +100,11 @@ tar xzf freeze.tar.gz
 shasum -a 256 results/freeze/followups1316_20261117/manifest_sha256.tsv    # must print the data freeze identifier above
 tar xzf inputs_targets_manifests.tar.gz
 shasum -a 256 -c inputs_targets_manifests.tar.gz.sha256
+tar xzf code_alphafold-on-tpu_zenodo-v1.tar.gz
+head -1 CODE_COMMIT.txt                              # the full hash of the commit tagged zenodo-v1
 ```
+
+In a clone of the repository, `git archive --prefix=alphafold-on-tpu-zenodo-v1/` of that commit gives the same files, plus
+`paper/assets/`.
 
 Each input's SHA-256 is also in its manifest (`input_sha256`), and every run re-checked it before running.

@@ -112,7 +112,7 @@ def _session(root, name='S_l4_main_g_01', weights=None, data=None):
 def _args(root, out, **kw):
   return types.SimpleNamespace(root=str(root), repo=str(root.parent / 'repo'), out=str(out), archives=kw.get('archives'),
                                sessions=kw.get('sessions'), allow_incomplete_inputs_check=False,
-                               paper_ref=kw.get('paper_ref', 'none'))
+                               paper_ref=kw.get('paper_ref', 'none'), code_ref=kw.get('code_ref', 'none'))
 
 
 def _passed_check(root, out):
@@ -846,7 +846,7 @@ def test_vm_steps_script_is_valid_and_copies_outputs_only_for_released_sessions(
 
 
 DOI = {'R1': '10.5281/zenodo.24057470', 'R2': '10.5281/zenodo.24057544'}
-TAG = 'zenodo-4ec185c5'   # the repository tag of this release (the first build's was zenodo-v1)
+TAG = 'zenodo-v1'   # the repository tag of this release, moved from the first build's commit (366159b) to the release commit
 # The OSF registrations, public since 2026-11-17: the project, the main study and the addenda of follow-ups 10, 11, 13 to 16.
 OSF = ['https://osf.io/qtz3v', 'https://osf.io/fegsy', 'https://osf.io/nsbgp', 'https://osf.io/64bpy', 'https://osf.io/c4kh7',
        'https://osf.io/eafkx', 'https://osf.io/h9yw8', 'https://osf.io/hcxm7']
@@ -862,8 +862,9 @@ ZENODO_RELATIONS = {'isCitedBy', 'cites', 'isSupplementTo', 'isSupplementedBy', 
 def test_runbook_tags_the_build_and_fills_in_no_paper_field():
   text = (release.HERE / 'RUNBOOK.md').read_text()
   flat = ' '.join(text.split())
-  assert f'git tag -a {TAG} -m "Zenodo release build"' in text and f'git push origin {TAG}' in text
-  assert 'build from that tag' in flat
+  assert f'git tag -f -a {TAG} -m "Zenodo release, freeze 4ec185c5, arXiv version"' in text and f'git push origin {TAG}' in text
+  assert 'build from that tag' in flat and f'--code_ref {TAG} --paper_ref {TAG}' in text
+  assert 'zenodo-4ec185c5' not in text and 'paper-arxiv-v1' not in text
   assert 'TITLE=' not in text and '<paper' not in text and '<arXiv' not in text and 'angle bracket' not in text and 'placeholder' not in text
   assert 'added later as related works ("is supplement to")' in flat and 'no new version needed' in flat
 
@@ -962,8 +963,8 @@ def test_redaction_note_names_the_class_and_never_the_user(tmp_path):
 
 # ---------------------------------------------------------------- labels after the first build (freeze 4ec185c5, 2026-11-17)
 
-# The archives of the first build (tag zenodo-v1), as uploaded to the drafts on 2026-11-09: name, record, kinds or
-# 'repo', categories or patterns.
+# The archives of the first build (commit 366159b, then tagged zenodo-v1), as uploaded to the drafts on 2026-11-09: name,
+# record, kinds or 'repo', categories or patterns.
 FIRST_BUILD = {spec[1]: spec for spec in release.ARCHIVES[:len(release.FIRST_BUILD_ARCHIVES)]}
 
 
@@ -1246,6 +1247,150 @@ def test_paper_assets_come_from_a_git_ref(tmp_path, monkeypatch):
   assert commit.startswith('paper/assets/ from git ref paper-test, commit ') and len(commit.split()[-1]) == 40
 
 
+# ---------------------------------------------------------------- the copy of the code in R1 (decision D5 of 2026-11-18)
+
+def _code_repo(tmp_path):
+  """A git repository: a commit tagged CODE_TAG, then an uncommitted change and an untracked file."""
+  repo = tmp_path / 'repo'
+  _file(repo, 'README.md', b'# code\n')
+  for name in release.CODE_REQUIRED:
+    _file(repo, name, f'licence file {name}\n'.encode())
+  _file(repo / 'scripts', 'run.sh', b'#!/bin/bash\necho run\n').chmod(0o755)
+  _file(repo / 'paper' / 'assets' / 'tables', 'T1.tex', b'computed from outputs\n')
+  _file(repo / 'paper', 'main.tex', b'\\documentclass{article}\n')
+  _git(repo, 'init', '-q')
+  _git(repo, 'add', '-A')
+  _git(repo, '-c', 'user.name=t', '-c', 'user.email=t@example.org', 'commit', '-q', '-m', 'release')
+  _git(repo, 'tag', '-a', release.CODE_TAG, '-m', 'release')
+  _file(repo, 'README.md', b'# changed after the tag\n')
+  _file(repo, 'untracked.txt', b'never committed\n')
+  return repo
+
+
+def _code_build(tmp_path, monkeypatch, repo, ref):
+  monkeypatch.setattr(release, 'freeze_sessions', lambda: {})
+  monkeypatch.setattr(release, 'unexplained_files', lambda: {})
+  (tmp_path / 'af3').mkdir(exist_ok=True)
+  args = _args(tmp_path / 'af3', tmp_path / 'out', archives=release.CODE_ARCHIVE, code_ref=ref)
+  args.repo = str(repo)
+  return release.build(args)
+
+
+def test_code_archive_spec():
+  assert ('R1', release.CODE_ARCHIVE, 'git', [release.CODE_TAG]) in release.ARCHIVES
+  assert release.CODE_ARCHIVE == 'code_alphafold-on-tpu_zenodo-v1.tar.gz' and release.CODE_PREFIX == 'alphafold-on-tpu-zenodo-v1/'
+  assert release.BUILT_ON[release.CODE_ARCHIVE] == 'laptop' and release.CODE_ARCHIVE not in release.FIRST_BUILD_ARCHIVES
+  assert release.CODE_EXCLUDES == ('paper/assets',)
+
+
+def test_code_archive_is_the_tagged_commit(tmp_path, monkeypatch):
+  import tarfile
+  repo = _code_repo(tmp_path)
+  assert _code_build(tmp_path, monkeypatch, repo, release.CODE_TAG) == 0
+  archive = tmp_path / 'out' / 'R1' / release.CODE_ARCHIVE
+  commit = release.git_commit(repo, release.CODE_TAG)
+  with tarfile.open(archive) as t:
+    members = {m.name: m for m in t}
+    assert t.extractfile('alphafold-on-tpu-zenodo-v1/README.md').read() == b'# code\n'     # committed, not the change
+    text = t.extractfile('CODE_COMMIT.txt').read().decode()
+  assert sorted(members) == sorted(['CODE_COMMIT.txt', 'alphafold-on-tpu-zenodo-v1/README.md',
+                                    'alphafold-on-tpu-zenodo-v1/paper/main.tex', 'alphafold-on-tpu-zenodo-v1/scripts/run.sh']
+                                   + [release.CODE_PREFIX + n for n in release.CODE_REQUIRED])
+  assert members['alphafold-on-tpu-zenodo-v1/scripts/run.sh'].mode == 0o755
+  assert members['alphafold-on-tpu-zenodo-v1/README.md'].mode == 0o644
+  assert {m.mtime for m in members.values()} == {release.MTIME}
+  assert text.split('\n')[0] == commit and len(commit) == 40 and 'without paper/assets' in text
+  man = (tmp_path / 'out' / 'R1' / f'{release.CODE_ARCHIVE}.sha256').read_text()
+  assert f'{hashlib.sha256(b"# code" + bytes([10])).hexdigest()}  alphafold-on-tpu-zenodo-v1/README.md' in man
+  assert release.CODE_ARCHIVE in (tmp_path / 'out' / 'R1' / 'SHA256SUMS').read_text()
+  assert not (tmp_path / 'out' / 'R1' / 'REDACTIONS.tsv').exists()
+  first = archive.read_bytes()
+  args = types.SimpleNamespace(out=str(tmp_path / 'out'), previous=None, repo=str(repo))
+  assert release.verify(args) == 0
+  monkeypatch.setattr(release, 'CODE_EXCLUDES', ())          # the commit now has a file the archive lacks
+  assert release.verify(args) == 1
+  monkeypatch.setattr(release, 'CODE_EXCLUDES', ('paper/assets',))
+  assert release.verify(types.SimpleNamespace(out=str(tmp_path / 'out'), previous=None, repo=str(tmp_path / 'af3'))) == 0
+  (tmp_path / 'out' / 'R1' / release.CODE_ARCHIVE).unlink()
+  assert _code_build(tmp_path, monkeypatch, repo, 'HEAD') == 0                            # same commit, another ref
+  assert archive.read_bytes() == first                                                    # deterministic
+
+
+def test_code_archive_needs_the_ref_of_the_tagged_commit(tmp_path, monkeypatch):
+  repo = _code_repo(tmp_path)
+  assert _code_build(tmp_path, monkeypatch, repo, None) == 2                              # the ref must be given
+  assert _code_build(tmp_path, monkeypatch, repo, 'no-such-ref') == 2
+  _git(repo, 'add', '-A')
+  _git(repo, '-c', 'user.name=t', '-c', 'user.email=t@example.org', 'commit', '-q', '-m', 'after the tag')
+  assert _code_build(tmp_path, monkeypatch, repo, 'HEAD') == 2                            # not the tagged commit
+  assert not (tmp_path / 'out' / 'R1').exists() or not list((tmp_path / 'out' / 'R1').glob('code_*'))
+  assert _code_build(tmp_path, monkeypatch, repo, 'none') == 0                            # a test build without it
+
+
+@pytest.mark.parametrize('path,data,refused', [
+    ('notes/x.md', b'write to someone@example.org\n', True),
+    ('scripts/release/test_release.py', b'someone@example.org\n', False),
+    ('scripts/x.sh', b'gsutil cp gs://another-bucket/x .\n', True),
+    ('scripts/x.sh', b'gsutil cp gs://af2-tpu-benchmark-af3-weights/x .\n', False),
+    ('notes/y.md', b'log /Users/someone/x\n', True),
+    ('targets/ppi/run.log', b'/Users/someone/x\n', False),
+    ('notes/y.md', b'host naspaz8 here\n', True),
+    ('notes/analysis_plan.md', b'host naspaz8 here\n', False),
+    ('notes/y.md', b'ip 192.168.1.20\n', True),
+    ('notes/y.md', b'token ghp_' + b'A' * 36 + b'\n', True),
+    ('scripts/release/test_release.py', b'gs://another-bucket /Users/someone 192.168.1.20 naspaz8\n', False),
+    ('scripts/release/test_release.py', b'token ghp_' + b'A' * 36 + b'\n', False),  # the guard's tests: made-up fixtures
+    ('scripts/release/release.py', b'token ghp_' + b'A' * 36 + b'\n', True),
+])
+def test_code_guard_refuses_what_it_does_not_list(tmp_path, path, data, refused):
+  src = _file(tmp_path, 'f', data)
+  if refused:
+    with pytest.raises(release.Refused):
+      release.check_code_file(src, path)
+  else:
+    assert release.check_code_file(src, path)[0] == len(data)
+
+
+def test_code_archive_refuses_a_commit_without_its_licence_files(tmp_path, monkeypatch):
+  repo = _code_repo(tmp_path)
+  _git(repo, 'rm', '-q', 'NOTICE')
+  _git(repo, '-c', 'user.name=t', '-c', 'user.email=t@example.org', 'commit', '-q', '-m', 'no notice')
+  _git(repo, 'tag', '-f', '-a', release.CODE_TAG, '-m', 'moved')
+  assert _code_build(tmp_path, monkeypatch, repo, release.CODE_TAG) == 2
+  assert not list((tmp_path / 'out').rglob('code_*'))
+
+
+def test_code_licence_files_pass_the_guard():
+  assert release.CODE_REQUIRED == ('LICENSE', 'NOTICE', 'LICENSES/Apache-2.0', 'LICENSES/MIT-alphafold-tpu-benchmark')
+  for name in release.CODE_REQUIRED:
+    assert release.check_code_file(release.REPO / name, name)[0] > 0
+  notice = (release.REPO / 'NOTICE').read_text()
+  assert '4e9c6b64f3026bc9316b12590fd4cd16559ab51f' in notice and 'Lorenzo Pazienza and Ihab El Bani' in notice
+  assert 'LICENSES/MIT-alphafold-tpu-benchmark' in notice
+  for path in [l.strip() for l in notice.splitlines() if l.startswith('  ')]:
+    assert (release.REPO / path).is_file(), path
+  text = (release.REPO / 'LICENSES' / 'MIT-alphafold-tpu-benchmark').read_text()
+  assert text.startswith('MIT License') and 'Copyright (c) 2026 Lorenzo Pazienza and Ihab El Bani' in text
+
+
+def test_code_guard_allows_the_contact_in_any_file(tmp_path, monkeypatch):
+  monkeypatch.setattr(release, 'CONTACT_SHA256', hashlib.sha256(b'me@example.net').hexdigest())
+  src = _file(tmp_path, 'f', b'Contact: me@example.net, again me@example.net\n')
+  assert release.check_code_file(src, 'paper/main.tex')[0] > 0
+  with pytest.raises(release.Refused):
+    release.check_code_file(_file(tmp_path, 'g', b'me@example.net and other@example.net\n'), 'paper/main.tex')
+
+
+def test_code_build_refuses_a_file_it_does_not_list_and_keeps_nothing(tmp_path, monkeypatch):
+  repo = _code_repo(tmp_path)
+  _file(repo / 'notes', 'n.md', b'see /Users/someone/data\n')
+  _git(repo, 'add', 'notes/n.md')
+  _git(repo, '-c', 'user.name=t', '-c', 'user.email=t@example.org', 'commit', '-q', '-m', 'n')
+  _git(repo, 'tag', '-f', '-a', release.CODE_TAG, '-m', 'moved')
+  assert _code_build(tmp_path, monkeypatch, repo, release.CODE_TAG) == 2
+  assert not list((tmp_path / 'out').rglob('code_*'))
+
+
 # ---------------------------------------------------------------- incremental versions
 
 def _previous(tmp_path, files):
@@ -1305,7 +1450,7 @@ def test_archives_of_a_batch_and_the_vm_lists(tmp_path, capsys):
   assert vm == ['outside_freeze_records_followups1316.tar.gz', 'af3_fu13.tar.gz',
                 'af3_fu14.tar.gz', 'af3_rcx.tar.gz', 'af3_hlo.tar.gz', 'hlo_xla_dumps.tar.gz', 'af3_memlimit_ah_warm_th.tar.gz']
   release.archives(types.SimpleNamespace(built_on='laptop', batch='followups1316'))
-  assert capsys.readouterr().out.strip() == 'session_records_followups1316.tar.gz'
+  assert capsys.readouterr().out.strip() == 'session_records_followups1316.tar.gz,code_alphafold-on-tpu_zenodo-v1.tar.gz'
   inv = tmp_path / 'inv'
   release.write_csv(_file(inv, 'sessions.csv').parent / 'sessions.csv',
                     [{'session': 'A', 'kind': 'main'}, {'session': 'B', 'kind': 'fu13'}, {'session': 'C', 'kind': 'outside'},
@@ -1321,5 +1466,5 @@ def test_archives_of_a_batch_and_the_vm_lists(tmp_path, capsys):
 def test_the_records_stay_within_the_limits_with_the_new_archives():
   r1 = sum(1 for a in release.ARCHIVES if a[0] == 'R1')
   r2 = sum(1 for a in release.ARCHIVES if a[0] == 'R2')
-  assert (r1, r2) == ({'R2': 11, 'R1': 12}[release.HLO_DUMPS_RECORD], {'R2': 42, 'R1': 41}[release.HLO_DUMPS_RECORD])
+  assert (r1, r2) == ({'R2': 12, 'R1': 13}[release.HLO_DUMPS_RECORD], {'R2': 42, 'R1': 41}[release.HLO_DUMPS_RECORD])
   assert 2 * r1 + release.PLAIN_FILES['R1'] <= 43 and 2 * r2 + release.PLAIN_FILES['R2'] <= 88

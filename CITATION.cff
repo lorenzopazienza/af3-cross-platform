@@ -1,10 +1,22 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using these metadata."
 type: software
-title: "AlphaFold3 and AlphaFold2 inference on Cloud TPUs"
+title: "Same Seed, Different Top Prediction: Cross-Platform Reproducibility of AlphaFold 3 Inference on TPUs, GPUs, and CPUs"
 authors:
   - family-names: Pazienza
     given-names: Lorenzo
     affiliation: "LUISS Guido Carli University"
-repository-code: "https://github.com/lorenzopazienza/alphafold-on-tpu"
+    email: lorenzo.pazienza@gmail.com
+    orcid: "https://orcid.org/0009-0006-1687-0125"
 license: MIT
+repository-code: "https://github.com/lorenzopazienza/alphafold-on-tpu"
+version: zenodo-v1
+preferred-citation:
+  type: article
+  title: "Same Seed, Different Top Prediction: Cross-Platform Reproducibility of AlphaFold 3 Inference on TPUs, GPUs, and CPUs"
+  authors:
+    - family-names: Pazienza
+      given-names: Lorenzo
+      affiliation: "LUISS Guido Carli University"
+      orcid: "https://orcid.org/0009-0006-1687-0125"
+  year: 2026

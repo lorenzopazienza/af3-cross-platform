@@ -1,9 +1,10 @@
 # Building the Zenodo release (runbook)
 
-The first build (Part B) ran on 2026-11-09 from tag `zenodo-v1` (freeze `689230120499`, 295 sessions; R1 9 archives and 35 files,
+The first build (Part B) ran on 2026-11-09 from commit `366159b`, then tagged `zenodo-v1` (freeze `689230120499`, 295 sessions; R1 9 archives and 35 files,
 R2 36 archives and 76 files; row of section 10 of 2026-11-09) and is uploaded to the two drafts, which are not published. This
 release (Part A) brings both drafts to the final freeze `4ec185c5`, 439 sessions, before the arXiv preprint: incrementally, so that
-only the new and changed files are built and uploaded. Part C says how a later version is made the same way.
+only the new and changed files are built and uploaded. This release moves the tag `zenodo-v1` to its own commit, and R1 gains a
+copy of the code at that commit. Part C says how a later version is made the same way.
 
 Commands are written out in full for zsh on the laptop, from the repository root. Steps marked VM run on the VM
 through `gcloud compute ssh --command`. Lorenzo runs every step that creates or deletes a cloud resource, and every step on
@@ -17,14 +18,17 @@ The two DOIs are reserved (drafts, not published): R1 `10.5281/zenodo.24057470`,
 What changes, against the drafts as uploaded on 2026-11-09 (`results/release/vm_build_20261109/`, the `--previous` of A7):
 
 - **New archives** (one table entry per label, `LATER_LABELS` in `release.py`): R1 `session_records_followups1316.tar.gz`
-  (laptop) and `outside_freeze_records_followups1316.tar.gz` (VM, 247 sessions outside the freeze, records only); R2
+  (laptop) and `outside_freeze_records_followups1316.tar.gz` (VM, 247 sessions outside the freeze, records only); R1
+  `code_alphafold-on-tpu_zenodo-v1.tar.gz` (laptop; decision D5 of 2026-11-18): `git archive` of the commit tagged `zenodo-v1`,
+  every file under `alphafold-on-tpu-zenodo-v1/`, byte for byte and never redacted, without `paper/assets/` (in R2, below), with
+  `CODE_COMMIT.txt` giving the full hash (`CODE_TAG`, `CODE_ALLOWED` and `check_code_file()` in `release.py`); R2
   `af3_fu13.tar.gz`, `af3_fu14.tar.gz`, `af3_rcx.tar.gz`, `af3_hlo.tar.gz`, `hlo_xla_dumps.tar.gz` and
   `af3_memlimit_ah_warm_th.tar.gz` (VM). One output archive per follow-up (structures, full confidences and logs together), the
   two later measurements in one, so that R2 stays at 88 files. The layer captures of follow-up 13 are left out (decision of
   2026-11-17: they compress only to 0.80 under gzip, 5.15 GiB, and R2 would pass 50 GB with them; R2's README says so).
 - **Rebuilt, so replaced:** `freeze.tar.gz` (the new freeze folder), `session_lists_launch_records.tar.gz` (the launches since
   2026-11-09) and `analysis_outputs.tar.gz` (the analyses since 8 November and the paper's `paper/assets/` from the tagged paper
-  commit, `--paper_ref`; the ISC draft's `results/paper_assets_isc/` is left out), with the plain files (READMEs, licences,
+  commit, `--paper_ref zenodo-v1`; the ISC draft's `results/paper_assets_isc/` is left out), with the plain files (READMEs, licences,
   `REDACTIONS.tsv`, the `release_*` lists, `SHA256SUMS`).
 - **Kept byte for byte, not rebuilt on the VM and not uploaded again:** every other archive of the first build. The laptop rebuilds
   its own archives anyway (minutes); A7 compares each with the draft's SHA-256 and marks it keep or replace.
@@ -32,10 +36,12 @@ What changes, against the drafts as uploaded on 2026-11-09 (`results/release/vm_
   holds the open licence point of the dumps); the systemd unit names of the new job logs no longer stop the build; 110 new wrapper
   logs with the account address are on `records/redact_email_paths.txt`.
 
-Before A1: commit, then create and push the tag: `git tag -a zenodo-4ec185c5 -m "Zenodo release build"` and `git push origin zenodo-4ec185c5`;
-build from that tag. Tag the paper commit whose `paper/assets/` goes into R2 as well, for example
-`git tag -a paper-arxiv-v1 -m "arXiv version" COMMIT` and `git push origin paper-arxiv-v1`, where COMMIT is that commit of the
-paper branch (the two tags may name the same commit if the paper branch is merged first). The READMEs name `zenodo-4ec185c5`.
+Before A1: commit the two commits of the release on `main` (the paper's assets and their tools, then the release), then move the
+tag to the release commit: `git tag -f -a zenodo-v1 -m "Zenodo release, freeze 4ec185c5, arXiv version"`; build from that tag.
+The tag named commit `366159b` (the first build) until then. The paper's assets are on `main` at that commit (its text is on arXiv only), so
+the same tag gives the code copy (`--code_ref zenodo-v1`) and `paper/assets/` (`--paper_ref zenodo-v1`); there is no paper
+tag. The tag is pushed with `main` to the public repository (publication plan, phase 3: `git push origin zenodo-v1`), not
+before. The READMEs name `zenodo-v1`.
 
 ## A1. Laptop: keep the first build's lists, list the bucket, inventory, layout, scan
 
@@ -51,18 +57,21 @@ python3 scripts/release/release.py scan --root results/af3 --out $HOME/af3_relea
 The listing only reads the bucket (a few minutes; about 485,000 objects). Expected: `inventory` exits 0, with 247 sessions of kind
 `outside_followups1316` at most (the local estimate of 2026-11-17 found 247; launches that wrote nothing to the bucket have no
 line) and no unmapped session; if it exits 2, `unmapped_sessions.csv` lists them: stop, map each to its row in its
-`LATER_LABELS` entry or decide that it stays out, do not guess. `layout` puts R1 at 11 archives and 41 files and R2 at 42 archives and
+`LATER_LABELS` entry or decide that it stays out, do not guess. `layout` puts R1 at 12 archives and 43 files and R2 at 42 archives and
 88 files, about 45.8 GB by its ratios (A7 measures about 44.6 GB: the first build's R2 archives are smaller than the estimate). `scan` takes about 4 minutes and exits 0 with the counts of the row (home paths, the account in 312 wrapper
 logs, bare NAS host names in 4 analysis files; no other address, no private IPv4 address, no secret).
 
 ## A2. Laptop: build the archives made locally
 
 ```
-python3 scripts/release/release.py build --root results/af3 --out $HOME/af3_release_1316 --archives $(python3 scripts/release/release.py archives --built_on laptop) --paper_ref paper-arxiv-v1
+python3 scripts/release/release.py build --root results/af3 --out $HOME/af3_release_1316 --archives $(python3 scripts/release/release.py archives --built_on laptop) --code_ref zenodo-v1 --paper_ref zenodo-v1
 python3 scripts/release/release.py verify --out $HOME/af3_release_1316
 ```
 
-Expected: 8 R1 archives and 5 R2 archives, "verify: OK", about 15 minutes, about 2 GB free needed. Of these, the four input
+Expected: 9 R1 archives and 5 R2 archives, "verify: OK", about 15 minutes, about 2 GB free needed. `verify` also compares the
+code copy with the commit its `CODE_COMMIT.txt` names, file by file. A file of the commit that guard() would refuse or redact and
+that `CODE_ALLOWED` does not list stops the build: look at it, then change it in a new commit (and move the tag) or list it with
+a reason. Of these, the four input
 archives, `session_records.tar.gz`, `session_records_followups.tar.gz` and the four pipeline archives of R2 should have the
 SHA-256 of the first build (A7 checks it and marks them keep).
 
@@ -143,7 +152,7 @@ python3 scripts/release/release.py verify --out $HOME/af3_release_1316 --previou
 `sums --previous` keeps, in each record's `SHA256SUMS` and `REDACTIONS.tsv`, the files of the drafts that are not rebuilt here,
 with their recorded SHA-256 and redaction rows; it stops if a record would pass 100 files or 50 GB, kept files included. It
 writes `zenodo_changes_R1.csv` and `zenodo_changes_R2.csv` in `$HOME/af3_release_1316`: every file of each draft with its
-action, keep, replace, add or delete, and its size. Expected: R1 41 files, R2 88 files, R2 about 44.6 GB; "verify: OK", with the kept
+action, keep, replace, add or delete, and its size. Expected: R1 43 files, R2 88 files, R2 about 44.6 GB; "verify: OK", with the kept
 files counted as kept. In R1, `release_inputs_check.csv` and `.json` of the first build are kept (sessions of freeze `68923012`).
 If an archive the laptop rebuilt is marked replace although nothing of it should have changed (the input and pipeline archives,
 `session_records.tar.gz`, `session_records_followups.tar.gz`), stop and compare its `.sha256` manifest with the first build's
@@ -173,7 +182,8 @@ For each record, open its draft at https://zenodo.org/uploads (the one with the 
      remade (`release_inventory.md`, `release_layout.md`, `release_layout.csv`, `release_summary.csv`, `release_sessions.csv`,
      `release_excluded_sessions.csv`, `release_excluded_files.csv`, `release_OUTSIDE_SESSIONS.csv`);
      add `session_records_followups1316.tar.gz`, `outside_freeze_records_followups1316.tar.gz` (each with its `.sha256`),
-     `release_inputs_check_followups1316.csv` and `.json`; nothing to delete. 35 files become 41.
+     `release_inputs_check_followups1316.csv` and `.json`, `code_alphafold-on-tpu_zenodo-v1.tar.gz` (with its `.sha256`);
+     nothing to delete. 35 files become 43.
    - R2: replace `README.md`, `LICENCES.md`, `REDACTIONS.tsv`, `SHA256SUMS`, `analysis_outputs.tar.gz` and its `.sha256`; add
      the 6 new archives with their `.sha256` (12 files, about 6.9 GB); nothing to delete. 76 files become 88.
    The csv files are what counts: if they differ from this list, they say why (a rebuilt archive that differs).
@@ -183,7 +193,7 @@ For each record, open its draft at https://zenodo.org/uploads (the one with the 
    resource type "Other": https://osf.io/qtz3v, https://osf.io/fegsy, https://osf.io/nsbgp, https://osf.io/64bpy,
    https://osf.io/c4kh7, https://osf.io/eafkx, https://osf.io/h9yw8, https://osf.io/hcxm7. Add the keyword `pre-registration`.
 4. **Check.** Compare the MD5 Zenodo shows for the new archives with `md5 -q FILE`, the large ones at least; the number of files
-   (41 and 88) and the total size against A7's figures. For R2, check that the licence is still the custom "AlphaFold 3 Output
+   (43 and 88) and the total size against A7's figures. For R2, check that the licence is still the custom "AlphaFold 3 Output
    Terms of Use" and no CC licence.
 5. **Save** each draft. Publish by hand only when the preprint goes out (row of 2026-11-09: publication with the arXiv preprint,
    after the repository is made public).
@@ -204,9 +214,10 @@ The browser must stay open and the laptop awake (`caffeinate -dims` in a termina
 # Part B. The full build (the first build, 2026-11-09; for a rebuild from scratch)
 
 These are the steps of the first build, kept as they ran (row of 2026-11-09). A rebuild of everything from scratch follows them
-with today's script: `build` then needs `--paper_ref` for `analysis_outputs.tar.gz`, the bundle needs `LICENSES` and the new
-freeze folder, and the counts and sizes are those of `layout` (R1 41 files, R2 88 files, about 45 GB) rather than those below.
-The first build was made from tag `zenodo-v1`; a rebuild would tag its own commit, as Part A does.
+with today's script: `build` then needs `--paper_ref` for `analysis_outputs.tar.gz` and `--code_ref` for the code copy, the bundle
+needs `LICENSES` and the new freeze folder, and the counts and sizes are those of `layout` (R1 43 files, R2 88 files, about 45 GB)
+rather than those below. The first build was made from commit `366159b`, then tagged `zenodo-v1`; a rebuild would tag its own
+commit, as Part A does.
 
 ## 0. Laptop: list the bucket and build the archives made locally
 
@@ -518,8 +529,9 @@ other archive of the previous version byte for byte: those are neither rebuilt n
    of the earlier batches keep their members (`test_first_build_archives_keep_their_members_without_the_new_kinds`); add the
    new labels to the parametrised tests. Add a row for each new archive to the README of its record, and update the session count
    and freeze identifier in both READMEs and both `zenodo.json`.
-3. **Laptop part**, as steps A1 to A3 of Part A, with the new tag, `--paper_ref` naming the paper commit of that version, and
-   `--batch` the new batch.
+3. **Laptop part**, as steps A1 to A3 of Part A, with the new tag, `--code_ref` and `--paper_ref` naming it, and `--batch` the new
+   batch. Set `CODE_TAG` in `release.py` to the new tag: the new code copy is a new archive (add) and the old one is deleted from
+   the new version (`zenodo_changes_R1.csv` says so).
 4. **VM part**, as steps A4 to A6 with `BATCH=` the new batch: only the new sessions are copied and only the new archives built.
 5. **Finish**, as step A7, with `--previous` the folder where the build records of the version before were kept (A8 says which:
    for the version after this one, `results/release/build_20261117/`, or the date of the actual build).

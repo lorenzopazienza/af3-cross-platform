@@ -7,11 +7,12 @@ only; this script never contacts a bucket or Zenodo). Build plan: scripts/releas
     python3 scripts/release/release.py scan --root DIR --out DIR [--repo .] [--archives A,B]
     python3 scripts/release/release.py check-inputs --root DIR --out DIR [--sessions S1,S2] [--repo .]
     python3 scripts/release/release.py build --root DIR --out DIR [--archives A,B] [--sessions S1,S2] [--repo .] [--paper_ref REF]
+        [--code_ref REF]
     python3 scripts/release/release.py archives --built_on laptop|vm [--batch B]
     python3 scripts/release/release.py vm-lists --out DIR [--batch B]
     python3 scripts/release/release.py merge-redactions --out DIR --record R1 --from FILE
     python3 scripts/release/release.py sums --out DIR [--previous DIR]
-    python3 scripts/release/release.py verify --out DIR [--previous DIR]
+    python3 scripts/release/release.py verify --out DIR [--previous DIR] [--repo .]
 
 Sessions (classify()): the data freeze's sessions (FREEZE/sessions.tsv: main, pilot2, memlimit, ppi, embed, the
 follow-ups cpu60, a100, feat, msa, sw, seeds, h100, repl, prec5, large, and the labels added after the first build,
@@ -54,9 +55,11 @@ vm-lists: the VM's copy lists (sessions_release.txt, sessions_outside.txt) from 
 Incremental versions: sums --previous DIR keeps the files of the previous version that are not rebuilt (their SHA-256 in
 SHA256SUMS, their rows in REDACTIONS.tsv) and writes zenodo_changes_<record>.csv (keep, replace, add or delete for each
 file of the Zenodo draft); verify --previous accepts those kept files. build --paper_ref REF puts the paper's assets
-(paper/assets at that git commit, read with git archive) into analysis_outputs.tar.gz.
+(paper/assets at that git commit, read with git archive) into analysis_outputs.tar.gz; build --code_ref REF writes the
+copy of the code into R1 (CODE_ARCHIVE: the commit tagged CODE_TAG, without paper/assets, never redacted).
 merge-redactions: adds the rows of a REDACTIONS.tsv written elsewhere (the other machine's build) to a record's.
-verify: recomputes SHA256SUMS and every member's SHA-256 from the archives.
+verify: recomputes SHA256SUMS and every member's SHA-256 from the archives, and compares the code copy with its commit
+when the repository (--repo) holds it.
 
 guard() refuses: a file named af3.bin or af3.bin.zst, or any *.bin / *.bin.zst; a file whose SHA-256 is the
 weights' (WEIGHTS_SHA256) or whose size is the weights' (WEIGHTS_BYTES); any file over 1 GiB (none is expected among
@@ -94,8 +97,10 @@ REPO = HERE.parents[1]
 OUT_DIR = REPO / 'results' / 'release'   # inventory and layout outputs
 FREEZE = REPO / 'results' / 'freeze' / 'followups1316_20261117'   # the final freeze (results/freeze/INDEX.md)
 FREEZE_ID = '4ec185c5a929738439de3b916a9c8475c4c3abd218fa140bfd460acf917d4486'
-# The first build (tag zenodo-v1, uploaded to the two drafts on 2026-11-09) was made from freeze 68923012; its archives
-# are kept byte for byte unless a later batch rebuilds them (BATCH_OF, REBUILT_EACH_VERSION; RUNBOOK.md).
+# The first build (uploaded to the two drafts on 2026-11-09) was made from freeze 68923012, at commit 366159b, then tagged
+# zenodo-v1 (the tag now names the commit of this release, CODE_TAG; 'zenodo-v1' stays the name of the first build's
+# batch in BATCH_OF); its archives are kept byte for byte unless a later batch rebuilds them (BATCH_OF,
+# REBUILT_EACH_VERSION; RUNBOOK.md).
 FIRST_BUILD = {'tag': 'zenodo-v1', 'freeze_id': '689230120499e5ba9d903051553c6554f3412f462456461757398f8fd3560a1a',
                'listing_cut': '20261109T000000Z'}
 WEIGHTS_SHA256 = '74d0258616917cd122f5eab6d076afe4a8930e96823851e65e4f777dfb1f33ff'
@@ -576,6 +581,23 @@ def later_archives():
 
 
 ARCHIVES += later_archives()
+# A copy of the code in R1 (decision D5 of 2026-11-18), so that the code has a DOI: `git archive` of the commit tagged
+# CODE_TAG (build --code_ref REF; the commit REF names must be the tag's, since the archive's name carries the tag), every
+# file under CODE_PREFIX, with CODE_COMMIT.txt giving the full hash. Committed files only, packaged byte for byte with
+# their mode (0644, or 0755 for executables): the copy is never redacted, so it stays identical to the public commit, and
+# anything guard() would refuse or redact stops the build unless CODE_ALLOWED lists it (check_code_file()). CODE_EXCLUDES
+# stay out: paper/assets/ holds tables and figures computed from AlphaFold 3 outputs, which belong in R2 under the Output
+# Terms (analysis_outputs.tar.gz takes them from the same commit, build --paper_ref).
+CODE_TAG = 'zenodo-v1'
+CODE_ARCHIVE = f'code_alphafold-on-tpu_{CODE_TAG}.tar.gz'
+CODE_PREFIX = f'alphafold-on-tpu-{CODE_TAG}/'
+CODE_COMMIT_FILE = 'CODE_COMMIT.txt'
+CODE_EXCLUDES = ('paper/assets',)
+# The licence files the copy must carry (the build refuses a commit without them): the repository's MIT licence, NOTICE
+# (the files copied from github.com/lorenzopazienza/alphafold-tpu-benchmark, MIT, Lorenzo Pazienza and Ihab El Bani), that
+# repository's licence, and the Apache License 2.0 of the AlphaFold 3 lines of af3_tpu/af3_tpu.patch.
+CODE_REQUIRED = ('LICENSE', 'NOTICE', 'LICENSES/Apache-2.0', 'LICENSES/MIT-alphafold-tpu-benchmark')
+ARCHIVES.append(('R1', CODE_ARCHIVE, 'git', [CODE_TAG]))
 # Files a repo archive's patterns reach but another archive holds: record R1 keeps only CC BY 4.0 material. The ISC
 # draft's assets (results/paper_assets_isc) are superseded by the paper's own, taken from the tagged paper commit.
 ARCHIVE_EXCLUDES = {'inputs_targets_manifests.tar.gz': ['inputs/official_data/**'],
@@ -605,7 +627,7 @@ original and of the released copy); nothing else is changed.
 '''
 # Where each archive is built (decision of 2026-10-15): R1 from the repository and the local freeze copy on the
 # laptop; the rest from a copy of the bucket on a VM in the bucket's region (scripts/release/RUNBOOK.md).
-BUILT_ON = {spec[1]: 'laptop' for spec in ARCHIVES if spec[2] == 'repo'}
+BUILT_ON = {spec[1]: 'laptop' for spec in ARCHIVES if spec[2] in ('repo', 'git')}
 BUILT_ON.update({'session_records.tar.gz': 'laptop', 'session_records_followups.tar.gz': 'laptop'})
 BUILT_ON.update({f'session_records_{b}.tar.gz': 'laptop' for b in BATCHES})
 # The batch that made each archive: the first build's archives are kept byte for byte in a later version unless
@@ -614,6 +636,7 @@ BATCH_OF = {name: 'zenodo-v1' for name in FIRST_BUILD_ARCHIVES}
 BATCH_OF.update({spec[1]: lab_batch for spec in ARCHIVES for lab_batch in
                  {b for b in BATCHES if spec[1] in {f'session_records_{b}.tar.gz', f'outside_freeze_records_{b}.tar.gz'}
                   or any(spec[1] in lab['archives'] for lab in LATER_LABELS if lab['batch'] == b)}})
+BATCH_OF[CODE_ARCHIVE] = CURRENT_BATCH   # new in this release; a later code tag is a new archive (RUNBOOK.md, Part C)
 REBUILT_EACH_VERSION = ('freeze.tar.gz', 'session_lists_launch_records.tar.gz', 'analysis_outputs.tar.gz')
 SUPERSEDED_LABEL = 'superseded or engineering, not used in any reported result'
 LEFT_OUT = {'data_json': 'AlphaFold3\'s copy of each run\'s input; check-inputs compares every one with its frozen '
@@ -639,6 +662,14 @@ def layout(args):
   summary = list(csv.DictReader(open(pathlib.Path(args.inventory) / 'summary.csv')))
   rows = []
   for record, name, kinds, cats in ARCHIVES:
+    if kinds == 'git':   # an estimate from the files tracked at HEAD; the build reads the tagged commit
+      files = [REPO / p for p in git_run(REPO, 'ls-files', '-z').decode().split('\0')
+               if p and not code_excluded(p) and (REPO / p).is_file()]
+      raw = sum(p.stat().st_size for p in files)
+      rows.append({'record': record, 'archive': name, 'contents': f'git archive of the commit tagged {CODE_TAG}, without '
+                   f'{", ".join(CODE_EXCLUDES)}', 'files': len(files), 'raw_bytes': raw,
+                   'estimated_bytes': int(raw * RATIO['repo'])})
+      continue
     if kinds == 'repo':
       files = archive_repo_files(name, cats, REPO)
       raw = sum(p.stat().st_size for p in files)
@@ -863,8 +894,9 @@ def check_dump_constants(data, rel):
                   'look at it for the model weights')
 
 
-def inspect(path, rel):
-  """(size, SHA-256, {private class: occurrences}, the bytes of a scanned file or None), or raise Refused. See guard()."""
+def inspect(path, rel, code=False):
+  """(size, SHA-256, {private class: occurrences}, the bytes of a scanned file or None), or raise Refused. See guard().
+  code: a file of the code copy (rel is its repository path), with the buckets and addresses of CODE_ALLOWED."""
   name = rel.rsplit('/', 1)[-1].lower()
   if name in WEIGHTS_NAMES or name.endswith(('.bin', '.bin.zst')):
     raise Refused(f'{rel}: the name of the model weights')
@@ -883,19 +915,59 @@ def inspect(path, rel):
   data = pathlib.Path(path).read_bytes()
   if '/xla_dump/' in rel:
     check_dump_constants(data, rel)
-  others = {m.decode() for m in GS_URI.findall(data)} - ALLOWED_BUCKETS
+  tests = code and rel in CODE_ALLOWED['guard_tests']
+  others = set() if tests else \
+      {m.decode() for m in GS_URI.findall(data)} - ALLOWED_BUCKETS - (CODE_ALLOWED['bucket'] if code else set())
   if others:
     raise Refused(f'{rel}: names a bucket other than the results bucket ({", ".join(sorted(others))})')
-  if rel not in REDACT and b'@' in data:
+  if code and b'@' in data:
+    found = [] if tests else [e for e in find_emails(data) if hashlib.sha256(e).hexdigest() != CONTACT_SHA256]
+    if found:
+      raise Refused(f'{rel}: contains an email address other than the contact (code copy, CODE_ALLOWED)')
+  elif rel not in REDACT and b'@' in data:
     found = find_emails(data)
     contact = rel in CONTACT_FILES and len(found) == 1 and hashlib.sha256(found[0]).hexdigest() == CONTACT_SHA256
     if found and not contact:
       raise Refused(f'{rel}: contains an email address and is not on the redaction list')
   findings = private_findings(data)
   secrets = sorted(k for k in findings if PRIVATE[k][1] == 'refuse')
-  if secrets:
+  if secrets and not tests:
     raise Refused(f'{rel}: holds what looks like a secret ({", ".join(secrets)}): look at it and revoke it')
   return size, sha, findings, data
+
+
+# The code copy (CODE_ARCHIVE) holds the public commit byte for byte, so it is never redacted: what guard() would refuse
+# or redact in it stops the build, except what is listed here, each by repository path, as of the release commit. The
+# contact address (CONTACT_SHA256) is allowed in any file of the code: the README, CITATION.cff, the papers and the
+# records' READMEs and zenodo.json give it as the contact. A new file that needs an entry stops the build: look at it first.
+# NOTICE and LICENSES/ go through the same checks and need no entry: they hold no address, bucket, path or host name
+# (test_code_licence_files_pass_the_guard); CODE_REQUIRED makes them part of every copy.
+CODE_ALLOWED = {
+    # the guard's own tests: every address, bucket, path, host name, network address, key and token in them is made up
+    # for a test (each looked at on 2026-11-18)
+    'guard_tests': {'scripts/release/test_release.py'},
+    # buckets the code names: the private weights bucket and the earlier AlphaFold 2 results bucket (names only; neither
+    # grants any access), and the made-up names of the tests and of a usage line
+    'bucket': {'af2-tpu-benchmark-af3-weights', 'af2-tpu-benchmark-results', 'bucket', 'test-bucket', 'private-weights',
+               'af3-results-test', 'fake-deps', 'followup-results', 'memlimit-results', 'pilot-results'},
+    # a recorded log of the target selection (the same file is redacted in inputs_targets_manifests.tar.gz); the fake home
+    # folder of two cloud tests; made-up paths in test strings
+    'home_path': {'targets/ppi/run.log', 'tests/cloud/ctrlc.py', 'tests/cloud/resume.py', 'tests/many/test_run_many.sh',
+                  'analysis/tests/test_paper_assets_isc.py'},
+    # the names of the two NAS machines of follow-up 6 in the plan, the MSA ingest and its test
+    'nas_host': {'notes/analysis_plan.md', 'analysis/msa.py', 'analysis/tests/test_ingest_official.py'},
+}
+
+
+def check_code_file(path, rel):
+  """(size, SHA-256) of a file of the code copy (rel: its repository path), or raise Refused: guard()'s checks, where
+  CODE_ALLOWED lists what the public code holds by design; anything else guard() would redact stops the build."""
+  size, sha, findings, _ = inspect(path, rel, code=True)
+  left = sorted(k for k in findings if rel not in CODE_ALLOWED.get(k, set()) | CODE_ALLOWED['guard_tests'])
+  if left:
+    raise Refused(f'{rel}: holds {", ".join(left)}; the code copy is never redacted: change the file before the release '
+                  'commit, or list it in CODE_ALLOWED with a reason')
+  return size, sha
 
 
 def guard(path, rel):
@@ -989,6 +1061,8 @@ def members(spec, root, repo, sessions_filter, kinds_of, odd):
   """[(archive member path, source path)] of one archive, sorted."""
   _, name, kinds, cats = spec
   out = []
+  if kinds == 'git':
+    return out   # read from git by build() (build --code_ref, export_code())
   if kinds == 'repo':
     return sorted((str(p.relative_to(repo)), p) for p in archive_repo_files(name, cats, repo))
   for s in sorted(kinds_of):
@@ -1110,19 +1184,23 @@ def tarinfo(name, size):
   return ti
 
 
-def write_archive(path, items, extra):
-  """Deterministic tar (gzip without time or name for .tar.gz). items: [(member, source, size, sha, bytes or None)]."""
+def write_archive(path, items, extra, modes=None):
+  """Deterministic tar (gzip without time or name for .tar.gz). items: [(member, source, size, sha, bytes or None)].
+  modes: {member: mode} for members that are not 0644 (the executables of the code copy)."""
+  modes = modes or {}
   raw = open(path, 'wb')
   fileobj = gzip.GzipFile(filename='', mode='wb', fileobj=raw, mtime=0, compresslevel=6) if path.name.endswith('.gz') else raw
   with tarfile.open(fileobj=fileobj, mode='w', format=tarfile.GNU_FORMAT) as tar:
     for member, data in extra:
       tar.addfile(tarinfo(member, len(data)), io.BytesIO(data))
     for member, src, size, _, data in items:
+      ti = tarinfo(member, size)
+      ti.mode = modes.get(member, ti.mode)
       if data is not None:   # a redacted copy
-        tar.addfile(tarinfo(member, size), io.BytesIO(data))
+        tar.addfile(ti, io.BytesIO(data))
         continue
       with open(src, 'rb') as f:
-        tar.addfile(tarinfo(member, size), f)
+        tar.addfile(ti, f)
   if fileobj is not raw:
     fileobj.close()
   raw.close()
@@ -1135,6 +1213,7 @@ def build(args):
   odd = unexplained_files()
   written, restore = [], {}   # restore: REDACTIONS.tsv as it was before this build
   paper_tmp = tempfile.TemporaryDirectory(prefix='af3_paper_assets_')
+  code_tmp = tempfile.TemporaryDirectory(prefix='af3_code_')
   try:
     kinds_of = session_kinds(root, sessions_filter)
     paper = None   # (ref, commit, export root) of the paper assets
@@ -1145,6 +1224,14 @@ def build(args):
                       'or --paper_ref none for a test build without them')
       if ref != 'none':
         paper = (ref, export_paper_assets(repo, ref, pathlib.Path(paper_tmp.name)), pathlib.Path(paper_tmp.name))
+    code = None    # (ref, commit, [(member, source, repository path, mode)]) of the code copy
+    if not wanted or CODE_ARCHIVE in wanted:
+      ref = getattr(args, 'code_ref', None)
+      if not ref:
+        raise Refused(f'{CODE_ARCHIVE} is a git archive: pass --code_ref REF (the commit tagged {CODE_TAG}), '
+                      'or --code_ref none for a test build without it')
+      if ref != 'none':
+        code = export_code(repo, ref, pathlib.Path(code_tmp.name))
     # every R2 archive made from session outputs needs a passing check-inputs on the same root (not the
     # repository-made analysis_outputs.tar.gz, which holds no session file)
     if any(spec[0] == 'R2' and spec[2] != 'repo' and (not wanted or spec[1] in wanted) for spec in ARCHIVES):
@@ -1156,10 +1243,15 @@ def build(args):
       cand = members(spec, root, repo, sessions_filter, kinds_of, odd)
       if name == PAPER_ASSETS[0] and paper:
         cand = sorted(cand + archive_tree(paper[2], PAPER_ASSETS[1]))
+      if kinds == 'git' and code:
+        cand = [(m, src) for m, src, _, _ in code[2]]
       if not cand:
-        print(f'   {record}/{name}: no files in this root, skipped')
+        print(f'   {record}/{name}: ' + ('--code_ref none, skipped' if kinds == 'git' else 'no files in this root, skipped'))
         continue
-      prepared = [(m, src, *prepare(src, m, name)) for m, src in cand]   # every file is checked before anything is written
+      if kinds == 'git':   # the code copy is checked, never redacted (check_code_file())
+        prepared = [(m, src, *check_code_file(src, path), None, None) for m, src, path, _ in code[2]]
+      else:                # every file is checked before anything is written
+        prepared = [(m, src, *prepare(src, m, name)) for m, src in cand]
       items = [(m, src, size, sha, data) for m, src, size, sha, data, _ in prepared]
       redactions = [row for *_, row in prepared if row]
       extra = []
@@ -1173,17 +1265,19 @@ def build(args):
       if 'superseded' in kinds:
         present = sorted({m.split('/')[1] for m, _ in cand} & set(SUPERSEDED))
         extra.append(('SUPERSEDED_SESSIONS.csv', superseded_table(present).encode()))
-      if kinds != 'repo' and any(k in OUTSIDE_KINDS for k in kinds):
+      if kinds not in ('repo', 'git') and any(k in OUTSIDE_KINDS for k in kinds):
         extra.append(('OUTSIDE_SESSIONS.csv', outside_table(sorted({m.split('/')[1] for m, _ in cand})).encode()))
       if name == PAPER_ASSETS[0] and paper:
         extra.append(('PAPER_ASSETS_COMMIT.txt', f'{PAPER_ASSETS[1]}/ from git ref {paper[0]}, commit {paper[1]}\n'.encode()))
+      if kinds == 'git':
+        extra.append((CODE_COMMIT_FILE, code_commit_text(code[1]).encode()))
       for member, src in ARCHIVE_NOTICES.get(name, ()):
         if src and not (repo / src).is_file():
           raise Refused(f'{name}: {src} is missing from the repository')
         extra.append((member, (repo / src).read_bytes() if src else XLA_DUMPS_NOTICE.encode()))
       d = out / record
       d.mkdir(parents=True, exist_ok=True)
-      write_archive(d / name, items, extra)
+      write_archive(d / name, items, extra, {m: mode for m, _, _, mode in code[2]} if kinds == 'git' else None)
       written.append(d / name)
       lines = [f'{hashlib.sha256(data).hexdigest()}  {m}' for m, data in extra] + [f'{sha}  {m}' for m, _, _, sha, _ in items]
       (d / f'{name}.sha256').write_text('\n'.join(lines) + '\n')
@@ -1213,17 +1307,78 @@ def build(args):
     return 2
   finally:
     paper_tmp.cleanup()
+    code_tmp.cleanup()
   return finish_or_refuse(sorted({p.parent for p in written} | {f.parent for f in restore}))
+
+
+def git_run(repo, *a):
+  """The output of a git command in the repository, or raise Refused."""
+  r = subprocess.run(['git', '-C', str(repo), *a], capture_output=True)
+  if r.returncode:
+    raise Refused(f'git {" ".join(a)}: {r.stderr.decode().strip() or "exit " + str(r.returncode)}')
+  return r.stdout
+
+
+def git_commit(repo, ref):
+  return git_run(repo, 'rev-parse', '--verify', '--quiet', f'{ref}^{{commit}}').decode().strip()
+
+
+def code_excluded(path):
+  return any(path == x or path.startswith(x + '/') for x in CODE_EXCLUDES)
+
+
+def code_tree(repo, commit):
+  """{repository path: (bytes, mode)} of every file of a commit (`git archive`), less CODE_EXCLUDES. A link, or any
+  member that is neither a file nor a folder, is refused: the copy holds files only."""
+  out = {}
+  with tarfile.open(fileobj=io.BytesIO(git_run(repo, 'archive', '--format=tar', commit))) as tar:
+    for m in tar:
+      if m.isdir():
+        continue
+      if not m.isfile():
+        raise Refused(f'git archive of {commit}: {m.name} is not a regular file; the code copy holds files only')
+      if not code_excluded(m.name):
+        out[m.name] = (tar.extractfile(m).read(), 0o755 if m.mode & 0o111 else 0o644)
+  if not out:
+    raise Refused(f'git archive of {commit}: no file')
+  return out
+
+
+def code_commit_text(commit):
+  """CODE_COMMIT.txt: the full hash on the first line, then what the copy is (the same bytes for any ref of the commit)."""
+  return (f'{commit}\n\nThe files of {CODE_PREFIX} are the commit above, tagged {CODE_TAG}, of '
+          f'https://github.com/lorenzopazienza/alphafold-on-tpu, read with git archive, byte for byte, without '
+          f'{", ".join(CODE_EXCLUDES)} (tables and figures computed from AlphaFold 3 outputs: record R2, {PAPER_ASSETS[0]}).\n')
+
+
+def export_code(repo, ref, dest):
+  """(ref, commit, [(member, source, repository path, mode)]) of the code copy: the files of the commit REF names, less
+  CODE_EXCLUDES, written under dest. The commit must be the one tag CODE_TAG names, since the archive's name carries it."""
+  commit = git_commit(repo, ref)
+  tagged = git_commit(repo, CODE_TAG)
+  if commit != tagged:
+    raise Refused(f'--code_ref {ref} is commit {commit[:12]}, but tag {CODE_TAG} names {tagged[:12]}: {CODE_ARCHIVE} '
+                  f'must hold the tagged commit (move the tag, or set CODE_TAG for a new version)')
+  tree = code_tree(repo, commit)
+  missing = [p for p in CODE_REQUIRED if p not in tree]
+  if missing:
+    raise Refused(f'commit {commit[:12]} lacks {", ".join(missing)}: the code copy must carry its licence files (CODE_REQUIRED)')
+  out = []
+  for path, (data, mode) in sorted(tree.items()):
+    target = (dest / path).resolve()
+    if not str(target).startswith(str(dest.resolve()) + os.sep):
+      raise Refused(f'git archive of {ref}: member {path} outside the export folder')
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+    out.append((CODE_PREFIX + path, target, path, mode))
+  return ref, commit, out
 
 
 def export_paper_assets(repo, ref, dest):
   """Writes the files of PAPER_ASSETS[1] at git ref REF of the repository under dest (`git archive`, so only committed
   files, as of that commit) and returns the commit."""
   def git(*a):
-    r = subprocess.run(['git', '-C', str(repo), *a], capture_output=True)
-    if r.returncode:
-      raise Refused(f'git {" ".join(a)}: {r.stderr.decode().strip()}')
-    return r.stdout
+    return git_run(repo, *a)
   commit = git('rev-parse', '--verify', '--quiet', f'{ref}^{{commit}}').decode().strip()
   with tarfile.open(fileobj=io.BytesIO(git('archive', '--format=tar', commit, '--', PAPER_ASSETS[1]))) as tar:
     for m in tar:
@@ -1411,8 +1566,32 @@ def verify(args):
         bad += 1
       else:
         print(f'   {d.name}/{man.name[:-7]}: {len(got)} members match')
+        if archive.name == CODE_ARCHIVE:
+          bad += verify_code(archive, got, pathlib.Path(getattr(args, 'repo', None) or REPO))
   print('verify: ' + ('OK' if not bad else f'{bad} problem(s)'))
   return 1 if bad else 0
+
+
+def verify_code(archive, got, repo):
+  """The code copy against git: its files must be those of the commit CODE_COMMIT.txt names, less CODE_EXCLUDES, byte
+  for byte. 0 if they are, or if that commit is not in the repository (then only the manifest is checked); 1 otherwise."""
+  with tarfile.open(archive) as tar:
+    commit = tar.extractfile(CODE_COMMIT_FILE).read().decode().split('\n', 1)[0].strip()
+  if not re.fullmatch(r'[0-9a-f]{40}', commit):
+    print(f'!! {archive.name}: {CODE_COMMIT_FILE} does not start with a full commit hash')
+    return 1
+  try:
+    tree = code_tree(repo, git_commit(repo, commit))
+  except Refused:
+    print(f'   {archive.name}: commit {commit[:12]} is not in {repo}; checked against its manifest only')
+    return 0
+  want = {CODE_PREFIX + p: hashlib.sha256(data).hexdigest() for p, (data, _) in tree.items()}
+  have = {m: s for m, s in got.items() if m != CODE_COMMIT_FILE}
+  if have != want:
+    print(f'!! {archive.name}: {len(set(have.items()) ^ set(want.items()))} file(s) differ from commit {commit[:12]}')
+    return 1
+  print(f'   {archive.name}: {len(have)} files, the same as commit {commit[:12]} (without {", ".join(CODE_EXCLUDES)})')
+  return 0
 
 
 def scan_member(item):
@@ -1531,6 +1710,8 @@ def main():
   p.add_argument('--sessions')
   p.add_argument('--paper_ref', help=f'git ref of the paper commit whose {PAPER_ASSETS[1]}/ goes into {PAPER_ASSETS[0]} '
                  '(needed when that archive is built; "none" for a test build without them)')
+  p.add_argument('--code_ref', help=f'git ref of the commit tagged {CODE_TAG}, copied into {CODE_ARCHIVE} (needed when '
+                 'that archive is built; "none" for a test build without it)')
   p.add_argument('--allow_incomplete_inputs_check', action='store_true',
                  help='test subsets only: accept a check-inputs run that found processes without a data JSON')
   p = sub.add_parser('check-inputs')
@@ -1561,6 +1742,7 @@ def main():
   p = sub.add_parser('verify')
   p.add_argument('--out', required=True)
   p.add_argument('--previous', help='the previous version: files listed but not here must be its, unchanged')
+  p.add_argument('--repo', default=str(REPO), help=f'the repository whose commit {CODE_ARCHIVE} must match')
   args = ap.parse_args()
   return {'inventory': inventory, 'layout': layout, 'build': build, 'check-inputs': check_inputs, 'scan': scan, 'sums': sums,
           'archives': archives, 'vm-lists': vm_lists, 'merge-redactions': merge_redactions, 'verify': verify}[args.cmd](args)

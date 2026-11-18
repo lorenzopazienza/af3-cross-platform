@@ -1,0 +1,30 @@
+alphafold-on-tpu
+Copyright (c) 2026 Lorenzo Pazienza (LICENSE, MIT)
+
+This repository contains files copied from https://github.com/lorenzopazienza/alphafold-tpu-benchmark,
+commit 4e9c6b64f3026bc9316b12590fd4cd16559ab51f, Copyright (c) 2026 Lorenzo Pazienza and Ihab El Bani,
+licensed under the MIT License. The text of that licence is in LICENSES/MIT-alphafold-tpu-benchmark.
+
+Copied unchanged (identical to the files of that commit):
+
+  src/spike_batch_forward_pass.py
+  src/spike_ensemble_shard_forward_pass.py
+  src/spike_meshshard_forward_pass.py
+  src/spike_pmap_forward_pass.py
+  src/spike_tpu_forward_pass.py
+  cloud/env.sh
+  cloud/plans/phase1_v5e8.plan
+  cloud/plans/smoke_cpu.plan
+  cloud/requirements-tpu.txt
+  cloud/run_with_provenance.py
+  cloud/setup_vm.sh
+  cloud/tpu_down.sh
+  cloud/tpu_fetch.sh
+  cloud/tpu_run.sh
+  cloud/tpu_status.sh
+  cloud/tpu_up.sh
+  cloud/vm_job.sh
+
+Copied and modified:
+
+  cloud/README.md
