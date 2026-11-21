@@ -1,0 +1,26 @@
+# Follow-up 18 H100 smoke test of h100_triton (label smoke): engineering check only, never a finding, never in a
+# contrast, as the smoke tests of a100_triton (follow-up 3) and h100_xla (follow-up 9). One H100 (a3-highgpu-1g, Spot),
+# official weights, 7U3J, seed 1, r1. Triton attention has never run on an H100 in this study; its measured wall of
+# 7U3J against the H medians (7U3J is in the 256 bucket: 64.8 s) is recorded in a row and, if above 1.5 times, the
+# parts of follow-up 18 are regenerated with that factor before any of them is launched.
+
+description: follow-up 18 H100 smoke test, h100_triton (engineering check only)
+label: smoke
+weights: gcs
+eigen_source: archive
+
+configs:
+  h100: h100_triton
+
+targets:
+  default: [7U3J]
+
+seeds: [1]
+fresh_reps: 1
+warm_rerun_seed: none
+num_recycles: default
+num_diffusion_samples: default
+run_timeout_min: 60
+
+deadline_min:
+  h100: 60

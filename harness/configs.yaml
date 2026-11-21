@@ -332,3 +332,60 @@ tpu_xla_hlo:
   flash_attention_implementation: xla
   env:
     AF3_HLO_DUMP_FLAGS: --xla_dump_hlo_as_text --xla_dump_hlo_module_re=jit_apply_fn
+
+# Follow-up 17 (label dtp; notes/analysis_plan.md section 10, row "Follow-up experiment 17"): the float32 trunk at the
+# default matmul precision, the missing cell of data type x precision. AF3_FU13_BFLOAT16=none (harness/fu13_probe.py,
+# through harness/af3_entry.py, as in follow-ups 13 and 14) without JAX_DEFAULT_MATMUL_PRECISION: each entry is the
+# float32-trunk entry of follow-ups 13 and 14 (tpu_xla_fu13_f32, l4_xla_fu13_f32, a100_xla_fu14_f32, h100_xla_fu14_f32)
+# less that one line, that is the main-study entry (tpu_xla, l4_xla, a100_xla, h100_xla) plus AF3_FU13_BFLOAT16=none.
+tpu_xla_dtp_f32def:
+  description: Cloud TPU, XLA attention, af3_tpu.patch, float32 trunk at the default matmul precision (bfloat16 none; follow-up 17, V6fd)
+  jax_backend: tpu
+  flash_attention_implementation: xla
+  env:
+    AF3_FU13_BFLOAT16: none
+
+l4_xla_dtp_f32def:
+  description: NVIDIA L4, XLA attention, float32 trunk at the default matmul precision (bfloat16 none; follow-up 17, Gfd)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+    AF3_FU13_BFLOAT16: none
+
+a100_xla_dtp_f32def:
+  description: NVIDIA A100 80 GB, XLA attention, float32 trunk at the default matmul precision (bfloat16 none; follow-up 17, Afd)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+    AF3_FU13_BFLOAT16: none
+
+h100_xla_dtp_f32def:
+  description: NVIDIA H100 80 GB, XLA attention, float32 trunk at the default matmul precision (bfloat16 none; follow-up 17, Hfd)
+  jax_backend: gpu
+  flash_attention_implementation: xla
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95
+    AF3_FU13_BFLOAT16: none
+
+# Follow-up 18 (label tri; notes/analysis_plan.md section 10, row "Follow-up experiment 18"): AlphaFold 3's default
+# Triton attention on the H100, h100_xla with the attention of a100_triton and l4_triton; only the attention changes.
+h100_triton:
+  description: NVIDIA H100 80 GB, Triton flash attention (the AlphaFold3 GPU default; follow-up 18, HT arm)
+  jax_backend: gpu
+  flash_attention_implementation: triton
+  env:
+    JAX_PLATFORMS: cuda
+    XLA_FLAGS: --xla_gpu_enable_triton_gemm=false
+    XLA_PYTHON_CLIENT_PREALLOCATE: true
+    XLA_CLIENT_MEM_FRACTION: 0.95

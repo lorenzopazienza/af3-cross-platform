@@ -1,0 +1,4 @@
+# Follow-up 17 (label dtp): the complete session of each part, from the section 10 launch rows, written by
+# scripts/analysis_runs/dtp/check_sessions.py --write (one session per part: final status exit 0 with the final upload
+# complete, every planned harness run and process exit 0, outputs local, every full output for V6fd r2, "Plan
+# finished" in the wrapper log) and committed before any analysis run (scripts/analysis_runs/dtp/reproduce.sh).

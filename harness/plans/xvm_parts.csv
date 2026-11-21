@@ -1,0 +1,22 @@
+part,arm,row_part,label,platform,config,what,targets,seeds,repetitions,processes,fetch,factor_expected,factor_worst,expected_vm_h,worst_vm_h,deadline_min,lifetime_h,usd_per_h_on_demand,usd_per_h_planned,provisioning,expected_usd_planned,worst_usd_planned,worst_preempted_usd_planned,lifetime_usd_planned,expected_usd_on_demand,worst_usd_on_demand
+xvm_g_r3_01,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",5,1 2 3 4 5,r3,25,light,1.0,1.25,2.48,3.03,239,4.48,0.897201806,0.538252,spot,1.34,1.63,3.26,2.41,2.23,2.72
+xvm_g_r3_02,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",4,1 2 3 4 5,r3,20,light,1.0,1.25,2.31,2.81,223,4.22,0.897201806,0.538252,spot,1.24,1.51,3.03,2.27,2.07,2.52
+xvm_g_r3_03,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",4,1 2 3 4 5,r3,20,light,1.0,1.25,2.31,2.81,223,4.22,0.897201806,0.538252,spot,1.24,1.51,3.03,2.27,2.07,2.52
+xvm_g_r3_04,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",4,1 2 3 4 5,r3,20,light,1.0,1.25,2.31,2.81,223,4.22,0.897201806,0.538252,spot,1.24,1.51,3.03,2.27,2.07,2.52
+xvm_g_r3_05,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",4,1 2 3 4 5,r3,20,light,1.0,1.25,2.31,2.81,223,4.22,0.897201806,0.538252,spot,1.24,1.51,3.03,2.27,2.07,2.52
+xvm_g_r3_06,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",4,1 2 3 4 5,r3,20,light,1.0,1.25,2.31,2.81,223,4.22,0.897201806,0.538252,spot,1.24,1.51,3.03,2.27,2.07,2.52
+xvm_g_r3_07,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",5,1 2 3 4 5,r3,25,light,1.0,1.25,2.37,2.88,228,4.3,0.897201806,0.538252,spot,1.27,1.55,3.1,2.31,2.12,2.59
+xvm_g_r3_08,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",6,1 2 3 4 5,r3,30,light,1.0,1.25,2.41,2.93,232,4.37,0.897201806,0.538252,spot,1.3,1.58,3.16,2.35,2.16,2.63
+xvm_g_r3_09,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",6,1 2 3 4 5,r3,30,light,1.0,1.25,2.36,2.88,228,4.3,0.897201806,0.538252,spot,1.27,1.55,3.1,2.31,2.12,2.58
+xvm_g_r3_10,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",6,1 2 3 4 5,r3,30,light,1.0,1.25,2.36,2.88,228,4.3,0.897201806,0.538252,spot,1.27,1.55,3.1,2.31,2.12,2.58
+xvm_g_r3_11,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",6,1 2 3 4 5,r3,30,light,1.0,1.25,2.36,2.88,228,4.3,0.897201806,0.538252,spot,1.27,1.55,3.1,2.31,2.12,2.58
+xvm_g_r3_12,G_r3,A,xvm,l4,l4_xla,"G r3, a third repetition of G (main study) on new VMs",6,1 2 3 4 5,r3,30,light,1.0,1.25,2.36,2.88,228,4.3,0.897201806,0.538252,spot,1.27,1.55,3.1,2.31,2.12,2.58
+xvm_a_r3_01,A_r3,B,xvm,a100,a100_xla,"A r3, a third repetition of A (follow-up 3) on new VMs",6,1 2 3 4 5,r3,30,light,1.0,1.25,1.58,1.9,160,3.17,5.662527,3.01658,spot,4.77,5.72,11.43,9.55,8.96,10.73
+xvm_a_r3_02,A_r3,B,xvm,a100,a100_xla,"A r3, a third repetition of A (follow-up 3) on new VMs",6,1 2 3 4 5,r3,30,light,1.0,1.25,1.58,1.9,160,3.17,5.662527,3.01658,spot,4.77,5.72,11.43,9.55,8.96,10.73
+xvm_a_r3_03,A_r3,B,xvm,a100,a100_xla,"A r3, a third repetition of A (follow-up 3) on new VMs",6,1 2 3 4 5,r3,30,light,1.0,1.25,1.58,1.9,160,3.17,5.662527,3.01658,spot,4.77,5.72,11.43,9.55,8.96,10.73
+xvm_a_r3_04,A_r3,B,xvm,a100,a100_xla,"A r3, a third repetition of A (follow-up 3) on new VMs",7,1 2 3 4 5,r3,35,light,1.0,1.25,1.71,2.05,171,3.35,5.662527,3.01658,spot,5.14,6.18,12.37,10.11,9.66,11.61
+xvm_a_r3_05,A_r3,B,xvm,a100,a100_xla,"A r3, a third repetition of A (follow-up 3) on new VMs",7,1 2 3 4 5,r3,35,light,1.0,1.25,1.71,2.05,171,3.35,5.662527,3.01658,spot,5.14,6.18,12.37,10.11,9.66,11.61
+xvm_a_r3_06,A_r3,B,xvm,a100,a100_xla,"A r3, a third repetition of A (follow-up 3) on new VMs",7,1 2 3 4 5,r3,35,light,1.0,1.25,1.71,2.05,171,3.35,5.662527,3.01658,spot,5.14,6.18,12.37,10.11,9.66,11.61
+xvm_a_r3_07,A_r3,B,xvm,a100,a100_xla,"A r3, a third repetition of A (follow-up 3) on new VMs",7,1 2 3 4 5,r3,35,light,1.0,1.25,1.71,2.05,171,3.35,5.662527,3.01658,spot,5.14,6.18,12.37,10.11,9.66,11.61
+xvm_a_r3_08,A_r3,B,xvm,a100,a100_xla,"A r3, a third repetition of A (follow-up 3) on new VMs",7,1 2 3 4 5,r3,35,light,1.0,1.25,1.67,2.0,168,3.3,5.662527,3.01658,spot,5.03,6.04,12.09,9.95,9.44,11.34
+xvm_a_r3_09,A_r3,B,xvm,a100,a100_xla,"A r3, a third repetition of A (follow-up 3) on new VMs",7,1 2 3 4 5,r3,35,light,1.0,1.25,1.67,2.01,168,3.3,5.662527,3.01658,spot,5.05,6.06,12.12,9.95,9.47,11.38
