@@ -24,7 +24,7 @@ What changes, against the drafts as uploaded on 2026-11-09 (`results/release/vm_
   `CODE_COMMIT.txt` giving the full hash (`CODE_TAG`, `CODE_ALLOWED` and `check_code_file()` in `release.py`); R2
   `af3_fu13.tar.gz`, `af3_fu14.tar.gz`, `af3_rcx.tar.gz`, `af3_hlo.tar.gz`, `hlo_xla_dumps.tar.gz` and
   `af3_memlimit_ah_warm_th.tar.gz` (VM). One output archive per follow-up (structures, full confidences and logs together), the
-  two later measurements in one, so that R2 stays at 88 files. The layer captures of follow-up 13 are left out (decision of
+  two later measurements in one, so that R2 stays at 88 files before the supplement. The layer captures of follow-up 13 are left out (decision of
   2026-11-17: they compress only to 0.80 under gzip, 5.15 GiB, and R2 would pass 50 GB with them; R2's README says so).
 - **Rebuilt, so replaced:** `freeze.tar.gz` (the new freeze folder), `session_lists_launch_records.tar.gz` (the launches since
   2026-11-09) and `analysis_outputs.tar.gz` (the analyses since 8 November and the paper's `paper/assets/` from the tagged paper
@@ -32,6 +32,9 @@ What changes, against the drafts as uploaded on 2026-11-09 (`results/release/vm_
   `REDACTIONS.tsv`, the `release_*` lists, `SHA256SUMS`).
 - **Kept byte for byte, not rebuilt on the VM and not uploaded again:** every other archive of the first build. The laptop rebuilds
   its own archives anyway (minutes); A7 compares each with the draft's SHA-256 and marks it keep or replace.
+- **The paper's supplement** (decision of 2026-11-21): the PDF `Pazienza_AlphaFold3_cross_platform_reproducibility_supplement.pdf` goes in R2 as a plain file
+  (`sums --supplement`, A7), not in R1: its tables and figures are computed from AlphaFold 3 outputs, like `paper/assets/`, so it
+  is released under the Output Terms. It is compiled on branch `paper` after the last change to the paper. R2 has 89 files with it.
 - **Before the VM:** the hlo dumps were checked for the model weights (none: `records/LICENCES.md`, last section, which also
   holds the open licence point of the dumps); the systemd unit names of the new job logs no longer stop the build; 110 new wrapper
   logs with the account address are on `records/redact_email_paths.txt`.
@@ -58,7 +61,7 @@ The listing only reads the bucket (a few minutes; about 485,000 objects). Expect
 `outside_followups1316` at most (the local estimate of 2026-11-17 found 247; launches that wrote nothing to the bucket have no
 line) and no unmapped session; if it exits 2, `unmapped_sessions.csv` lists them: stop, map each to its row in its
 `LATER_LABELS` entry or decide that it stays out, do not guess. `layout` puts R1 at 12 archives and 43 files and R2 at 42 archives and
-88 files, about 45.8 GB by its ratios (A7 measures about 44.6 GB: the first build's R2 archives are smaller than the estimate). `scan` takes about 4 minutes and exits 0 with the counts of the row (home paths, the account in 312 wrapper
+89 files (88 and the supplement), about 45.8 GB by its ratios (A7 measures about 44.6 GB: the first build's R2 archives are smaller than the estimate). `scan` takes about 4 minutes and exits 0 with the counts of the row (home paths, the account in 312 wrapper
 logs, bare NAS host names in 4 analysis files; no other address, no private IPv4 address, no secret).
 
 ## A2. Laptop: build the archives made locally
@@ -137,7 +140,18 @@ The VM's R2 folder holds only the 6 new archives (the laptop's R2 archives are n
 last command prints nothing once the VM is deleted (its disk goes with it). The upload goes through the web form from the laptop
 (A9): with about 7 GB to send, the API form of Part B is not needed.
 
-## A7. Laptop: finish and verify the two records against the drafts
+## A7. Laptop: the paper's supplement, then finish and verify the two records against the drafts
+
+First compile the final supplement on branch `paper` (its worktree, `$HOME/Desktop/af3-paper`), after the last change to the
+paper, and copy it with the fixed name of `release.py` (`SUPPLEMENT_NAME`) into a folder of its own:
+
+```
+make -C $HOME/Desktop/af3-paper/paper supplement.pdf
+mkdir -p $HOME/af3_release_supplement
+cp $HOME/Desktop/af3-paper/paper/supplement.pdf $HOME/af3_release_supplement/Pazienza_AlphaFold3_cross_platform_reproducibility_supplement.pdf
+```
+
+Then finish and verify the two records:
 
 ```
 (cd $HOME/af3_release_1316 && shasum -a 256 -c vm_sha256.txt)
@@ -145,14 +159,20 @@ python3 scripts/release/release.py merge-redactions --out $HOME/af3_release_1316
 python3 scripts/release/release.py merge-redactions --out $HOME/af3_release_1316 --record R2 --from $HOME/af3_release_1316/from_vm/R2/REDACTIONS.tsv
 cp $HOME/af3_release_1316/from_vm/inputs_check.csv $HOME/af3_release_1316/R1/release_inputs_check_followups1316.csv
 cp $HOME/af3_release_1316/from_vm/inputs_check.json $HOME/af3_release_1316/R1/release_inputs_check_followups1316.json
-python3 scripts/release/release.py sums --out $HOME/af3_release_1316 --previous results/release/vm_build_20261109
+python3 scripts/release/release.py sums --out $HOME/af3_release_1316 --previous results/release/vm_build_20261109 --supplement $HOME/af3_release_supplement/Pazienza_AlphaFold3_cross_platform_reproducibility_supplement.pdf
 python3 scripts/release/release.py verify --out $HOME/af3_release_1316 --previous results/release/vm_build_20261109
 ```
+
+`sums --supplement` refuses a file with another name, one that does not start with `%PDF-` or one over 1 GiB. It reads the
+PDF three ways: its raw bytes, its decoded streams (a PDF keeps its text compressed there) and the text `pdftotext` extracts.
+Each may hold the contact address once and no other address; any other private data stops it. Without `pdftotext`, a warning
+says that the text was checked in the streams only. Then it copies the PDF into R2, before `SHA256SUMS`. Without
+`--supplement`, `sums` only warns that R2 has no supplement, unless the previous version holds it (a later version keeps it).
 
 `sums --previous` keeps, in each record's `SHA256SUMS` and `REDACTIONS.tsv`, the files of the drafts that are not rebuilt here,
 with their recorded SHA-256 and redaction rows; it stops if a record would pass 100 files or 50 GB, kept files included. It
 writes `zenodo_changes_R1.csv` and `zenodo_changes_R2.csv` in `$HOME/af3_release_1316`: every file of each draft with its
-action, keep, replace, add or delete, and its size. Expected: R1 43 files, R2 88 files, R2 about 44.6 GB; "verify: OK", with the kept
+action, keep, replace, add or delete, and its size. Expected: R1 43 files, R2 89 files with the supplement marked `add`, R2 about 44.6 GB; "verify: OK", with the kept
 files counted as kept. In R1, `release_inputs_check.csv` and `.json` of the first build are kept (sessions of freeze `68923012`).
 If an archive the laptop rebuilt is marked replace although nothing of it should have changed (the input and pipeline archives,
 `session_records.tar.gz`, `session_records_followups.tar.gz`), stop and compare its `.sha256` manifest with the first build's
@@ -185,15 +205,18 @@ For each record, open its draft at https://zenodo.org/uploads (the one with the 
      `release_inputs_check_followups1316.csv` and `.json`, `code_alphafold-on-tpu_zenodo-v1.tar.gz` (with its `.sha256`);
      nothing to delete. 35 files become 43.
    - R2: replace `README.md`, `LICENCES.md`, `REDACTIONS.tsv`, `SHA256SUMS`, `analysis_outputs.tar.gz` and its `.sha256`; add
-     the 6 new archives with their `.sha256` (12 files, about 6.9 GB); nothing to delete. 76 files become 88.
+     the 6 new archives with their `.sha256` (12 files, about 6.9 GB) and `Pazienza_AlphaFold3_cross_platform_reproducibility_supplement.pdf`; nothing to delete.
+     76 files become 89.
    The csv files are what counts: if they differ from this list, they say why (a rebuilt archive that differs).
 2. **Description.** Replace it with the `description` of the record's `zenodo.json` (now 439 sessions and freeze `4ec185c5...`,
-   follow-ups 1 to 16, and the OSF links).
+   follow-ups 1 to 16, and the OSF links). If R2's description is already in place, add only the last sentence of its "Paper"
+   paragraph: "The paper's supplementary material is the PDF Pazienza_AlphaFold3_cross_platform_reproducibility_supplement.pdf in
+   this record."
 3. **Related works.** Add the eight OSF links of the record's `zenodo.json`, each with the relation "Is documented by" and the
    resource type "Other": https://osf.io/qtz3v, https://osf.io/fegsy, https://osf.io/nsbgp, https://osf.io/64bpy,
    https://osf.io/c4kh7, https://osf.io/eafkx, https://osf.io/h9yw8, https://osf.io/hcxm7. Add the keyword `pre-registration`.
 4. **Check.** Compare the MD5 Zenodo shows for the new archives with `md5 -q FILE`, the large ones at least; the number of files
-   (43 and 88) and the total size against A7's figures. For R2, check that the licence is still the custom "AlphaFold 3 Output
+   (43 and 89) and the total size against A7's figures. For R2, check that the licence is still the custom "AlphaFold 3 Output
    Terms of Use" and no CC licence.
 5. **Save** each draft. Publish by hand only when the preprint goes out (row of 2026-11-09: publication with the arXiv preprint,
    after the repository is made public).
@@ -215,7 +238,7 @@ The browser must stay open and the laptop awake (`caffeinate -dims` in a termina
 
 These are the steps of the first build, kept as they ran (row of 2026-11-09). A rebuild of everything from scratch follows them
 with today's script: `build` then needs `--paper_ref` for `analysis_outputs.tar.gz` and `--code_ref` for the code copy, the bundle
-needs `LICENSES` and the new freeze folder, and the counts and sizes are those of `layout` (R1 43 files, R2 88 files, about 45 GB)
+needs `LICENSES` and the new freeze folder, and the counts and sizes are those of `layout` (R1 43 files, R2 89 files with the supplement, about 45 GB)
 rather than those below. The first build was made from commit `366159b`, then tagged `zenodo-v1`; a rebuild would tag its own
 commit, as Part A does.
 
@@ -540,6 +563,6 @@ other archive of the previous version byte for byte: those are neither rebuilt n
    the previous one; then delete, replace and add the files as the two lists say, edit the description, and publish by hand. A new
    version gets its own DOI; the concept DOI of each record stays and always resolves to the latest version.
 
-Limits: R2 holds about 44.6 GB and 88 files after this release (step A7 prints the exact figures), so a later version can add
-at most about 5 GB and 12 files to it. A follow-up larger than that needs a third record: add `R3` to `RECORDS`, `PLAIN_FILES` and
+Limits: R2 holds about 44.6 GB and 89 files after this release (step A7 prints the exact figures), so a later version can add
+at most about 5 GB and 11 files to it. A follow-up larger than that needs a third record: add `R3` to `RECORDS`, `PLAIN_FILES` and
 `ZENODO_IDS`, set the record of its archives to `'R3'` in its `LATER_LABELS` entry, and reserve a DOI for it first.
