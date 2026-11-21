@@ -7,11 +7,11 @@ only; this script never contacts a bucket or Zenodo). Build plan: scripts/releas
     python3 scripts/release/release.py scan --root DIR --out DIR [--repo .] [--archives A,B]
     python3 scripts/release/release.py check-inputs --root DIR --out DIR [--sessions S1,S2] [--repo .]
     python3 scripts/release/release.py build --root DIR --out DIR [--archives A,B] [--sessions S1,S2] [--repo .] [--paper_ref REF]
-        [--code_ref REF]
+        [--code_ref REF] [--supplement PATH]
     python3 scripts/release/release.py archives --built_on laptop|vm [--batch B]
     python3 scripts/release/release.py vm-lists --out DIR [--batch B]
     python3 scripts/release/release.py merge-redactions --out DIR --record R1 --from FILE
-    python3 scripts/release/release.py sums --out DIR [--previous DIR]
+    python3 scripts/release/release.py sums --out DIR [--previous DIR] [--supplement PATH]
     python3 scripts/release/release.py verify --out DIR [--previous DIR] [--repo .]
 
 Sessions (classify()): the data freeze's sessions (FREEZE/sessions.tsv: main, pilot2, memlimit, ppi, embed, the
@@ -48,7 +48,9 @@ the build and removes what it wrote. --sessions limits a build to some sessions 
 sums: copies scripts/release/records/<record>/README.md and records/LICENCES.md (and, for R1, this script, RUNBOOK.md,
 the inventory, the layout, the exclusion lists, SUPERSEDED_SESSIONS.csv and OUTSIDE_SESSIONS.csv, as release_<name>, since
 a Zenodo record has no folders) into each record folder and writes its SHA256SUMS; it stops if a record is over Zenodo's
-limits. Run it after archives built elsewhere are copied in.
+limits. Run it after archives built elsewhere are copied in. sums --supplement PATH (and build --supplement PATH) copies the
+paper's supplement, a PDF named SUPPLEMENT_NAME, into R2 only, after check_supplement() (raw bytes, decoded streams and
+the text of pdftotext); without it, sums warns that R2 has no supplement unless the previous version's is kept.
 archives: prints the comma-separated names of the archives built on the laptop or on the VM (BUILT_ON); with --batch,
 only those of that batch (BATCH_OF), the archives an incremental version builds on the VM.
 vm-lists: the VM's copy lists (sessions_release.txt, sessions_outside.txt) from the inventory, for one batch or all.
@@ -87,10 +89,12 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import zlib
 
 HERE = pathlib.Path(__file__).resolve().parent            # scripts/release: this script, records/<R>/README.md
 REPO = HERE.parents[1]
@@ -647,11 +651,11 @@ LEFT_OUT = {'data_json': 'AlphaFold3\'s copy of each run\'s input; check-inputs 
                         '0.70 at best): R2 would pass 50 GB with them (decision of 2026-11-17); they stay in the results '
                         'bucket and in the freeze manifest with their SHA-256, available on request'}
 # Plain files of a record besides the archives and their manifests: README.md, LICENCES.md, REDACTIONS.tsv, SHA256SUMS;
-# R1 also, with the prefix release_ because a Zenodo record has no folders: release.py, RUNBOOK.md, layout.md, layout.csv,
+# R2 also the paper's supplement (SUPPLEMENT_NAME, sums --supplement); R1 also, with the prefix release_ because a Zenodo record has no folders: release.py, RUNBOOK.md, layout.md, layout.csv,
 # inventory.md, summary.csv, sessions.csv, excluded_sessions.csv, excluded_files.csv, SUPERSEDED_SESSIONS.csv,
 # OUTSIDE_SESSIONS.csv, inputs_check.csv and inputs_check.json (the first build's check, kept), and the check of each
 # later batch, inputs_check_<batch>.csv and .json.
-PLAIN_FILES = {'R1': 17 + 2 * len(BATCHES), 'R2': 4}
+PLAIN_FILES = {'R1': 17 + 2 * len(BATCHES), 'R2': 5}
 RECORDS = {'R1': 'Inputs, targets, manifests, data freeze, session lists and run records (CC BY 4.0)',
            'R2': 'AlphaFold3 outputs, the results of its data pipeline with the follow-up 6 deliveries, the XLA dumps of '
                  'follow-up 16, and the analysis outputs derived from them (custom licence: the AlphaFold 3 Output Terms '
@@ -763,9 +767,15 @@ def redact_emails(data):
   """The bytes with every email address replaced by <account>; systemd unit names are kept."""
   return EMAIL_OR_UNIT.sub(lambda m: m.group(0) if m.group('unit') else REDACTED_EMAIL, data)
 # The contact address, by its SHA-256 so that this script (released in R1) does not carry it: allowed only in a record's
-# README.md, exactly once (decision of 2026-11-08). Attribution and contact do not come from the provenance files.
+# README.md and in the paper's supplement (SUPPLEMENT_NAME, first page), exactly once (decisions of 2026-11-08 and
+# 2026-11-21). Attribution and contact do not come from the provenance files.
 CONTACT_SHA256 = '5639004dce512da3abe0761ebfde8c1f960704cdc40e754de1db2c0570ac3dc5'
-CONTACT_FILES = {'README.md'}
+# The paper's supplementary material (decision of 2026-11-21): its tables and figures are computed from AlphaFold 3 outputs,
+# like paper/assets, so it goes in R2 under the Output Terms and never in R1. sums --supplement PATH copies it into R2 under
+# this name, after check_supplement().
+SUPPLEMENT_NAME = 'Pazienza_AlphaFold3_cross_platform_reproducibility_supplement.pdf'
+SUPPLEMENT_RECORD = 'R2'
+CONTACT_FILES = {'README.md', SUPPLEMENT_NAME}
 # The only packaged files allowed to contain an email address: a copy of each is packaged with every address replaced
 # by <account>, and the redaction recorded in REDACTIONS.tsv of the record. The list holds archive member paths, found
 # by `release.py scan` over every local member; the files in results/ and data/ are never changed.
@@ -913,6 +923,11 @@ def inspect(path, rel, code=False):
   if not is_text_member(name):
     return size, sha, {}, None
   data = pathlib.Path(path).read_bytes()
+  return size, sha, scan_text(data, rel, code), data
+
+
+def scan_text(data, rel, code=False):
+  """{private class: occurrences} of the bytes of a text file, or raise Refused: the text checks of inspect()."""
   if '/xla_dump/' in rel:
     check_dump_constants(data, rel)
   tests = code and rel in CODE_ALLOWED['guard_tests']
@@ -933,7 +948,7 @@ def inspect(path, rel, code=False):
   secrets = sorted(k for k in findings if PRIVATE[k][1] == 'refuse')
   if secrets and not tests:
     raise Refused(f'{rel}: holds what looks like a secret ({", ".join(secrets)}): look at it and revoke it')
-  return size, sha, findings, data
+  return findings
 
 
 # The code copy (CODE_ARCHIVE) holds the public commit byte for byte, so it is never redacted: what guard() would refuse
@@ -1214,7 +1229,10 @@ def build(args):
   written, restore = [], {}   # restore: REDACTIONS.tsv as it was before this build
   paper_tmp = tempfile.TemporaryDirectory(prefix='af3_paper_assets_')
   code_tmp = tempfile.TemporaryDirectory(prefix='af3_code_')
+  supplement = getattr(args, 'supplement', None)
   try:
+    if supplement:   # before any archive is built: a refused supplement stops the build at once
+      check_supplement(supplement)
     kinds_of = session_kinds(root, sessions_filter)
     paper = None   # (ref, commit, export root) of the paper assets
     if not wanted or PAPER_ASSETS[0] in wanted:
@@ -1308,7 +1326,11 @@ def build(args):
   finally:
     paper_tmp.cleanup()
     code_tmp.cleanup()
-  return finish_or_refuse(sorted({p.parent for p in written} | {f.parent for f in restore}))
+  dirs = {p.parent for p in written} | {f.parent for f in restore}
+  if supplement:
+    (out / SUPPLEMENT_RECORD).mkdir(parents=True, exist_ok=True)
+    dirs.add(out / SUPPLEMENT_RECORD)
+  return finish_or_refuse(sorted(dirs), supplement=supplement)
 
 
 def git_run(repo, *a):
@@ -1413,9 +1435,73 @@ def plain_guard(src, rel):
     raise Refused(f'{rel}: a plain file of the record with {", ".join(sorted(findings))}')
 
 
-def finish_or_refuse(dirs, previous=None):
+PDF_STREAM = re.compile(rb'(?<!end)stream\r?\n')
+
+
+def pdf_streams(data):
+  """The bytes of every Flate stream of a PDF, decompressed and joined. A PDF keeps its page text, fonts and metadata
+  in such streams, so the raw bytes inspect() reads do not show them; streams it cannot decompress (another filter,
+  such as JPEG images) are left out."""
+  out = []
+  for m in PDF_STREAM.finditer(data):
+    end = data.find(b'endstream', m.end())
+    if end < 0:
+      break
+    try:
+      out.append(zlib.decompressobj().decompress(data[m.end():end], MAX_MEMBER_BYTES))
+    except zlib.error:
+      continue
+  return b'\n'.join(out)
+
+
+def pdf_text(path):
+  """The text of a PDF as pdftotext (poppler) extracts it, or None when pdftotext is not installed."""
+  exe = shutil.which('pdftotext')
+  if not exe:
+    return None
+  r = subprocess.run([exe, '-q', '-enc', 'UTF-8', str(path), '-'], capture_output=True)
+  if r.returncode:
+    raise Refused(f'{SUPPLEMENT_NAME}: pdftotext could not read it (exit {r.returncode})')
+  return r.stdout
+
+
+def check_supplement(path):
+  """The views of the supplement that were checked, or raise Refused. The file must be named SUPPLEMENT_NAME, start
+  with %PDF- and be at most MAX_MEMBER_BYTES. Then plain_guard() reads its raw bytes, and the same checks read its
+  decoded streams (pdf_streams()) and the text pdftotext extracts (pdf_text()): each may hold the contact address once
+  and no other address; private network data, another bucket or a secret stops the build. Without pdftotext, the text
+  is checked in the decoded streams only, where a word can be split by the font's kerning: a warning says so."""
+  p = pathlib.Path(path)
+  if p.name != SUPPLEMENT_NAME:
+    raise Refused(f'--supplement {p.name}: the supplement must be named {SUPPLEMENT_NAME}')
+  if not p.is_file():
+    raise Refused(f'--supplement {path}: no such file')
+  if p.stat().st_size > MAX_MEMBER_BYTES:
+    raise Refused(f'{SUPPLEMENT_NAME}: {p.stat().st_size} bytes, over 1 GiB')
+  with open(p, 'rb') as f:
+    if f.read(5) != b'%PDF-':
+      raise Refused(f'{SUPPLEMENT_NAME}: not a PDF (it does not start with %PDF-)')
+  plain_guard(p, SUPPLEMENT_NAME)
+  views = [('decoded streams', pdf_streams(p.read_bytes()))]
+  text = pdf_text(p)
+  if text is None:
+    print(f'!! {SUPPLEMENT_NAME}: pdftotext not found; the text was checked in the raw bytes and the decoded streams only',
+          file=sys.stderr)
+  else:
+    views.append(('text by pdftotext', text))
+  for label, data in views:
+    try:
+      findings = scan_text(data, SUPPLEMENT_NAME)
+    except Refused as e:
+      raise Refused(f'{e} (in its {label})')
+    if findings:
+      raise Refused(f'{SUPPLEMENT_NAME}: a plain file of the record with {", ".join(sorted(findings))} (in its {label})')
+  return ['raw bytes'] + [label for label, _ in views]
+
+
+def finish_or_refuse(dirs, previous=None, supplement=None):
   try:
-    return finish_records(dirs, previous)
+    return finish_records(dirs, previous, supplement)
   except Refused as e:
     print(f'!! refused: {e}', file=sys.stderr)
     return 2
@@ -1426,6 +1512,9 @@ def finish_or_refuse(dirs, previous=None):
 # Zenodo's file listing of each draft, zenodo_files_<id>.json (results/release/vm_build_20261109/ for the first build).
 ZENODO_IDS = {'R1': '24057470', 'R2': '24057544'}
 KEPT_PLAIN = ('release_inputs_check.csv', 'release_inputs_check.json')   # the first build's check-inputs, kept
+# Plain files a later version may keep: R1 the first build's check-inputs; R2 the paper's supplement, so that a version
+# built without --supplement does not delete it.
+KEPT_PLAIN_FILES = {'R1': KEPT_PLAIN, SUPPLEMENT_RECORD: (SUPPLEMENT_NAME,)}
 
 
 def load_previous(previous, record):
@@ -1445,20 +1534,30 @@ def load_previous(previous, record):
 
 
 def keepable(record, name):
-  """Whether a file of the previous version may be kept unchanged: an archive of this release (or its manifest) or the
-  first build's check-inputs report."""
+  """Whether a file of the previous version may be kept unchanged: an archive of this release (or its manifest), the
+  first build's check-inputs report (R1) or the paper's supplement (R2)."""
   names = {spec[1] for spec in ARCHIVES if spec[0] == record}
-  return name in names or (name.endswith('.sha256') and name[:-7] in names) or (record == 'R1' and name in KEPT_PLAIN)
+  return name in names or (name.endswith('.sha256') and name[:-7] in names) or name in KEPT_PLAIN_FILES.get(record, ())
 
 
-def finish_records(dirs, previous=None):
+def finish_records(dirs, previous=None, supplement=None):
   """README.md (and for R1 the release tooling and lists) into each record folder, then SHA256SUMS of everything in
   it. Run again (command sums) after archives built elsewhere are copied in. With previous (a later version), the files
   of the previous version that are not here and may be kept (keepable()) are listed in SHA256SUMS with their recorded
   SHA-256, their rows of REDACTIONS.tsv are carried over, and <out>/zenodo_changes_<record>.csv says what to do with
   each file of the draft: keep, replace, add or delete. <out>/zenodo_files_<id>.json lists every file the record will
-  hold, with its size: with the record folders' SHA256SUMS and REDACTIONS.tsv, the --previous of the next version."""
+  hold, with its size: with the record folders' SHA256SUMS and REDACTIONS.tsv, the --previous of the next version.
+  supplement: the paper's supplement, copied into R2 as SUPPLEMENT_NAME after check_supplement(); one left in R2 by an
+  earlier run is checked again; in any other record it stops the build."""
   for d in dirs:
+    if d.name != SUPPLEMENT_RECORD and (d / SUPPLEMENT_NAME).is_file():
+      raise Refused(f'{d.name}: holds {SUPPLEMENT_NAME}; the supplement goes in {SUPPLEMENT_RECORD} only')
+    if d.name == SUPPLEMENT_RECORD and supplement:
+      check_supplement(supplement)
+      if pathlib.Path(supplement).resolve() != (d / SUPPLEMENT_NAME).resolve():
+        shutil.copyfile(supplement, d / SUPPLEMENT_NAME)
+    elif d.name == SUPPLEMENT_RECORD and (d / SUPPLEMENT_NAME).is_file():
+      check_supplement(d / SUPPLEMENT_NAME)
     plain = [(HERE / 'records' / d.name / 'README.md', d / 'README.md'), (HERE / 'records' / 'LICENCES.md', d / 'LICENCES.md')]
     if d.name == 'R1':   # the release tooling and its lists travel with record R1, as plain files
       plain += [(HERE / 'release.py', d / 'release_release.py'), (HERE / 'RUNBOOK.md', d / 'release_RUNBOOK.md')]
@@ -1481,12 +1580,15 @@ def finish_records(dirs, previous=None):
       unknown = [n for n, (_, size) in kept.items() if size is None]
       if unknown:
         raise Refused(f'{d.name}: no size in the previous Zenodo listing for {", ".join(sorted(unknown))}')
-      kept_archives = {n for n in kept if not n.endswith('.sha256') and n not in KEPT_PLAIN}
+      kept_archives = {n for n in kept if not n.endswith('.sha256') and n not in KEPT_PLAIN_FILES.get(d.name, ())}
       f = pathlib.Path(previous) / d.name / 'REDACTIONS.tsv'
       if f.is_file():
         rows = [r for r in csv.DictReader(open(f), delimiter='\t') if r['archive'] in kept_archives]
         if rows:
           write_redactions(d, rows)
+    if d.name == SUPPLEMENT_RECORD and not (d / SUPPLEMENT_NAME).is_file() and SUPPLEMENT_NAME not in kept:
+      print(f'!! {d.name}: no {SUPPLEMENT_NAME} (the paper\'s supplement): pass sums --supplement PATH (RUNBOOK.md, A7)',
+            file=sys.stderr)
     files = sorted(p for p in d.rglob('*') if p.is_file() and p.name != 'SHA256SUMS')
     nested = [p for p in files if p.parent != d]
     if nested:
@@ -1525,8 +1627,11 @@ def finish_records(dirs, previous=None):
 
 
 def sums(args):
-  previous = getattr(args, 'previous', None)
-  return finish_or_refuse(sorted(d for d in pathlib.Path(args.out).iterdir() if d.is_dir() and d.name in RECORDS), previous)
+  previous, supplement = getattr(args, 'previous', None), getattr(args, 'supplement', None)
+  if supplement:
+    (pathlib.Path(args.out) / SUPPLEMENT_RECORD).mkdir(parents=True, exist_ok=True)
+  return finish_or_refuse(sorted(d for d in pathlib.Path(args.out).iterdir() if d.is_dir() and d.name in RECORDS), previous,
+                          supplement)
 
 
 def verify(args):
@@ -1714,6 +1819,7 @@ def main():
                  'that archive is built; "none" for a test build without it)')
   p.add_argument('--allow_incomplete_inputs_check', action='store_true',
                  help='test subsets only: accept a check-inputs run that found processes without a data JSON')
+  p.add_argument('--supplement', help=f'the paper\'s supplement, a PDF named {SUPPLEMENT_NAME}, copied into {SUPPLEMENT_RECORD}')
   p = sub.add_parser('check-inputs')
   p.add_argument('--root', required=True)
   p.add_argument('--repo', default=str(REPO))
@@ -1739,6 +1845,7 @@ def main():
   p = sub.add_parser('sums')
   p.add_argument('--out', required=True)
   p.add_argument('--previous', help='the previous version (incremental build): keep its files that are not rebuilt')
+  p.add_argument('--supplement', help=f'the paper\'s supplement, a PDF named {SUPPLEMENT_NAME}, copied into {SUPPLEMENT_RECORD}')
   p = sub.add_parser('verify')
   p.add_argument('--out', required=True)
   p.add_argument('--previous', help='the previous version: files listed but not here must be its, unchanged')

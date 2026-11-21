@@ -1,7 +1,7 @@
 # AlphaFold3 on TPU and GPU: predicted structures, confidences and derived analysis outputs
 
 Author: Lorenzo Pazienza, ORCID 0009-0006-1687-0125. Contact: lorenzo.pazienza@gmail.com.
-Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available). Companion record (inputs with ColabFold MSAs, targets, manifests, data freeze, run
+Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available). The paper's supplementary material is the PDF `Pazienza_AlphaFold3_cross_platform_reproducibility_supplement.pdf` in this record. Companion record (inputs with ColabFold MSAs, targets, manifests, data freeze, run
 records): 10.5281/zenodo.24057470. This record: 10.5281/zenodo.24057544. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, the repository commit tagged zenodo-v1.
 A copy of that commit is in record R1.
 
@@ -96,6 +96,7 @@ outputs derived from the study's outputs.
 | `af3_superseded_engineering.tar.gz` | **superseded or engineering, not used in any reported result** (15 sessions with the official weights: the first pilot, its V6h and Gh arms and V5 warm completion, the L4 determinism diagnostic, a GT smoke test, and one interrupted pilot session) | structures, full confidences and logs; `SUPERSEDED_SESSIONS.csv` maps each session to the section 10 row of the analysis plan that records it |
 | `REDACTIONS.tsv` (plain file) | every file packaged with a redaction (below) |
 | `LICENCES.md` (plain file) | every third-party source, its licence, the official page, and the licence line of each archive |
+| `Pazienza_AlphaFold3_cross_platform_reproducibility_supplement.pdf` (plain file) | the paper's supplementary material; its tables and figures are computed from the AlphaFold 3 outputs of this record, so it is released with them under the Output Terms |
 
 ### Where the follow-up 6 data pipeline ran
 
