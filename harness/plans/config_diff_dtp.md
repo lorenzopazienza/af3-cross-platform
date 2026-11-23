@@ -2,7 +2,7 @@
 
 Source arm: as recorded in its sessions (V6f and Gf: follow-up 13; Af and Hf: follow-up 14). New arm: as its plans, harness/configs.yaml, harness/run_af3.py and cloud/af3_run.sh resolve them (A100 machine type a2-ultragpu-1g, set at launch by A100_MACHINE_TYPE), with the provisioning of item f. Allowed differences: the label, the configuration name and description, the absence of JAX_DEFAULT_MATMUL_PRECISION=highest, the seeds, the repetitions and the provisioning. Rows marked "without the follow-up 17 setting" compare the configuration, the environment and the command again with JAX_DEFAULT_MATMUL_PRECISION removed from both sides, and must be the same.
 
-## V6fd against V6f (9 source sessions, 7 plans)
+## V6fd against V6f (9 source sessions, 5 plans)
 
 JAX_DEFAULT_MATMUL_PRECISION in the new arm's environment: none (as intended)
 
@@ -70,7 +70,7 @@ JAX_DEFAULT_MATMUL_PRECISION in the new arm's environment: none (as intended)
 | environment (xla_env), without the follow-up 17 setting | `{"JAX_LOG_COMPILES": "1", "JAX_PERSISTENT_CACHE_ENABLE_XLA_CACHES": "none", "JAX_PLATFORMS": "cuda", "XLA_CLIENT_MEM_FRACTION": "0.95", "XLA_FLAGS": "--xla_gpu_enable_triton_gemm=false", "XLA_PYTHON_CLIENT_PREALLOCATE": "true"}` | `{"JAX_LOG_COMPILES": "1", "JAX_PERSISTENT_CACHE_ENABLE_XLA_CACHES": "none", "JAX_PLATFORMS": "cuda", "XLA_CLIENT_MEM_FRACTION": "0.95", "XLA_FLAGS": "--xla_gpu_enable_triton_gemm=false", "XLA_PYTHON_CLIENT_PREALLOCATE": "true"}` | same |
 | run_alphafold command, without the follow-up 17 setting | `cd third_party/alphafold3 && JAX_PLATFORMS=cuda XLA_FLAGS=--xla_gpu_enable_triton_gemm=false XLA_PYTHON_CLIENT_PREALLOCATE=true XLA_CLIENT_MEM_FRACTION=0.95 AF3_FU13_BFLOAT16=none JAX_LOG_COMPILES=1 JAX_PERSISTENT_CACHE_ENABLE_XLA_CACHES=none AF3_ENTRY_STATS=<target>/af3_entry_stats.json .venv/bin/python ../../harness/af3_entry.py --json_path=<target>/work/input_seeds.json --output_dir=<target>/af3_output '--model_dir=<model_dir>' --jax_backend=gpu --flash_attention_implementation=xla --run_data_pipeline=false --jax_compilation_cache_dir=<cache>` | `cd third_party/alphafold3 && JAX_PLATFORMS=cuda XLA_FLAGS=--xla_gpu_enable_triton_gemm=false XLA_PYTHON_CLIENT_PREALLOCATE=true XLA_CLIENT_MEM_FRACTION=0.95 AF3_FU13_BFLOAT16=none JAX_LOG_COMPILES=1 JAX_PERSISTENT_CACHE_ENABLE_XLA_CACHES=none AF3_ENTRY_STATS=<target>/af3_entry_stats.json .venv/bin/python ../../harness/af3_entry.py --json_path=<target>/work/input_seeds.json --output_dir=<target>/af3_output '--model_dir=<model_dir>' --jax_backend=gpu --flash_attention_implementation=xla --run_data_pipeline=false --jax_compilation_cache_dir=<cache>` | same |
 
-## Afd against Af (15 source sessions, 8 plans)
+## Afd against Af (15 source sessions, 12 plans)
 
 JAX_DEFAULT_MATMUL_PRECISION in the new arm's environment: none (as intended)
 
@@ -103,7 +103,7 @@ JAX_DEFAULT_MATMUL_PRECISION in the new arm's environment: none (as intended)
 | environment (xla_env), without the follow-up 17 setting | `{"JAX_LOG_COMPILES": "1", "JAX_PERSISTENT_CACHE_ENABLE_XLA_CACHES": "none", "JAX_PLATFORMS": "cuda", "XLA_CLIENT_MEM_FRACTION": "0.95", "XLA_FLAGS": "--xla_gpu_enable_triton_gemm=false", "XLA_PYTHON_CLIENT_PREALLOCATE": "true"}` | `{"JAX_LOG_COMPILES": "1", "JAX_PERSISTENT_CACHE_ENABLE_XLA_CACHES": "none", "JAX_PLATFORMS": "cuda", "XLA_CLIENT_MEM_FRACTION": "0.95", "XLA_FLAGS": "--xla_gpu_enable_triton_gemm=false", "XLA_PYTHON_CLIENT_PREALLOCATE": "true"}` | same |
 | run_alphafold command, without the follow-up 17 setting | `cd third_party/alphafold3 && JAX_PLATFORMS=cuda XLA_FLAGS=--xla_gpu_enable_triton_gemm=false XLA_PYTHON_CLIENT_PREALLOCATE=true XLA_CLIENT_MEM_FRACTION=0.95 AF3_FU13_BFLOAT16=none JAX_LOG_COMPILES=1 JAX_PERSISTENT_CACHE_ENABLE_XLA_CACHES=none AF3_ENTRY_STATS=<target>/af3_entry_stats.json .venv/bin/python ../../harness/af3_entry.py --json_path=<target>/work/input_seeds.json --output_dir=<target>/af3_output '--model_dir=<model_dir>' --jax_backend=gpu --flash_attention_implementation=xla --run_data_pipeline=false --jax_compilation_cache_dir=<cache>` | `cd third_party/alphafold3 && JAX_PLATFORMS=cuda XLA_FLAGS=--xla_gpu_enable_triton_gemm=false XLA_PYTHON_CLIENT_PREALLOCATE=true XLA_CLIENT_MEM_FRACTION=0.95 AF3_FU13_BFLOAT16=none JAX_LOG_COMPILES=1 JAX_PERSISTENT_CACHE_ENABLE_XLA_CACHES=none AF3_ENTRY_STATS=<target>/af3_entry_stats.json .venv/bin/python ../../harness/af3_entry.py --json_path=<target>/work/input_seeds.json --output_dir=<target>/af3_output '--model_dir=<model_dir>' --jax_backend=gpu --flash_attention_implementation=xla --run_data_pipeline=false --jax_compilation_cache_dir=<cache>` | same |
 
-## Hfd against Hf (10 source sessions, 5 plans)
+## Hfd against Hf (10 source sessions, 8 plans)
 
 JAX_DEFAULT_MATMUL_PRECISION in the new arm's environment: none (as intended)
 
