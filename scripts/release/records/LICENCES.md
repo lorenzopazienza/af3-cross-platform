@@ -39,6 +39,7 @@ sharing and adaptation with attribution.
 | R2 | `inputs_official_pipeline.tar.gz`, `nas_naspaz8-af3_run1.tar.gz`, `nas_naspaz6-af3_run1.tar.gz`, `nas_naspaz8-af3_run2.tar.gz` | AlphaFold 3 Output Terms of Use, no Creative Commons. The databases behind the alignments are attributed in R2's README: UniRef90, UniProt and small BFD (modified by Google DeepMind), CC BY 4.0 at their sources; MGnify and the PDB, CC0 1.0 |
 | R2 | `hlo_xla_dumps.tar.gz` (proposal, pending Lorenzo's decision: last section) | AlphaFold 3 Output Terms of Use, no Creative Commons; the archive also carries the Apache License 2.0 of AlphaFold 3's code it is compiled from |
 | R2 | every other archive, including `af3_feat_features.tar.gz` and `analysis_outputs.tar.gz` (with the paper's `paper/assets/`) | AlphaFold 3 Output Terms of Use, no Creative Commons |
+| R2 | `Pazienza_AlphaFold3_cross_platform_reproducibility_supplement.pdf` (plain file: the paper's supplementary material, whose tables and figures are computed from AlphaFold 3 outputs) | AlphaFold 3 Output Terms of Use, no Creative Commons, as `analysis_outputs.tar.gz` |
 
 Record R1 as a whole carries CC BY 4.0 on Zenodo, which has one licence field per record: CC0 data can be redistributed inside
 it, and every CC BY 4.0 source is attributed in its README. Record R2 carries a custom licence on Zenodo, title "AlphaFold 3 Output

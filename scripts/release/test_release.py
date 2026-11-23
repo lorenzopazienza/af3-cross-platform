@@ -112,7 +112,8 @@ def _session(root, name='S_l4_main_g_01', weights=None, data=None):
 def _args(root, out, **kw):
   return types.SimpleNamespace(root=str(root), repo=str(root.parent / 'repo'), out=str(out), archives=kw.get('archives'),
                                sessions=kw.get('sessions'), allow_incomplete_inputs_check=False,
-                               paper_ref=kw.get('paper_ref', 'none'), code_ref=kw.get('code_ref', 'none'))
+                               paper_ref=kw.get('paper_ref', 'none'), code_ref=kw.get('code_ref', 'none'),
+                               supplement=kw.get('supplement'))
 
 
 def _passed_check(root, out):
@@ -1467,4 +1468,171 @@ def test_the_records_stay_within_the_limits_with_the_new_archives():
   r1 = sum(1 for a in release.ARCHIVES if a[0] == 'R1')
   r2 = sum(1 for a in release.ARCHIVES if a[0] == 'R2')
   assert (r1, r2) == ({'R2': 12, 'R1': 13}[release.HLO_DUMPS_RECORD], {'R2': 42, 'R1': 41}[release.HLO_DUMPS_RECORD])
-  assert 2 * r1 + release.PLAIN_FILES['R1'] <= 43 and 2 * r2 + release.PLAIN_FILES['R2'] <= 88
+  assert 2 * r1 + release.PLAIN_FILES['R1'] <= 43 and 2 * r2 + release.PLAIN_FILES['R2'] <= 89
+
+
+# ---------------------------------------------------------------- the paper's supplement in R2
+
+SUPP = release.SUPPLEMENT_NAME
+
+
+def _pdf(text):
+  """A one-page PDF whose page text is in a Flate stream (as pdflatex writes it), so the raw bytes do not show it."""
+  import zlib
+  content = zlib.compress(b'BT /F1 12 Tf 72 720 Td (' + text + b') Tj ET')
+  objs = [b'<< /Type /Catalog /Pages 2 0 R >>', b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+          b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+          b'<< /Length %d /Filter /FlateDecode >>\nstream\n' % len(content) + content + b'\nendstream',
+          b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']
+  out, offsets = b'%PDF-1.7\n', []
+  for i, o in enumerate(objs, 1):
+    offsets.append(len(out))
+    out += b'%d 0 obj\n' % i + o + b'\nendobj\n'
+  xref = len(out)
+  out += b'xref\n0 %d\n0000000000 65535 f \n' % (len(objs) + 1) + b''.join(b'%010d 00000 n \n' % o for o in offsets)
+  return out + b'trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n' % (len(objs) + 1, xref)
+
+
+@pytest.fixture
+def contact():
+  """The real contact address, read from R2's README (the records' READMEs pass the guard with it in the same sums run)."""
+  found = release.find_emails((release.HERE / 'records' / 'R2' / 'README.md').read_bytes())
+  assert len(found) == 1 and hashlib.sha256(found[0]).hexdigest() == release.CONTACT_SHA256
+  return found[0]
+
+
+@pytest.fixture(params=['pdftotext', 'no pdftotext'])
+def text_tool(request, monkeypatch):
+  """Every supplement test runs with pdftotext (when installed) and without it (decoded streams only)."""
+  if request.param == 'pdftotext' and not release.shutil.which('pdftotext'):
+    pytest.skip('pdftotext not installed')
+  if request.param == 'no pdftotext':
+    monkeypatch.setattr(release, 'pdf_text', lambda path: None)
+  return request.param
+
+
+def test_supplement_with_another_name_is_refused(tmp_path, contact):
+  p = _file(tmp_path, 'supplement.pdf', _pdf(b'Contact: ' + contact))
+  with pytest.raises(release.Refused, match='must be named'):
+    release.check_supplement(p)
+  assert release.sums(types.SimpleNamespace(out=str(tmp_path / 'out'), previous=None, supplement=str(p))) == 2
+  assert not list((tmp_path / 'out').rglob('*.pdf'))
+
+
+@pytest.mark.parametrize('data', [b'Contact: someone\n', b'', b'%PDF', b'\n%PDF-1.7\n'])
+def test_supplement_that_is_not_a_pdf_is_refused(tmp_path, data):
+  with pytest.raises(release.Refused, match='not a PDF'):
+    release.check_supplement(_file(tmp_path, SUPP, data))
+
+
+def test_supplement_over_the_limit_is_refused(tmp_path, monkeypatch, contact):
+  p = _file(tmp_path, SUPP, _pdf(b'Contact: ' + contact))
+  monkeypatch.setattr(release, 'MAX_MEMBER_BYTES', p.stat().st_size - 1)
+  with pytest.raises(release.Refused, match='over 1 GiB'):
+    release.check_supplement(p)
+
+
+@pytest.mark.parametrize('text', [b'Contact: other@example.org', b'Contact: <C> and other@example.org',
+                                  b'Contact: <C>, again <C>'])
+def test_supplement_with_another_address_is_refused(tmp_path, contact, text_tool, text):
+  p = _file(tmp_path, SUPP, _pdf(text.replace(b'<C>', contact)))
+  assert b'@' not in p.read_bytes()                      # the raw bytes show nothing: the text is in the decoded stream
+  with pytest.raises(release.Refused, match='email address.*in its (decoded streams|text by pdftotext)'):
+    release.check_supplement(p)
+  out = tmp_path / 'out'
+  assert release.sums(types.SimpleNamespace(out=str(out), previous=None, supplement=str(p))) == 2
+  assert not (out / 'R2' / SUPP).exists() and not (out / 'R2' / 'SHA256SUMS').exists()
+
+
+@pytest.mark.parametrize('text,cls', [(b'Built in /Users/someone/paper', 'home_path'),
+                                      (b'see gs://some-other-bucket/x', 'bucket'),
+                                      (b'host 192.168.1.20', 'private_ipv4')])
+def test_supplement_with_other_private_data_is_refused(tmp_path, contact, text_tool, text, cls):
+  with pytest.raises(release.Refused, match=f'{cls if cls != "bucket" else "bucket other"}.*in its'):
+    release.check_supplement(_file(tmp_path, SUPP, _pdf(b'Contact: ' + contact + b'. ' + text)))
+
+
+def test_supplement_with_only_the_contact_is_accepted_and_goes_in_r2(tmp_path, contact, text_tool, capsys):
+  p = _file(tmp_path / 'paper', SUPP, _pdf(b'Contact: ' + contact))
+  views = release.check_supplement(p)
+  assert views[:2] == ['raw bytes', 'decoded streams'] and (views[2:] == ['text by pdftotext']) == (text_tool == 'pdftotext')
+  out = tmp_path / 'out'
+  (out / 'R1').mkdir(parents=True)
+  assert release.sums(types.SimpleNamespace(out=str(out), previous=None, supplement=str(p))) == 0
+  assert (out / 'R2' / SUPP).read_bytes() == p.read_bytes() and not (out / 'R1' / SUPP).exists()
+  sums = dict(reversed(l.split('  ', 1)) for l in (out / 'R2' / 'SHA256SUMS').read_text().splitlines())
+  assert sums[SUPP] == hashlib.sha256(p.read_bytes()).hexdigest()
+  assert SUPP not in (out / 'R1' / 'SHA256SUMS').read_text()
+  assert 'no ' + SUPP not in capsys.readouterr().err
+  assert release.verify(types.SimpleNamespace(out=str(out), previous=None)) == 0
+  # a second sums without --supplement checks the copy again and keeps it
+  assert release.sums(types.SimpleNamespace(out=str(out), previous=None)) == 0
+  assert SUPP in (out / 'R2' / 'SHA256SUMS').read_text()
+
+
+def test_supplement_in_r1_stops_the_build(tmp_path, contact):
+  out = tmp_path / 'out'
+  _file(out / 'R1', SUPP, _pdf(b'Contact: ' + contact))
+  assert release.sums(types.SimpleNamespace(out=str(out), previous=None)) == 2
+
+
+def test_build_checks_the_supplement_before_any_archive(tmp_path, monkeypatch, contact, capsys):
+  monkeypatch.setattr(release, 'unexplained_files', lambda: {})
+  monkeypatch.setattr(release, 'freeze_sessions', lambda: {})
+  root, out = tmp_path / 'af3', tmp_path / 'out'
+  root.mkdir()
+  bad = _file(tmp_path, SUPP, _pdf(b'Contact: other@example.org'))
+  assert release.build(_args(root, out, archives='freeze.tar.gz', supplement=str(bad))) == 2
+  assert f'refused, nothing kept: {SUPP}' in capsys.readouterr().err and not out.exists()
+  good = _file(tmp_path / 'ok', SUPP, _pdf(b'Contact: ' + contact))
+  assert release.build(_args(root, out, archives='freeze.tar.gz', supplement=str(good))) == 0
+  assert (out / 'R2' / SUPP).read_bytes() == good.read_bytes() and SUPP in (out / 'R2' / 'SHA256SUMS').read_text()
+
+
+def test_keepable_keeps_the_supplement_in_r2_only():
+  assert release.keepable('R2', SUPP) and not release.keepable('R1', SUPP)
+  assert release.keepable('R1', 'release_inputs_check.csv') and not release.keepable('R2', 'release_inputs_check.csv')
+  assert not release.keepable('R2', 'README.md') and not release.keepable('R2', 'other.pdf')
+
+
+def test_a_later_version_without_the_option_keeps_the_supplement(tmp_path, contact, capsys):
+  pdf = _pdf(b'Contact: ' + contact)
+  prev = _previous(tmp_path, {'R2': {'af3_main_structures.tar.gz': b'old main', SUPP: pdf, 'README.md': b'r'}})
+  out = tmp_path / 'out'
+  _file(out / 'R2', 'af3_fu13.tar.gz', b'y')
+  assert release.sums(types.SimpleNamespace(out=str(out), previous=str(prev))) == 0
+  assert 'no ' + SUPP not in capsys.readouterr().err
+  changes = {r['file']: r['action'] for r in release.csv.DictReader(open(out / 'zenodo_changes_R2.csv'))}
+  assert changes[SUPP] == 'keep'
+  assert release.verify(types.SimpleNamespace(out=str(out), previous=str(prev))) == 0
+
+
+def test_a_later_version_with_the_option_adds_the_supplement_and_without_it_warns(tmp_path, contact, capsys):
+  prev = _previous(tmp_path, {'R2': {'af3_main_structures.tar.gz': b'old main', 'README.md': b'r'}})
+  out = tmp_path / 'out'
+  _file(out / 'R2', 'af3_fu13.tar.gz', b'y')
+  assert release.sums(types.SimpleNamespace(out=str(out), previous=str(prev))) == 0     # a warning, not a refusal
+  assert 'no ' + SUPP in capsys.readouterr().err
+  p = _file(tmp_path / 'paper', SUPP, _pdf(b'Contact: ' + contact))
+  assert release.sums(types.SimpleNamespace(out=str(out), previous=str(prev), supplement=str(p))) == 0
+  assert 'no ' + SUPP not in capsys.readouterr().err
+  changes = {r['file']: r['action'] for r in release.csv.DictReader(open(out / 'zenodo_changes_R2.csv'))}
+  assert changes[SUPP] == 'add' and changes['af3_main_structures.tar.gz'] == 'keep'
+  assert release.verify(types.SimpleNamespace(out=str(out), previous=str(prev))) == 0
+
+
+def test_the_supplement_counts_as_a_plain_file_of_r2():
+  r2 = sum(1 for a in release.ARCHIVES if a[0] == 'R2')
+  assert release.PLAIN_FILES == {'R1': 17 + 2 * len(release.BATCHES), 'R2': 5}
+  assert 2 * r2 + release.PLAIN_FILES['R2'] == {'R2': 89, 'R1': 87}[release.HLO_DUMPS_RECORD]
+  assert release.SUPPLEMENT_RECORD == 'R2' and SUPP.endswith('_supplement.pdf')
+
+
+def test_the_supplement_is_named_in_r2_only():
+  r2 = (release.HERE / 'records' / 'R2' / 'README.md').read_text()
+  assert f'`{SUPP}`' in r2 and 'Output Terms' in r2.split(f'`{SUPP}`')[2].split('\n')[0]
+  assert SUPP in (release.HERE / 'records' / 'LICENCES.md').read_text()
+  assert SUPP in json.loads((release.HERE / 'records' / 'R2' / 'zenodo.json').read_text())['metadata']['description']
+  assert 'supplement' not in (release.HERE / 'records' / 'R1' / 'README.md').read_text().lower()
+  assert 'supplement' not in json.loads((release.HERE / 'records' / 'R1' / 'zenodo.json').read_text())['metadata']['description'].lower()
+
