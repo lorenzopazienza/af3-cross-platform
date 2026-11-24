@@ -2,3 +2,20 @@
 # scripts/analysis_runs/tri/check_sessions.py --write (one session per part: final status exit 0 with the final upload
 # complete, every planned harness run and process exit 0, outputs local, "Plan finished" in the wrapper log) and
 # committed before any analysis run (scripts/analysis_runs/tri/reproduce.sh). The smoke test (label smoke) is not listed.
+20261124T020249Z_h100_tri_ht_01
+20261124T015627Z_h100_tri_ht_02
+20261124T015632Z_h100_tri_ht_03
+20261124T002236Z_h100_tri_ht_04
+20261124T002246Z_h100_tri_ht_05
+20261124T015636Z_h100_tri_ht_r2_01
+20261124T002226Z_h100_tri_ht_r2_02
+20261124T002230Z_h100_tri_ht_r2_03
+20261124T015641Z_h100_tri_ht_r2_04
+20261124T002251Z_h100_tri_ht_r2_05
+20261124T034230Z_a100_tri_at_r2_01
+20261124T034225Z_a100_tri_at_r2_02
+20261124T034205Z_a100_tri_at_r2_03
+20261124T034210Z_a100_tri_at_r2_04
+20261124T034215Z_a100_tri_at_r2_05
+20261124T034219Z_a100_tri_at_r2_06
+20261124T034235Z_a100_tri_at_r2_07
