@@ -2,3 +2,24 @@
 # scripts/analysis_runs/xvm/check_sessions.py --write (one session per part: final status exit 0 with the final upload
 # complete, every planned harness run and process exit 0, outputs local, "Plan finished" in the wrapper log) and
 # committed before any analysis run (scripts/analysis_runs/xvm/reproduce.sh).
+20261124T154756Z_l4_xvm_g_r3_01
+20261124T134145Z_l4_xvm_g_r3_02
+20261124T141744Z_l4_xvm_g_r3_03
+20261124T124743Z_l4_xvm_g_r3_04
+20261124T123036Z_l4_xvm_g_r3_05
+20261124T095143Z_l4_xvm_g_r3_06
+20261124T130619Z_l4_xvm_g_r3_07
+20261124T130602Z_l4_xvm_g_r3_08
+20261124T123108Z_l4_xvm_g_r3_09
+20261124T123113Z_l4_xvm_g_r3_10
+20261124T135900Z_l4_xvm_g_r3_11
+20261124T132444Z_l4_xvm_g_r3_12
+20261124T165344Z_a100_xvm_a_r3_01
+20261124T190442Z_a100_xvm_a_r3_02
+20261124T191634Z_a100_xvm_a_r3_03
+20261124T185006Z_a100_xvm_a_r3_04
+20261124T205721Z_a100_xvm_a_r3_05
+20261124T164112Z_a100_xvm_a_r3_06
+20261124T185654Z_a100_xvm_a_r3_07
+20261124T183003Z_a100_xvm_a_r3_08
+20261124T192347Z_a100_xvm_a_r3_09

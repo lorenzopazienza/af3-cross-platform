@@ -2,3 +2,24 @@
 # scripts/analysis_runs/rcf/check_sessions.py --write (one session per part: final status exit 0 with the final upload
 # complete, every planned harness run and process exit 0, outputs local, "Plan finished" in the wrapper log) and
 # committed before any analysis run (scripts/analysis_runs/rcf/reproduce.sh).
+20261124T165918Z_a100_rcf_af_r2b_01
+20261124T190749Z_a100_rcf_af_r2b_02
+20261124T153655Z_a100_rcf_af_r2b_03
+20261124T172354Z_a100_rcf_af_r2b_04
+20261124T162638Z_a100_rcf_af_r2b_05
+20261124T150501Z_a100_rcf_af_r2b_06
+20261124T170426Z_a100_rcf_af_r2b_07
+20261124T191513Z_a100_rcf_af_r2b_08
+20261124T153710Z_a100_rcf_af_r2b_09
+20261124T174847Z_a100_rcf_af_r2b_10
+20261124T150451Z_a100_rcf_af_r2b_11
+20261124T150455Z_a100_rcf_af_r2b_12
+20261124T113843Z_h100_rcf_hf_r2b_01
+20261124T113848Z_h100_rcf_hf_r2b_02
+20261124T113833Z_h100_rcf_hf_r2b_03
+20261124T144612Z_h100_rcf_hf_r2b_04
+20261124T113907Z_h100_rcf_hf_r2b_05
+20261124T121141Z_h100_rcf_hf_r2b_06
+20261124T113853Z_h100_rcf_hf_r2b_07
+20261124T113858Z_h100_rcf_hf_r2b_08
+20261124T162300Z_h100_rcf_hf_r2b_09

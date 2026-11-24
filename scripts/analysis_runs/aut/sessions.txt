@@ -2,3 +2,27 @@
 # scripts/analysis_runs/aut/check_sessions.py --write (one session per part: final status exit 0 with the final upload
 # complete, every planned harness run and process exit 0, outputs local, "Plan finished" in the wrapper log) and
 # committed before any analysis run (scripts/analysis_runs/aut/reproduce.sh).
+20261124T164030Z_l4_aut_gna_01
+20261124T152751Z_l4_aut_gna_02
+20261124T164305Z_l4_aut_gna_03
+20261124T164343Z_l4_aut_gna_04
+20261124T181212Z_l4_aut_gna_05
+20261124T154810Z_l4_aut_gna_06
+20261124T170049Z_l4_aut_gna_07
+20261124T170139Z_l4_aut_gna_08
+20261124T171532Z_l4_aut_gna_09
+20261124T164159Z_l4_aut_gna_10
+20261124T160411Z_l4_aut_gna_11
+20261124T152656Z_l4_aut_gna_12
+20261124T172005Z_l4_aut_gna_13
+20261124T173616Z_l4_aut_gna_14
+20261124T152711Z_l4_aut_gna_15
+20261124T160455Z_l4_aut_gna_16
+20261124T162540Z_l4_aut_gna_17
+20261124T165913Z_l4_aut_gna_18
+20261124T170110Z_l4_aut_gna_19
+20261124T154753Z_l4_aut_gna_20
+20261124T193353Z_l4_aut_gna_21
+20261124T162429Z_l4_aut_gna_22
+20261124T173456Z_l4_aut_gna_23
+20261124T190659Z_l4_aut_gna_24
