@@ -1051,8 +1051,10 @@ CODE_ALLOWED = {
     # folder of two cloud tests; made-up paths in test strings
     'home_path': {'targets/ppi/run.log', 'tests/cloud/ctrlc.py', 'tests/cloud/resume.py', 'tests/many/test_run_many.sh',
                   'analysis/tests/test_paper_assets_isc.py'},
-    # the names of the two NAS machines of follow-up 6 in the plan, the MSA ingest and its test
-    'nas_host': {'notes/analysis_plan.md', 'analysis/msa.py', 'analysis/tests/test_ingest_official.py'},
+    # the names of the two NAS machines of follow-up 6 in the plan, the MSA ingest and its test, and in the paper's
+    # record of where its numbers come from (the same names as in the plan)
+    'nas_host': {'notes/analysis_plan.md', 'analysis/msa.py', 'analysis/tests/test_ingest_official.py',
+                 'paper/NUMBERS.md'},
 }
 
 
