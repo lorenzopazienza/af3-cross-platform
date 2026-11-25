@@ -65,7 +65,7 @@ into `paper/assets/`, checks every input's SHA-256 and writes the derived and re
 
 [arXiv ID]. To cite this work, see `CITATION.cff`.
 
-It follows the preprint *Accelerator Choice Is Not Enough: AlphaFold2 Inference on Cloud TPUs*
+It follows the preprint *Using the Whole Slice: AlphaFold2 Inference on an Eight-Chip TPU v5e*
 ([arXiv:2609.34818](https://arxiv.org/abs/2609.34818)). The code and data of that preprint are archived at
 [github.com/lorenzopazienza/alphafold-tpu-benchmark](https://github.com/lorenzopazienza/alphafold-tpu-benchmark).
 
