@@ -1,5 +1,5 @@
 """The data freeze (scripts/freeze/make_freeze_manifest.py, freeze_index.py): the session selection of each flag, against the
-local records of the four earlier freezes; the follow-up 6 to 12 and 13 to 16 extensions; the comparison and the index on
+local records of the four earlier freezes; the follow-up 6 to 12, 13 to 16 and 17 to 21 extensions; the comparison and the index on
 synthetic folders. No bucket and no gcloud: every gcloud helper is replaced, and subprocess is refused."""
 import csv
 import hashlib
@@ -29,6 +29,8 @@ HAVE_RECORDS = (FREEZE / 'followups612_20261108' / 'sessions.tsv').is_file() and
 needs_records = pytest.mark.skipif(not HAVE_RECORDS, reason='results/freeze or results/af3/.many is absent')
 LABELS = {'msa': 20, 'sw': 9, 'seeds': 27, 'h100': 6, 'repl': 18, 'prec5': 6, 'large': 49}
 LABELS_1316 = {'fu13': 79, 'fu14': 44, 'rcx': 15, 'hlo': 2, 'memlimit_ah': 2, 'warm_th': 2}
+LABELS_1721 = {'dtp': 85, 'tri': 17, 'rcf': 21, 'aut': 24, 'xvm': 21}
+HAVE_1316 = (FREEZE / 'followups1316_20261117' / 'sessions.tsv').is_file()
 
 
 def recorded(rel):
@@ -104,12 +106,14 @@ def test_new_flag_adds_exactly_the_135_sessions_after_the_feat_list():
     assert '_smoke' not in s
 
 
-def world(tmp_path, monkeypatch, lists, lists1316=None, tags=None):
+def world(tmp_path, monkeypatch, lists, lists1316=None, tags=None, lists1721=None):
   """A results tree with sessions.txt lists and no earlier freeze's records (the base list is empty); lists1316 are the
-  --followups1316 labels, tags the words their session names carry."""
+  --followups1316 labels, tags the words their session names carry; lists1721 the --followups1721 labels, whose names
+  carry the label itself."""
   lists1316 = lists1316 or {}
+  lists1721 = lists1721 or {}
   runs = tmp_path / 'scripts' / 'analysis_runs'
-  for label, names in {**lists, **lists1316}.items():
+  for label, names in {**lists, **lists1316, **lists1721}.items():
     (runs / label).mkdir(parents=True)
     (runs / label / 'sessions.txt').write_text('# header\n\n' + ''.join(f'{n}  # note\n' for n in names))
   monkeypatch.setattr(mf, 'ANALYSIS_RUNS', runs)
@@ -121,6 +125,11 @@ def world(tmp_path, monkeypatch, lists, lists1316=None, tags=None):
   monkeypatch.setattr(mf, 'FINAL_UPLOAD_CUT', {})
   (tmp_path / 'previous.tsv').write_text('session\tpath\tbytes\tsha256\tcrc32c\n')
   monkeypatch.setattr(mf, 'PREVIOUS_1316', tmp_path / 'previous.tsv')
+  monkeypatch.setattr(mf, 'FOLLOWUP1721', {k: len(v) for k, v in lists1721.items()})
+  monkeypatch.setattr(mf, 'NAME_TAG_1721', {k: k for k in lists1721})
+  monkeypatch.setattr(mf, 'NOT_FROZEN_1721', {})
+  (tmp_path / 'previous1721.tsv').write_text('session\tpath\tbytes\tsha256\tcrc32c\n')
+  monkeypatch.setattr(mf, 'PREVIOUS_1721', tmp_path / 'previous1721.tsv')
   (tmp_path / 'results' / 'af3').mkdir(parents=True)
   pil = tmp_path / 'p'
   pil.mkdir()
@@ -134,7 +143,7 @@ def world(tmp_path, monkeypatch, lists, lists1316=None, tags=None):
   monkeypatch.setattr(mf, 'FOLLOWUP_WRAPPER', pil / 'summary.txt')
   monkeypatch.setattr(mf, 'FOLLOWUP34_WRAPPERS', [])
   monkeypatch.setattr(mf, 'FEAT_WRAPPERS', [])
-  monkeypatch.setattr(mf, 'PREFIX_CHECKED', tuple(lists) + tuple(lists1316))
+  monkeypatch.setattr(mf, 'PREFIX_CHECKED', tuple(lists) + tuple(lists1316) + tuple(lists1721))
   monkeypatch.setattr(subprocess, 'run', lambda *a, **k: (_ for _ in ()).throw(AssertionError(f'no subprocess: {a}')))
   return tmp_path
 
@@ -448,3 +457,147 @@ def test_index_accepts_files_added_later_to_earlier_sessions():
   assert fi.holds(old, h + b'A\ta\nA\ta2\nB\tb\nC\tc\n') == 'yes, plus 1 files added later to its sessions'
   assert fi.holds(old, h + b'A\ta\nB\tb changed\nC\tc\n') == 'NO'
   assert fi.holds(old, h + b'B\tb\nA\ta\n') == 'NO'                                  # order kept
+
+
+# Follow-ups 17 to 21 (--followups1721, added 2026-11-25).
+
+@needs_records
+def test_new_flag_1721_adds_exactly_the_168_sessions_after_the_1316_list():
+  old, new = mf.sessions(followups1316=True), mf.sessions(followups1721=True)
+  assert new[:len(old)] == old                                # implies --followups1316, in the same order
+  added = new[len(old):]
+  assert len(added) == 168 == sum(LABELS_1721.values()) and mf.FOLLOWUP1721 == LABELS_1721
+  assert list(mf.FOLLOWUP1721) == ['dtp', 'tri', 'rcf', 'aut', 'xvm']                # the order of the follow-ups
+  for label, n in LABELS_1721.items():
+    assert [s for s, k in added if k == label] == mf.session_list(label) and len(mf.session_list(label)) == n
+    assert all(mf.label_of_1721(s) == label for s, k in added if k == label)   # the name carries the label's word
+  names = [s for s, _ in new]
+  assert len(set(names)) == len(names)                        # no duplicates, no overlap with earlier labels
+  assert not {k for _, k in old} & set(LABELS_1721)
+  assert not any('_smoke' in s for s, _ in added)
+  assert mf.check_local_folders(new) is None                  # every listed session has a local folder
+
+
+@needs_records
+@pytest.mark.skipif(not HAVE_1316, reason='freeze 4ec185c5 is absent')
+def test_the_1316_flag_still_gives_the_session_list_of_freeze_4ec185c5():
+  assert mf.sessions(followups1316=True) == recorded('followups1316_20261117/sessions.tsv')
+  expected_identifier('followups1316_20261117/manifest_sha256.tsv',
+                      '4ec185c5a929738439de3b916a9c8475c4c3abd218fa140bfd460acf917d4486')
+
+
+@needs_records
+def test_every_unlisted_local_folder_of_the_1721_labels_is_explained():
+  skipped = mf.not_frozen_1721(mf.sessions(followups1721=True))
+  assert {s for s, _, _ in skipped} == set(mf.NOT_FROZEN_1721) and len(skipped) == 54
+  by = {}
+  for _, k, _ in skipped:
+    by[k] = by.get(k, 0) + 1
+  assert by == {'dtp': 34, 'tri': 6, 'rcf': 3, 'xvm': 11}
+  assert all(mf.label_of_1721(s) == k for s, k, _ in skipped)
+  assert all('row of 2026-11-24' in why or 'rows of 2026-11-24' in why for _, _, why in skipped)
+  assert mf.label_of_1721('20261114T191329Z_a100_rcx_af_r2_03') is None         # rcx (follow-up 15) is not rcf
+  assert mf.not_frozen_1316(mf.sessions(followups1721=True)) == mf.not_frozen_1316(mf.sessions(followups1316=True))
+
+
+S17 = '20261124T000000Z_l4_dtp_gfd_01'
+S17B = '20261124T000001Z_l4_dtp_gfd_02'
+S21 = '20261124T000000Z_l4_xvm_g_r3_01'
+
+
+def world1721(tmp_path, monkeypatch):
+  return world(tmp_path, monkeypatch, {'msa': ['M1']}, {'fu13': [S13]}, {'fu13': 'why'}, {'dtp': [S17], 'xvm': [S21]})
+
+
+def test_1721_selection_missing_folder_and_unlisted_folders(tmp_path, monkeypatch):
+  w = world1721(tmp_path, monkeypatch)
+  sel = mf.sessions(followups1721=True)
+  assert sel == [('M1', 'msa'), (S13, 'fu13'), (S17, 'dtp'), (S21, 'xvm')]   # implies --followups1316, then the new labels
+  assert mf.sessions(followups1316=True) == [('M1', 'msa'), (S13, 'fu13')]  # without the flag, nothing new
+  for s in ('M1', S13, S17):
+    (w / 'results' / 'af3' / s).mkdir()
+  with pytest.raises(SystemExit, match=rf'1 session\(s\).*{S21} \(xvm\)'):
+    mf.check_local_folders(sel)
+  for s in (S21, S17B):
+    (w / 'results' / 'af3' / s).mkdir()
+  with pytest.raises(SystemExit, match=rf'follow-up 17 to 21 labels.*NOT_FROZEN_1721.*{S17B} \(dtp\)'):
+    mf.not_frozen_1721(sel)
+  monkeypatch.setattr(mf, 'NOT_FROZEN_1721', {S17B: 'Spot VM lost; row of 2026-11-24'})
+  assert mf.not_frozen_1721(sel) == [(S17B, 'dtp', 'Spot VM lost; row of 2026-11-24')]
+  monkeypatch.setattr(mf, 'NOT_FROZEN_1721', {S17: 'contradiction'})
+  with pytest.raises(SystemExit, match='both listed and recorded as not frozen'):
+    mf.not_frozen_1721(sel)
+  world(tmp_path / 'x', monkeypatch, {'msa': ['M1']}, {}, None, {'dtp': ['M1']})
+  with pytest.raises(SystemExit, match='dtp: sessions already in the freeze'):
+    mf.sessions(followups1721=True)
+
+
+def test_1721_real_mode(tmp_path, monkeypatch):
+  w = world1721(tmp_path, monkeypatch)
+  nas_world(tmp_path, monkeypatch)
+  for s in ('M1', S13, S17, S21):
+    session_folder(w, s)
+  (w / 'results' / 'af3' / S17B).mkdir()
+  monkeypatch.setattr(mf, 'NOT_FROZEN_1721', {S17B: 'Spot VM lost; row of 2026-11-24'})
+  (tmp_path / 'previous1721.tsv').write_text('session\tpath\tbytes\tsha256\tcrc32c\nM1\tgone.cif\t1\taa\t\n')
+  def local_crc(folder):
+    return {str(p.relative_to(folder)): 'crc' for p in folder.rglob('*') if p.is_file()}
+  monkeypatch.setattr(mf, 'local_crc32c', local_crc)
+  monkeypatch.setattr(mf, 'bucket_objects', lambda b, sess: {
+      r: ((w / 'results' / 'af3' / sess / r).stat().st_size, c) for r, c in local_crc(w / 'results' / 'af3' / sess).items()})
+  monkeypatch.setattr(mf, 'bucket_sessions', lambda b: ['M1', S13, S17, S17B, S21, '20261124T000000Z_h100_tri_ht_01',
+                                                        '20261124T000000Z_l4_gt_triton_01'])
+  out = tmp_path / 'out'
+  monkeypatch.setattr(sys, 'argv', ['m', '--bucket', 'gs://b', '--followups1721', '--out', str(out)])
+  assert mf.main() == 0
+  text = (out / 'summary.md').read_text()
+  assert 'not labelled expected above: 0' in text and '| dtp: 1 |' in text and '| xvm: 1 |' in text
+  assert 'Follow-ups 17 to 21: local session folders in no list, not frozen: 1' in text
+  assert f'| {S17B} | dtp | Spot VM lost; row of 2026-11-24 |' in text
+  assert 'Flag of this freeze: --followups1721' in text
+  others = text.split('not in the lists above:')[1].split('\n')[0]
+  assert S17B in others and '_tri_ht_01' in others and 'triton' not in others   # listed, not compared
+  assert 'removed 1: CHANGED OR REMOVED' in text                                # compared with PREVIOUS_1721
+  manifest = (out / 'manifest_sha256.tsv').read_text()
+  assert S17 in manifest and S21 in manifest and S17B not in manifest
+
+
+def test_1721_local_only(tmp_path, monkeypatch):
+  w = world1721(tmp_path, monkeypatch)
+  nas_world(tmp_path, monkeypatch)
+  for s in ('M1', S13, S17):
+    session_folder(w, s)
+  session_folder(w, S21, plan_ok=False)
+  out = tmp_path / 'dry'
+  monkeypatch.setattr(sys, 'argv', ['m', '--local_only', '--followups1721', '--out', str(out)])
+  assert mf.main() == 0
+  text = (out / 'summary.md').read_text()
+  assert '| follow-ups 17 to 21 | 2 |' in text and 'Follow-ups 6 to 21: what looks incomplete' in text
+  assert 'Follow-ups 17 to 21: local session folders in no list, not frozen: 0' in text
+  assert {r['session'] for r in csv.DictReader(open(out / 'session_check.tsv'), delimiter='\t')} == {S21}
+
+
+def test_index_prefers_the_1721_freeze(tmp_path):
+  root = tmp_path / 'freeze'
+  h = 'session\tpath\n'
+  session_freeze(root, '2026-10-15T09:00:00+00:00', ['main'], h + 'a\n')
+  old = session_freeze(root / 'followups1316_20261117', '2026-11-17T11:00:00+00:00',
+                       ['main'] + list(LABELS) + list(LABELS_1316), h + 'a\nb\n')
+  some = session_freeze(root / 'partial', '2026-11-20T10:00:00+00:00', ['main', 'dtp'], h + 'a\nb\nc\n')
+  text, sessions, _, final = fi.build(root)
+  assert final['identifier'] == old and sessions[-1]['flag'].startswith('unknown (only some follow-up 6 to 21')
+  (root / 'partial' / 'sessions.tsv').unlink()
+  (root / 'partial' / 'manifest_sha256.tsv').unlink()
+  new = session_freeze(root / 'followups1721_20261125', '2026-11-25T10:00:00+00:00',
+                       ['main'] + list(LABELS) + list(LABELS_1316) + list(LABELS_1721), h + 'a\nb\nc\n')
+  text, sessions, _, final = fi.build(root)
+  assert final['identifier'] == new and [s['flag'] for s in sessions] == ['(none)', '--followups1316', '--followups1721']
+  assert [s['holds_previous'] for s in sessions] == ['-', 'yes', 'yes']
+  assert 'followups1721_20261125 (final)' in text
+
+
+@needs_records
+def test_index_of_the_local_freezes_is_unchanged_until_the_1721_freeze():
+  text, sessions, _, final = fi.build(FREEZE)
+  if not any(s['flag'] == '--followups1721' for s in sessions):
+    assert final['identifier'].startswith('4ec185c5') and text == (FREEZE / 'INDEX.md').read_text()
