@@ -1,0 +1,11 @@
+Arm,Bucket,Processes,Wall time (s),Wall time ratio,Compiled memory ratio,Peak reservation ratio
+v6e float32,all,"310, 300",153 vs 97,1.58,1.02,0.98
+v6e float32,256,"96, 95",124 vs 70,1.75,1.02,0.89
+v6e float32,512,"100, 95",152 vs 96,1.58,1.02,0.98
+v6e float32,768,"72, 70",210 vs 139,1.51,1.06,1.08
+v6e float32,1024,"42, 40",268 vs 205,1.31,1.15,1.15
+L4 float32,all,"600, 300",341 vs 220,1.55,1.24,
+L4 float32,256,"190, 95",156 vs 124,1.26,1.09,
+L4 float32,512,"190, 95",340 vs 220,1.55,1.24,
+L4 float32,768,"140, 70",665 vs 400,1.67,1.26,
+L4 float32,1024,"80, 40",1210 vs 706,1.71,1.31,

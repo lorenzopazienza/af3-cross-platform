@@ -1,0 +1,5 @@
+pair,model,targets,seed pairs,slope per 256 tokens (log odds),"method (EM), coefficient",replicates not converged
+"HW(V5,V6)",tokens,68,340,"-0.033 [-0.178, +0.118]",,0
+"HW(V5,V6)",tokens + method,68,340,"-0.038 [-0.184, +0.116]",+0.082,0
+"HW(V6,G)",tokens,68,340,"+0.048 [-0.127, +0.227]",,0
+"HW(V6,G)",tokens + method,68,340,"+0.043 [-0.134, +0.227]",+0.088,0

@@ -1,0 +1,48 @@
+group,scope,description,sessions,processes,samples,exit 0,OOM stops,process wall h,VM h,list USD
+by label,pilot2,repeated pilot (pilot decision only),13,252,1260,252,0,28.0,29.9,
+by label,main,main study (pre-registered),53,2992,14960,2992,0,189.3,202.2,
+by label,memlimit,memory limit (M7),4,17,65,13,4,5.8,7.8,
+by label,ppi,FU1,9,750,3750,750,0,31.9,36.6,
+by label,embed,FU2,4,50,250,50,0,3.8,5.9,
+by label,a100,FU3,12,1030,5150,1030,0,39.6,44.1,
+by label,cpu60,FU4,54,108,540,108,0,178.9,184.4,
+by label,feat,FU5 (featurization only),4,0,0,0,0,0.0,5.5,
+by label,msa,FU6,20,1220,6100,1220,0,70.4,80.1,
+by label,sw,FU7,9,600,3000,600,0,35.8,37.3,
+by label,seeds,FU8,27,1800,9000,1800,0,106.1,126.0,
+by label,h100,FU9,6,600,3000,600,0,14.3,16.3,
+by label,large,FU10,49,1560,7800,1560,0,217.5,226.6,
+by label,repl,FU11,18,2160,10800,2160,0,82.1,86.0,
+by label,prec5,FU12,6,360,1800,360,0,23.3,24.7,
+by label,"pilot2, excluded","pilot2 launches not used (6 ran nothing, 1 interrupted)",7,0,0,0,0,0.0,0.0,
+by device,TPU v5e,n2d-48-24-v5lite-tpu,25,3193,15960,3192,1,128.4,137.8,
+by device,TPU v6e,ct6e-standard-1t,23,3064,15315,3063,1,108.8,113.2,
+by device,NVIDIA L4,g2-standard-8,155,5480,27390,5478,2,532.8,587.2,
+by device,A100 80 GB,a2-ultragpu-1g,12,1030,5150,1030,0,39.6,44.1,
+by device,H100 80 GB,a3-highgpu-1g,6,600,3000,600,0,14.3,16.2,
+by device,CPU,n2-highmem-16,63,132,660,132,0,202.9,214.8,
+total,all,every session of the final freeze,295,13499,67475,13495,4,1026.7,1113.3,
+cost,recorded,FU6: L4 official r1 27.70 (row of 2026-10-27); v6e official 31.30 (row of 2026-10-28); v5e official 18.50 (row of 2026-10-29); L4 official r2 24.53 (row of 2026-10-29),,,,,,,,102.03
+cost,recorded,FU6: smoke tests 1.02 (row of 2026-10-29),,,,,,,,1.02
+cost,recorded,engineering check: eigen_check (outside the follow-up caps) 0.83 (row of 2026-10-29),,,,,,,,0.83
+cost,recorded,FU7: v6e older stack 13.28 (row of 2026-11-01); L4 older stack 17.77 (row of 2026-11-02); sw_smoke 0.52 (row of 2026-10-29),,,,,,,,31.57
+cost,recorded,FU8: v5e 40.61 (row of 2026-10-31); L4 58.36 (row of 2026-11-01),,,,,,,,98.97
+cost,recorded,FU9: H100 r1 54.65 (row of 2026-11-04); H100 r2 52.40 (row of 2026-11-04); smoke 1.08 (row of 2026-11-04),,,,,,,,108.13
+cost,recorded,FU10: v5e 57.74 (row of 2026-11-07); L4 137.15 (row of 2026-11-08); v6e 37.51 (row of 2026-11-08),,,,,,,,232.40
+cost,recorded,FU11: L4 30.77 (row of 2026-11-05); v5e 33.93 (row of 2026-11-05); v6e 26.52 (row of 2026-11-06),,,,,,,,91.22
+cost,recorded,FU12: L4 highest 9.11 (row of 2026-11-06); v6e highest 10.54 (row of 2026-11-07),,,,,,,,19.65
+cost,recorded,total of the recorded items,,,,,,,,685.82
+cost,estimated,main,53,,,,,,202.2,248.74
+cost,estimated,pilot2,13,,,,,,29.9,35.22
+cost,estimated,"superseded, with a launcher record",6,,,,,,6.1,6.35
+cost,estimated,memlimit,4,,,,,,7.8,8.20
+cost,estimated,ppi (FU1),9,,,,,,36.6,54.42
+cost,estimated,embed (FU2),4,,,,,,5.9,7.48
+cost,estimated,a100 (FU3),12,,,,,,44.1,225.14
+cost,estimated,a100 smoke tests,4,,,,,,0.6,3.20
+cost,estimated,cpu60 (FU4),54,,,,,,184.4,59.26
+cost,estimated,cpu60 preempted,5,,,,,,8.5,2.73
+cost,estimated,feat (FU5),4,,,,,,5.5,2.88
+cost,estimated,failed setup with a VM,2,,,,,,0.2,0.17
+cost,estimated,total of the estimated items,,,,,,,,653.79
+cost,total,"campaign total, recorded plus estimated",,,,,,,,1339.61

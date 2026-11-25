@@ -1,0 +1,11 @@
+Contrast,Top-1 flip,Success flip,Flips that matter
+H100 Triton vs A100 Triton,"21.3 [16.7, 26.0]","3.7 [1.7, 6.0]","2.3 [1.0, 4.0]"
+"Recompile, H100 Triton","10.3 [6.7, 14.0]","1.7 [0.3, 3.0]","1.0 [0.0, 2.3]"
+"Recompile, A100 Triton","12.3 [8.3, 16.3]","2.0 [0.7, 3.7]","1.7 [0.3, 3.3]"
+L4 Triton vs A100 Triton,"14.3 [10.0, 18.7]","2.7 [0.7, 5.0]","2.3 [0.7, 4.7]"
+L4 Triton vs H100 Triton,"21.7 [16.7, 26.7]","4.3 [2.0, 7.0]","2.7 [0.7, 5.0]"
+H100 Triton vs A100 Triton minus recompile H100 Triton,"+11.0 [6.7, 15.3]","+2.0 [0.0, 4.3]","+1.3 [-0.3, 3.3]"
+\INDENT reading,beyond,not distinguishable,not distinguishable
+"the same, minus the larger recompilation","+9.0 [4.7, 13.7]","+1.7 [-0.3, 4.0]","+0.7 [-1.0, 2.3]"
+\INDENT reading,beyond,not distinguishable,not distinguishable
+L4 Triton vs A100 Triton minus recompile A100 Triton,"+2.0 [-1.3, 5.7]","+0.7 [-1.3, 3.0]","+0.7 [-1.0, 2.7]"

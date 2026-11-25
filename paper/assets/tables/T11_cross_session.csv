@@ -1,0 +1,8 @@
+arm,"(target, seed) units",bit-identical,expected
+V5,20,20,identical
+V6,20,20,identical
+G,20,0,descriptive
+Gd,20,20,identical
+V6h,20,20,identical
+Gh,20,1,descriptive
+C,12,12,identical

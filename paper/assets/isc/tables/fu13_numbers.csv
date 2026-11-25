@@ -1,0 +1,30 @@
+quantity,estimate,ci_low,ci_high,note
+"eps* HW(V5,V6), flip_top1, HW seeds 1 and 2 (units of u)",2.0,0.015625,4.093495567987099,interpolated; HW rate 0.175; 264 of 10000 replicates at a bound
+"eps* HW(V6,G), flip_top1, HW seeds 1 and 2 (units of u)",1.8517494245745816,0.015625,4.1486201777847675,interpolated; HW rate 0.1666666666666666; 521 of 10000 replicates at a bound
+"eps* HW(V5,V6), flip_top1, HW seeds 1 to 5 (units of u)",2.094588245641253,1.0717734625362936,4.077221137647708,interpolated; HW rate 0.18; 103 of 10000 replicates at a bound
+"eps* HW(V6,G), flip_top1, HW seeds 1 to 5 (units of u)",2.679979977634713,1.3979699341790195,4.686782625154761,interpolated; HW rate 0.2066666666666666; 14 of 10000 replicates at a bound
+"eps* HW(V5,V6), flip_success, HW seeds 1 and 2 (units of u)",1.1665290395761168,0.015625,2.143546925072586,interpolated; HW rate 0.0333333333333333; 924 of 10000 replicates at a bound
+"eps* HW(V6,G), flip_success, HW seeds 1 and 2 (units of u)",1.080059738892306,0.015625,1.681792830507429,interpolated; HW rate 0.025; 1831 of 10000 replicates at a bound
+"eps* HW(V5,V6), flip_success, HW seeds 1 to 5 (units of u)",1.2030250360821166,0.015625,2.0,interpolated; HW rate 0.0366666666666666; 420 of 10000 replicates at a bound
+"eps* HW(V6,G), flip_success, HW seeds 1 to 5 (units of u)",1.1665290395761168,0.015625,1.741101126592248,interpolated; HW rate 0.0333333333333333; 1060 of 10000 replicates at a bound
+"D_F, flip_top1 (primary)",-0.13,-0.1766666666666666,-0.0833333333333333,"reduced; HW(V6f,Gf) 0.0033333333333333, RC(Gf) 0.0, HW(V6,G) 0.2066666666666666, RC(G) 0.0733333333333333; 60 targets"
+"D_F, flip_success (secondary)",-0.0166666666666666,-0.0433333333333333,0.0066666666666666,"not reduced; HW(V6f,Gf) 0.0, RC(Gf) 0.0, HW(V6,G) 0.0333333333333333, RC(G) 0.0166666666666666; 60 targets"
+"D_F, flip_matters (secondary)",-0.0166666666666666,-0.04,0.0033333333333333,"not reduced; HW(V6f,Gf) 0.0, RC(Gf) 0.0, HW(V6,G) 0.0266666666666666, RC(G) 0.01; 60 targets"
+"first depth, recycle 0, V5-V6, pair",0.0,0.0,0.0,median (range) over 10 of 10 targets with a first depth
+"first depth, recycle 0, V5-V6, single",0.0,0.0,0.0,median (range) over 10 of 10 targets with a first depth
+"first depth, recycle 0, V6-G, pair",0.0,0.0,0.0,median (range) over 10 of 10 targets with a first depth
+"first depth, recycle 0, V6-G, single",0.0,0.0,0.0,median (range) over 10 of 10 targets with a first depth
+"growth, recycle 0, G-Gr2, pair (bits per block)",0.0268915059801299,0.0253103601575284,0.0289398080407231,median (range) over 3 targets
+"growth, recycle 0, G-Gr2, single (bits per block)",0.0338545964937506,0.0298012422671598,0.0362550166189714,median (range) over 3 targets
+"growth, recycle 0, V5-G, pair (bits per block)",0.029161613586153497,0.0283862563815124,0.0313115173401302,median (range) over 10 targets
+"growth, recycle 0, V5-G, single (bits per block)",0.012900004752792349,0.0109650156160809,0.0160737674887015,median (range) over 10 targets
+"growth, recycle 0, V5-V6, pair (bits per block)",0.02068923644816895,0.0157845278285418,0.0252095195885453,median (range) over 10 targets
+"growth, recycle 0, V5-V6, single (bits per block)",0.05824081200696245,0.0464578348787081,0.1044718175903845,median (range) over 10 targets
+"growth, recycle 0, V6-G, pair (bits per block)",0.029280365049731798,0.028571235753246,0.0311972311624919,median (range) over 10 targets
+"growth, recycle 0, V6-G, single (bits per block)",0.01254802985133065,0.0104974395443164,0.0224268360116644,median (range) over 10 targets
+"cost ratio V6f to V6, wall, all buckets",1.5803765387400437,,,310 and 300 processes
+"cost ratio V6f to V6, compiled_memory, all buckets",1.0190014225934796,,,310 and 300 processes
+"cost ratio V6f to V6, peak_reserved, all buckets",0.9828693471450152,,,310 and 300 processes
+"cost ratio Gf to G, wall, all buckets",1.549315597121649,,,600 and 300 processes
+"cost ratio Gf to G, compiled_memory, all buckets",1.2430030612098089,,,600 and 300 processes
+"cost ratio Gf to G, peak_reserved, all buckets",,,,600 and 300 processes

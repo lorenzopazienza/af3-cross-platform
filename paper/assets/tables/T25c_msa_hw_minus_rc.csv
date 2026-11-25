@@ -1,0 +1,6 @@
+targets,hardware,minus,statistic,difference (pp)
+all 60,"HW(V6o,Go)",RC(Go),flip_top1,"18.7 [13.3, 24.0]"
+all 60,"HW(V6o,Go)",RC(Go),flip_success,"3.7 [0.7, 7.3]"
+all 60,"HW(V6o,Go)",RC(Go),flip_matters,"1.3 [-1.0, 3.7]"
+post-cutoff 39,"HW(V6o,Go)",RC(Go),flip_success,"3.6 [0.5, 7.2]"
+post-cutoff 39,"HW(V6o,Go)",RC(Go),flip_matters,"1.5 [-1.5, 4.1]"

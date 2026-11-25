@@ -1,0 +1,7 @@
+host family,arms,machine type,CPU,AVX-512,vCPUs,entries,compared,identical,different,"(target, seed) with a difference"
+milan,V5,n2d-standard-32,AMD EPYC 7B13,no,32,,,,,
+genoa,"V6, V6h",c3d-standard-30,AMD EPYC 9B14,yes,30,,,,,
+cascadelake,"G, GT, Gd, Gh, A, Ah, AT",c2-standard-8,Intel(R) Xeon(R) CPU @ 3.10GHz,yes,8,,,,,
+icelake,C,n2-highmem-16,Intel(R) Xeon(R) CPU @ 2.60GHz,yes,16,,,,,
+all four,,,,,,model inputs (decide),26550,26550,0,0
+all four,,,,,,host-side (reported apart),2250,2250,0,0

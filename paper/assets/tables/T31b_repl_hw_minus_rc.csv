@@ -1,0 +1,9 @@
+targets,quantity,reference,top-1 (pp),success (pp),flips that matter (pp),reading
+all 72,"HW(V5,V6) minus RC(V5)",RC(P),"+18.3 [14.7, 22.2]","+1.9 [0.6, 3.6]","+1.1 [0.0, 2.5]","R, R, N"
+all 72,"HW(V5,V6) minus RC(V6)","RC(Q), secondary","+18.3 [14.7, 22.2]","+1.9 [0.6, 3.6]","+1.1 [0.0, 2.5]",
+all 72,"HW(V6,G) minus RC(V6)",RC(P),"+21.9 [18.1, 25.8]","+3.1 [1.4, 5.0]","+1.4 [0.3, 2.5]","R, R, R"
+all 72,"HW(V6,G) minus RC(G)","RC(Q), secondary","+16.7 [12.8, 20.8]","+2.8 [1.1, 4.7]","+1.1 [0.3, 2.2]",
+post-cutoff 51,"HW(V5,V6) minus RC(V5)",RC(P),,"+1.2 [0.0, 2.7]","+0.4 [0.0, 1.2]","-, N, N"
+post-cutoff 51,"HW(V5,V6) minus RC(V6)","RC(Q), secondary",,"+1.2 [0.0, 2.7]","+0.4 [0.0, 1.2]",
+post-cutoff 51,"HW(V6,G) minus RC(V6)",RC(P),,"+2.7 [0.8, 5.1]","+0.8 [0.0, 2.0]","-, R, N"
+post-cutoff 51,"HW(V6,G) minus RC(G)","RC(Q), secondary",,"+2.4 [0.4, 4.7]","+0.4 [0.0, 1.2]",

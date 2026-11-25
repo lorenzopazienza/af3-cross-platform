@@ -1,0 +1,213 @@
+section,item,device,value,ledger,agrees
+level,processes,TPU v5 lite,3193,,
+level,"warning-level lines (absl W), compile logging excluded",TPU v5 lite,40,,
+level,"compile-logging lines (absl W from dispatch.py, pxla.py)",TPU v5 lite,1719444,,
+level,error-level lines (absl E),TPU v5 lite,99806,,
+level,fatal lines (absl F),TPU v5 lite,0,0,yes
+level,"processes with any warning-level line, including compile logging",TPU v5 lite,3193,3193,yes
+level,"processes with any warning-level line, without compile logging",TPU v5 lite,35,35,yes
+level,processes with any error-level line,TPU v5 lite,3193,3193,yes
+level,processes,TPU v6 lite,3064,,
+level,"warning-level lines (absl W), compile logging excluded",TPU v6 lite,40,,
+level,"compile-logging lines (absl W from dispatch.py, pxla.py)",TPU v6 lite,1650140,,
+level,error-level lines (absl E),TPU v6 lite,96116,,
+level,fatal lines (absl F),TPU v6 lite,0,0,yes
+level,"processes with any warning-level line, including compile logging",TPU v6 lite,3064,3064,yes
+level,"processes with any warning-level line, without compile logging",TPU v6 lite,35,35,yes
+level,processes with any error-level line,TPU v6 lite,3064,3064,yes
+level,processes,NVIDIA L4,5480,,
+level,"warning-level lines (absl W), compile logging excluded",NVIDIA L4,343623,,
+level,"compile-logging lines (absl W from dispatch.py, pxla.py)",NVIDIA L4,2949916,,
+level,error-level lines (absl E),NVIDIA L4,2168,,
+level,fatal lines (absl F),NVIDIA L4,0,0,yes
+level,"processes with any warning-level line, including compile logging",NVIDIA L4,5480,5480,yes
+level,"processes with any warning-level line, without compile logging",NVIDIA L4,5480,5480,yes
+level,processes with any error-level line,NVIDIA L4,1850,1850,yes
+level,processes,NVIDIA A100-SXM4-80GB,1030,,
+level,"warning-level lines (absl W), compile logging excluded",NVIDIA A100-SXM4-80GB,76210,,
+level,"compile-logging lines (absl W from dispatch.py, pxla.py)",NVIDIA A100-SXM4-80GB,553944,,
+level,error-level lines (absl E),NVIDIA A100-SXM4-80GB,588,,
+level,fatal lines (absl F),NVIDIA A100-SXM4-80GB,0,0,yes
+level,"processes with any warning-level line, including compile logging",NVIDIA A100-SXM4-80GB,1030,1030,yes
+level,"processes with any warning-level line, without compile logging",NVIDIA A100-SXM4-80GB,1030,1030,yes
+level,processes with any error-level line,NVIDIA A100-SXM4-80GB,488,488,yes
+level,processes,NVIDIA H100 80GB HBM3,600,,
+level,"warning-level lines (absl W), compile logging excluded",NVIDIA H100 80GB HBM3,36000,,
+level,"compile-logging lines (absl W from dispatch.py, pxla.py)",NVIDIA H100 80GB HBM3,322680,,
+level,error-level lines (absl E),NVIDIA H100 80GB HBM3,1237,,
+level,fatal lines (absl F),NVIDIA H100 80GB HBM3,0,0,yes
+level,"processes with any warning-level line, including compile logging",NVIDIA H100 80GB HBM3,600,600,yes
+level,"processes with any warning-level line, without compile logging",NVIDIA H100 80GB HBM3,600,600,yes
+level,processes with any error-level line,NVIDIA H100 80GB HBM3,600,600,yes
+level,processes,cpu,132,,
+level,"warning-level lines (absl W), compile logging excluded",cpu,0,,
+level,"compile-logging lines (absl W from dispatch.py, pxla.py)",cpu,71008,,
+level,error-level lines (absl E),cpu,4092,,
+level,fatal lines (absl F),cpu,0,0,yes
+level,"processes with any warning-level line, including compile logging",cpu,132,132,yes
+level,"processes with any warning-level line, without compile logging",cpu,0,0,yes
+level,processes with any error-level line,cpu,132,132,yes
+level,processes,all,13499,,
+level,"warning-level lines (absl W), compile logging excluded",all,455913,,
+level,"compile-logging lines (absl W from dispatch.py, pxla.py)",all,7267132,,
+level,error-level lines (absl E),all,204007,,
+level,fatal lines (absl F),all,0,0,yes
+level,"processes with any warning-level line, including compile logging",all,13499,,
+level,"processes with any warning-level line, without compile logging",all,7180,,
+level,processes with any error-level line,all,9327,,
+exit 0,processes,all,13495,13495,yes
+exit 0,with a warning-level line,all,13495,13495,yes
+exit 0,with an error-level line,all,9323,9323,yes
+exit 0,with no error-level line,all,4172,4172,yes
+exit 0,"log ends with ""Done running 1 fold jobs.""",all,13495,13495,yes
+exit 1,"log has ""Done running 1 fold jobs.""",all,0,0,yes
+"message class, processes",W compile logging (JAX_LOG_COMPILES),TPU v5 lite,3193,3193,yes
+"message class, processes",W compile logging (JAX_LOG_COMPILES),TPU v6 lite,3064,3064,yes
+"message class, processes",W compile logging (JAX_LOG_COMPILES),NVIDIA L4,5480,5480,yes
+"message class, processes",W compile logging (JAX_LOG_COMPILES),NVIDIA A100-SXM4-80GB,1030,1030,yes
+"message class, processes",W compile logging (JAX_LOG_COMPILES),NVIDIA H100 80GB HBM3,600,600,yes
+"message class, processes",W compile logging (JAX_LOG_COMPILES),cpu,132,132,yes
+"message class, lines",W compile logging (JAX_LOG_COMPILES),all,7267132,7267132,yes
+"message class, processes",UserWarning: int64 in broadcasted_iota truncated to int32,TPU v5 lite,3193,3193,yes
+"message class, processes",UserWarning: int64 in broadcasted_iota truncated to int32,TPU v6 lite,3064,3064,yes
+"message class, processes",UserWarning: int64 in broadcasted_iota truncated to int32,NVIDIA L4,5480,5480,yes
+"message class, processes",UserWarning: int64 in broadcasted_iota truncated to int32,NVIDIA A100-SXM4-80GB,1030,1030,yes
+"message class, processes",UserWarning: int64 in broadcasted_iota truncated to int32,NVIDIA H100 80GB HBM3,600,600,yes
+"message class, processes",UserWarning: int64 in broadcasted_iota truncated to int32,cpu,132,132,yes
+"message class, lines",UserWarning: int64 in broadcasted_iota truncated to int32,all,13499,13499,yes
+"message class, processes",E api.py: Failed to run implementation (Tokamax GLU),TPU v5 lite,3193,3193,yes
+"message class, processes",E api.py: Failed to run implementation (Tokamax GLU),TPU v6 lite,3064,3064,yes
+"message class, processes",E api.py: Failed to run implementation (Tokamax GLU),NVIDIA L4,0,0,yes
+"message class, processes",E api.py: Failed to run implementation (Tokamax GLU),NVIDIA A100-SXM4-80GB,0,0,yes
+"message class, processes",E api.py: Failed to run implementation (Tokamax GLU),NVIDIA H100 80GB HBM3,0,0,yes
+"message class, processes",E api.py: Failed to run implementation (Tokamax GLU),cpu,132,132,yes
+"message class, lines",E api.py: Failed to run implementation (Tokamax GLU),all,198077,198077,yes
+"message class, processes",NotImplementedError: Not supported on <device>,TPU v5 lite,3193,,
+"message class, processes",NotImplementedError: Not supported on <device>,TPU v6 lite,3064,,
+"message class, processes",NotImplementedError: Not supported on <device>,NVIDIA L4,0,,
+"message class, processes",NotImplementedError: Not supported on <device>,NVIDIA A100-SXM4-80GB,0,,
+"message class, processes",NotImplementedError: Not supported on <device>,NVIDIA H100 80GB HBM3,0,,
+"message class, processes",NotImplementedError: Not supported on <device>,cpu,132,,
+"message class, lines",NotImplementedError: Not supported on <device>,all,198077,,
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonGatedLinearUnit,TPU v5 lite,0,0,yes
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonGatedLinearUnit,TPU v6 lite,0,0,yes
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonGatedLinearUnit,NVIDIA L4,5480,5480,yes
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonGatedLinearUnit,NVIDIA A100-SXM4-80GB,1030,1030,yes
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonGatedLinearUnit,NVIDIA H100 80GB HBM3,600,600,yes
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonGatedLinearUnit,cpu,0,0,yes
+"message class, lines",W op.py: Autotuning cache miss for PallasTritonGatedLinearUnit,all,426672,426672,yes
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonFlashAttention,TPU v5 lite,0,0,yes
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonFlashAttention,TPU v6 lite,0,0,yes
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonFlashAttention,NVIDIA L4,305,305,yes
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonFlashAttention,NVIDIA A100-SXM4-80GB,300,300,yes
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonFlashAttention,NVIDIA H100 80GB HBM3,0,0,yes
+"message class, processes",W op.py: Autotuning cache miss for PallasTritonFlashAttention,cpu,0,0,yes
+"message class, lines",W op.py: Autotuning cache miss for PallasTritonFlashAttention,all,29040,29040,yes
+"message class, processes",E cuda_timer.cc: Delay kernel timed out,TPU v5 lite,0,0,yes
+"message class, processes",E cuda_timer.cc: Delay kernel timed out,TPU v6 lite,0,0,yes
+"message class, processes",E cuda_timer.cc: Delay kernel timed out,NVIDIA L4,1849,1849,yes
+"message class, processes",E cuda_timer.cc: Delay kernel timed out,NVIDIA A100-SXM4-80GB,488,488,yes
+"message class, processes",E cuda_timer.cc: Delay kernel timed out,NVIDIA H100 80GB HBM3,524,524,yes
+"message class, processes",E cuda_timer.cc: Delay kernel timed out,cpu,0,0,yes
+"message class, lines",E cuda_timer.cc: Delay kernel timed out,all,3377,3377,yes
+"message class, processes",E hugepage_text.cc: File offset incorrectly aligned,TPU v5 lite,823,823,yes
+"message class, processes",E hugepage_text.cc: File offset incorrectly aligned,TPU v6 lite,1114,1114,yes
+"message class, processes",E hugepage_text.cc: File offset incorrectly aligned,NVIDIA L4,0,0,yes
+"message class, processes",E hugepage_text.cc: File offset incorrectly aligned,NVIDIA A100-SXM4-80GB,0,0,yes
+"message class, processes",E hugepage_text.cc: File offset incorrectly aligned,NVIDIA H100 80GB HBM3,0,0,yes
+"message class, processes",E hugepage_text.cc: File offset incorrectly aligned,cpu,0,0,yes
+"message class, lines",E hugepage_text.cc: File offset incorrectly aligned,all,1937,1937,yes
+"message class, processes",E cache.py: Failed to parse autotuning cache file,TPU v5 lite,0,0,yes
+"message class, processes",E cache.py: Failed to parse autotuning cache file,TPU v6 lite,0,0,yes
+"message class, processes",E cache.py: Failed to parse autotuning cache file,NVIDIA L4,0,0,yes
+"message class, processes",E cache.py: Failed to parse autotuning cache file,NVIDIA A100-SXM4-80GB,0,0,yes
+"message class, processes",E cache.py: Failed to parse autotuning cache file,NVIDIA H100 80GB HBM3,600,600,yes
+"message class, processes",E cache.py: Failed to parse autotuning cache file,cpu,0,0,yes
+"message class, lines",E cache.py: Failed to parse autotuning cache file,all,600,600,yes
+"message class, processes",W rdkit_utils.py: Failed to generate conformer,TPU v5 lite,5,5,yes
+"message class, processes",W rdkit_utils.py: Failed to generate conformer,TPU v6 lite,5,5,yes
+"message class, processes",W rdkit_utils.py: Failed to generate conformer,NVIDIA L4,10,10,yes
+"message class, processes",W rdkit_utils.py: Failed to generate conformer,NVIDIA A100-SXM4-80GB,0,0,yes
+"message class, processes",W rdkit_utils.py: Failed to generate conformer,NVIDIA H100 80GB HBM3,0,0,yes
+"message class, processes",W rdkit_utils.py: Failed to generate conformer,cpu,0,0,yes
+"message class, lines",W rdkit_utils.py: Failed to generate conformer,all,40,40,yes
+"message class, processes",W compiler.py: Persistent compilation cache hit,TPU v5 lite,30,30,yes
+"message class, processes",W compiler.py: Persistent compilation cache hit,TPU v6 lite,30,30,yes
+"message class, processes",W compiler.py: Persistent compilation cache hit,NVIDIA L4,40,40,yes
+"message class, processes",W compiler.py: Persistent compilation cache hit,NVIDIA A100-SXM4-80GB,10,10,yes
+"message class, processes",W compiler.py: Persistent compilation cache hit,NVIDIA H100 80GB HBM3,0,0,yes
+"message class, processes",W compiler.py: Persistent compilation cache hit,cpu,0,0,yes
+"message class, lines",W compiler.py: Persistent compilation cache hit,all,110,110,yes
+"message class, processes",W hlo_rematerialization: Can't reduce memory use,TPU v5 lite,0,0,yes
+"message class, processes",W hlo_rematerialization: Can't reduce memory use,TPU v6 lite,0,0,yes
+"message class, processes",W hlo_rematerialization: Can't reduce memory use,NVIDIA L4,3,3,yes
+"message class, processes",W hlo_rematerialization: Can't reduce memory use,NVIDIA A100-SXM4-80GB,0,0,yes
+"message class, processes",W hlo_rematerialization: Can't reduce memory use,NVIDIA H100 80GB HBM3,0,0,yes
+"message class, processes",W hlo_rematerialization: Can't reduce memory use,cpu,0,0,yes
+"message class, lines",W hlo_rematerialization: Can't reduce memory use,all,19,19,yes
+"message class, processes",E gpu_hlo_schedule.cc: byte size of input/output arguments,TPU v5 lite,0,0,yes
+"message class, processes",E gpu_hlo_schedule.cc: byte size of input/output arguments,TPU v6 lite,0,0,yes
+"message class, processes",E gpu_hlo_schedule.cc: byte size of input/output arguments,NVIDIA L4,2,2,yes
+"message class, processes",E gpu_hlo_schedule.cc: byte size of input/output arguments,NVIDIA A100-SXM4-80GB,0,0,yes
+"message class, processes",E gpu_hlo_schedule.cc: byte size of input/output arguments,NVIDIA H100 80GB HBM3,0,0,yes
+"message class, processes",E gpu_hlo_schedule.cc: byte size of input/output arguments,cpu,0,0,yes
+"message class, lines",E gpu_hlo_schedule.cc: byte size of input/output arguments,all,16,16,yes
+"message class, processes",W bfc_allocator: ran out of memory,TPU v5 lite,0,0,yes
+"message class, processes",W bfc_allocator: ran out of memory,TPU v6 lite,0,0,yes
+"message class, processes",W bfc_allocator: ran out of memory,NVIDIA L4,2,2,yes
+"message class, processes",W bfc_allocator: ran out of memory,NVIDIA A100-SXM4-80GB,0,0,yes
+"message class, processes",W bfc_allocator: ran out of memory,NVIDIA H100 80GB HBM3,0,0,yes
+"message class, processes",W bfc_allocator: ran out of memory,cpu,0,0,yes
+"message class, lines",W bfc_allocator: ran out of memory,all,16,32,NO
+"message class, processes",JaxRuntimeError: RESOURCE_EXHAUSTED,TPU v5 lite,1,1,yes
+"message class, processes",JaxRuntimeError: RESOURCE_EXHAUSTED,TPU v6 lite,1,1,yes
+"message class, processes",JaxRuntimeError: RESOURCE_EXHAUSTED,NVIDIA L4,2,2,yes
+"message class, processes",JaxRuntimeError: RESOURCE_EXHAUSTED,NVIDIA A100-SXM4-80GB,0,0,yes
+"message class, processes",JaxRuntimeError: RESOURCE_EXHAUSTED,NVIDIA H100 80GB HBM3,0,0,yes
+"message class, processes",JaxRuntimeError: RESOURCE_EXHAUSTED,cpu,0,0,yes
+"message class, lines",JaxRuntimeError: RESOURCE_EXHAUSTED,all,4,4,yes
+templates,"distinct (severity, source, normalized message) templates",all,590,590,yes
+word search,determin,all,0,0,yes
+word search,reproduc,all,0,0,yes
+word search,differ,all,0,0,yes
+word search,hardware,all,0,0,yes
+word search,numerical,all,0,0,yes
+word search,unstable,all,0,0,yes
+word search,bit-exact,all,0,0,yes
+word search,fallback,all,0,0,yes
+word search,fall back,all,0,0,yes
+word search,falling back,all,0,0,yes
+word search,unsupported,all,0,0,yes
+word search,deprecat,all,0,0,yes
+word search,nan,all,23,,
+"word search, lines",nan,all,727,,
+"word search, example template",nan,all,W | compiler.py | Persistent compilation cache hit for 'jit_apply_fn' with key 'jit_apply_fn-NfffNaNbdNfNddNccNfabbNbNdNcNbfNfNcNec',,
+word search,accuracy,all,1,,
+"word search, lines",accuracy,all,3377,,
+"word search, example template",accuracy,all,"E | cuda_timer.cc | Delay kernel timed out: measured time has sub-optimal accuracy. There may be a missing warmup execution, please investigate in Nsi",,
+word search,precision,all,1,,
+"word search, lines",precision,all,198077,,
+"word search, example template",precision,all,"raw |  |     return fn(x, weights, activation=activation, precision=precision)",,
+has_clash,main: sample rows,all,14960,,
+has_clash,main: rows with has_clash not 0,all,0,0,yes
+has_clash,ppi: sample rows,all,3750,,
+has_clash,ppi: rows with has_clash not 0,all,0,0,yes
+has_clash,a100: sample rows,all,5150,,
+has_clash,a100: rows with has_clash not 0,all,0,0,yes
+has_clash,cpu60: sample rows,all,540,,
+has_clash,cpu60: rows with has_clash not 0,all,0,0,yes
+has_clash,msa: sample rows,all,6100,,
+has_clash,msa: rows with has_clash not 0,all,0,0,yes
+has_clash,sw: sample rows,all,3000,,
+has_clash,sw: rows with has_clash not 0,all,0,0,yes
+has_clash,seeds: sample rows,all,9000,,
+has_clash,seeds: rows with has_clash not 0,all,0,0,yes
+has_clash,h100: sample rows,all,3000,,
+has_clash,h100: rows with has_clash not 0,all,0,0,yes
+has_clash,repl: sample rows,all,10800,,
+has_clash,repl: rows with has_clash not 0,all,0,0,yes
+has_clash,prec5: sample rows,all,1800,,
+has_clash,prec5: rows with has_clash not 0,all,0,0,yes
+has_clash,large: sample rows,all,7800,,
+has_clash,large: rows with has_clash not 0,all,0,0,yes
+has_clash,all eleven analyses: sample rows,all,65900,65900,yes

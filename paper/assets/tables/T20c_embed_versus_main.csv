@@ -1,0 +1,6 @@
+condition,repetition,processes,bit-identical to the main study,"main study r1 against r2, targets with identical coordinates"
+V5,r1,10,10,10/10
+V6,r1,10,10,10/10
+G,r1,10,0,0/10
+G,r2,10,1,0/10
+Gd,r1,10,10,10/10

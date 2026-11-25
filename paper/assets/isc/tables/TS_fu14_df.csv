@@ -1,0 +1,13 @@
+Pair,Statistic,D_F (points),Float32 recompilation,Reading
+v5e float32 vs v6e float32,Top-1 flip,"-16.7 [-20.7, -12.7]",set to 0,reduced
+v5e float32 vs v6e float32,Success flip,"-3.7 [-5.7, -1.7]",set to 0,reduced
+v5e float32 vs v6e float32,Flips that matter,"-3.0 [-5.0, -1.3]",set to 0,reduced
+v6e float32 vs L4 float32,Top-1 flip,"-13.0 [-17.7, -8.3]",measured,reduced
+v6e float32 vs L4 float32,Success flip,"-1.7 [-4.3, 0.7]",measured,not reduced
+v6e float32 vs L4 float32,Flips that matter,"-1.7 [-4.0, 0.3]",measured,not reduced
+H100 float32 vs A100 float32,Top-1 flip,"-10.3 [-15.3, -5.3]",set to 0,reduced
+H100 float32 vs A100 float32,Success flip,"-0.3 [-2.0, 1.3]",set to 0,not reduced
+H100 float32 vs A100 float32,Flips that matter,"-0.3 [-1.7, 1.0]",set to 0,not reduced
+L4 float32 vs A100 float32,Top-1 flip,"-4.3 [-9.0, 0.0]",measured,not reduced
+L4 float32 vs A100 float32,Success flip,"-0.3 [-2.0, 1.3]",measured,not reduced
+L4 float32 vs A100 float32,Flips that matter,"-0.3 [-1.7, 1.0]",measured,not reduced

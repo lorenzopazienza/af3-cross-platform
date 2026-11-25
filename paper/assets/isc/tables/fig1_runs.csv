@@ -1,0 +1,15 @@
+study,V5,V6,G,A,H,C,targets,seeds,source
+Main study,r1 and r2,r1 and r2,r1 and r2,,,one run,60,5,results/analysis/main_20261014/primary_v2
+Memory limit,one run,one run,one run,,,,1,1,results/analysis/memlimit_20261014
+FU1 protein-protein,one run,r1 and r2,r1 and r2,,,,30,5,results/analysis/ppi_20261015
+FU2 trunk outputs,one run,one run,r1 and r2,,,,10,1,results/analysis/embed_20261015
+FU3 A100,,,,r1 and r2,,,60,5,results/analysis/a100_20261018
+FU4 CPU,,,,,,one run,60,2,results/analysis/cpu60_20261018
+"FU5 hosts, inputs only",,,,,,,90,5,results/analysis/feat_20261018
+FU6 official inputs,one run,one run,r1 and r2,,,,60,5,results/analysis/msa_20261102
+FU7 older stack,,one run,one run,,,,60,5,results/analysis/sw_20261102
+FU8 seeds,one run,,one run,,,,60,20,results/analysis/seeds_20261102
+FU9 H100,,,,,r1 and r2,,60,5,results/analysis/h100_20261104
+FU10 large inputs (OSF),r1 and r2,r1 and r2,r1 and r2,,,,68,5,results/analysis/large_20261108
+FU11 new targets (OSF),r1 and r2,r1 and r2,r1 and r2,,,,72,5,results/analysis/repl_20261106
+FU12 highest precision,,one run,one run,,,,60,5,results/analysis/prec5_20261107

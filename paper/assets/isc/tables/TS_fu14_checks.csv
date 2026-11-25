@@ -1,0 +1,6 @@
+Check,Conditions or value,Result
+Every process exits 0 or its failure is recorded,"A100 deterministic, A100 float32, H100 deterministic, H100 float32, v5e float32",pass
+One machine type per condition,"A100 deterministic, A100 float32, H100 deterministic, H100 float32, v5e float32",pass
+Settings reached every process,"A100 deterministic, A100 float32, H100 deterministic, H100 float32, v5e float32",pass
+"v5e float32, second run against the first",10/10 identical,pass
+Memory,largest 52% of the device limit,pass

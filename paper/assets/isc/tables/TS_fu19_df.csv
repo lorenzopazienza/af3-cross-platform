@@ -1,0 +1,7 @@
+Version,Statistic,D_F (points),Reading
+"registered: 60 targets, RC(Hf) set to 0",Top-1 flip,"-10.3 [-15.3, -5.3]",reduced
+RC(Hf) measured on the 60 targets,Top-1 flip,"-10.7 [-15.7, -5.7]",reduced
+"registered: 60 targets, RC(Hf) set to 0",Success flip,"-0.3 [-2.0, 1.3]",not reduced
+RC(Hf) measured on the 60 targets,Success flip,"-0.3 [-2.0, 1.3]",not reduced
+"registered: 60 targets, RC(Hf) set to 0",Flips that matter,"-0.3 [-1.7, 1.0]",not reduced
+RC(Hf) measured on the 60 targets,Flips that matter,"-0.3 [-1.7, 1.0]",not reduced

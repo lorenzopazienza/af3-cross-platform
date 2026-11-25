@@ -1,0 +1,4 @@
+Contrast,Predictions,Top-1 flip,Success flip,Flips that matter,"Ligand RMSD, median (Å)",Identical samples,Identical output files
+"Recompile, A100 float32",50,"0.0 [0.0, 0.0]","0.0 [0.0, 0.0]","0.0 [0.0, 0.0]",0.000200,0 of 250,0 of 50
+"Recompile, H100 float32",50,"0.0 [0.0, 0.0]","0.0 [0.0, 0.0]","0.0 [0.0, 0.0]",0,20 of 250,0 of 50
+"Recompile, L4 Triton",300,"7.7 [4.7, 11.0]","1.0 [0.0, 2.3]","0.7 [0.0, 1.7]",0.00390,55 of 1500,11 of 300

@@ -1,0 +1,6 @@
+token bucket,after 2021-09-30,on or before 2021-09-30,targets,pilot,ppi targets,"ppi, shallow alignment"
+256,13,6,19,1,10,3
+512,8,11,19,5,15,2
+768,12,2,14,2,4,0
+1024,6,2,8,2,1,0
+all,39,21,60,10,30,5

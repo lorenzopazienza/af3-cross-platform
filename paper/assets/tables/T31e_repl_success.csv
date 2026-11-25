@@ -1,0 +1,13 @@
+targets,condition,repetition,targets scored,success rate of the per-seed top-1 (%)
+all 72,G,r1,72,"57.8 [47.8, 67.8]"
+all 72,G,r2,72,"58.1 [48.1, 68.1]"
+all 72,V5,r1,72,"57.2 [47.2, 67.2]"
+all 72,V5,r2,72,"57.2 [47.2, 67.2]"
+all 72,V6,r1,72,"58.1 [48.1, 68.1]"
+all 72,V6,r2,72,"58.1 [48.1, 68.1]"
+post-cutoff 51,G,r1,51,"55.7 [43.5, 67.5]"
+post-cutoff 51,G,r2,51,"56.1 [43.9, 67.8]"
+post-cutoff 51,V5,r1,51,"54.9 [42.7, 66.7]"
+post-cutoff 51,V5,r2,51,"54.9 [42.7, 66.7]"
+post-cutoff 51,V6,r1,51,"55.3 [43.1, 67.1]"
+post-cutoff 51,V6,r2,51,"55.3 [43.1, 67.1]"

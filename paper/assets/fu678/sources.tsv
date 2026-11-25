@@ -1,0 +1,12 @@
+path	sha256	in_freeze
+results/analysis/msa_20261102/contrasts.csv	7e7f90532fb2fcf1abf2ceab6d872137a6729d3cf13d36392680d70019863981	no (analysis of record of 2026-11-02; the results freeze of 2026-11-15 is pending)
+results/analysis/msa_20261102/determinism.csv	2a7a8a071e86d9823f5ce30b8f34f49319bed79ba32396db5dcee6097bfd0364	no (analysis of record of 2026-11-02; the results freeze of 2026-11-15 is pending)
+results/analysis/msa_20261102/hw_minus_rc.csv	cef2c2949cb10e765d34f36564cfe050f5168198e6bf4f7629af048b538a2d3e	no (analysis of record of 2026-11-02; the results freeze of 2026-11-15 is pending)
+results/analysis/msa_20261102/msa_depth.csv	35428b45eb160c12d4167a73f81258240e36ecccdc74c950bc4216c6b454b3f8	no (analysis of record of 2026-11-02; the results freeze of 2026-11-15 is pending)
+results/analysis/msa_20261102/official_minus_colabfold.csv	ced5b0e6b9574ce19754c0bf8cf8a0af4d6aaae92bcc61491100e88b092322c7	no (analysis of record of 2026-11-02; the results freeze of 2026-11-15 is pending)
+results/analysis/msa_20261102/pipeline.csv	65a9ffe3ad14383b40454e40338ec56e869e26a74397a9988e4dab8ccddf6638	no (analysis of record of 2026-11-02; the results freeze of 2026-11-15 is pending)
+results/analysis/msa_20261102/success_rates.csv	d8077db1ac1fe5137ccf6a17af5fb21019de7f81a931a14a990f722565dbedc9	no (analysis of record of 2026-11-02; the results freeze of 2026-11-15 is pending)
+results/analysis/msa_20261102/templates.csv	ccc5902ffb0ab7bf605d91077aaf52029fa871846c701ce591c3ef83ecbe52cf	no (analysis of record of 2026-11-02; the results freeze of 2026-11-15 is pending)
+results/analysis/seeds_20261102/q3.csv	289a52a5335a83de3cb75aee628262f37a6eb95a8925c4a0e7c37336afa6bbd3	no (analysis of record of 2026-11-02; the results freeze of 2026-11-15 is pending)
+results/analysis/sw_20261102/comparisons.csv	3d2aaef9bbea949dab701f0a06562ba588c0d79bf0d1d173a30d0fb7de985b2f	no (analysis of record of 2026-11-02; the results freeze of 2026-11-15 is pending)
+results/analysis/sw_20261102/contrasts.csv	e2b0af2be90355977f2d8314e7103039cba61bbebfe65d69c702b9e401637b0a	no (analysis of record of 2026-11-02; the results freeze of 2026-11-15 is pending)

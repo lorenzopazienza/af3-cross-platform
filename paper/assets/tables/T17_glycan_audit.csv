@@ -1,0 +1,19 @@
+CCD,AF3 set,O1 leaving flag,O1 heavy neighbours,fragments without O1,V1,V2,study target
+5SP,other,N,C2(C),1,yes,,
+6MJ,other,N,"C01(C), C1(C)",2,yes,yes,
+A2G,linking,Y,C1(C),1,yes,,
+ARA,linking,Y,C1(C),1,yes,,
+BDF,linking,N,C1(C),1,yes,,
+BDP,linking,Y,C1(C),1,yes,yes,
+BGC,linking,Y,C1(C),1,yes,yes,7WJB
+CAP,other,N,"C1(C), P1(P)",2,yes,,
+G6S,linking,Y,C1(C),1,yes,yes,7OZC
+GAL,linking,Y,C1(C),1,yes,,
+GLA,linking,Y,C1(C),1,yes,,
+GLP,linking,Y,C1(C),1,yes,yes,
+MFU,other,N,"C1(C), CM(C)",2,yes,yes,
+MMA,other,N,"C1(C), C7(C)",2,yes,,
+NGA,linking,Y,C1(C),1,yes,yes,
+NGK,linking,Y,C1(C),1,yes,yes,
+NGS,linking,Y,C1(C),1,yes,yes,7WDT
+PRP,other,N,"C1(C), PA(P)",2,yes,yes,

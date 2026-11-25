@@ -1,0 +1,13 @@
+arm,device,differs from base,jax,libtpu,on-demand USD/h,price read on
+V5,TPU v5e,base,0.10.2,0.0.43.2,1.56,2026-10-08
+V6,TPU v6e,base,0.10.2,0.0.43.2,2.97,2026-10-08
+G,NVIDIA L4,base,0.10.2,,0.85/0.90,"2026-10-08, 2026-10-09"
+GT,NVIDIA L4,Triton attention kernel,0.10.2,,0.85/0.90,"2026-10-08, 2026-10-09"
+Gd,NVIDIA L4,deterministic-operations flag,0.10.2,,0.85/0.90,"2026-10-08, 2026-10-09"
+V6h,TPU v6e,highest matrix-product precision,0.10.2,0.0.43.2,2.97,2026-10-08
+Gh,NVIDIA L4,highest matrix-product precision,0.10.2,,0.85,"2026-10-08, 2026-10-09"
+C,CPU,base,0.10.2,,1.15,2026-10-08
+A,A100 80 GB,base,0.10.2,,5.03/5.54,2026-10-16
+AT,A100 80 GB,Triton attention kernel,0.10.2,,5.03,2026-10-16
+Ah,A100 80 GB,highest matrix-product precision,0.10.2,,5.03,2026-10-16
+H,H100 80 GB,base,0.10.2,,10.98,2026-10-27

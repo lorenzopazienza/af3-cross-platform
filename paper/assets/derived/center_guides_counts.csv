@@ -1,0 +1,9 @@
+count,value,source,date_read
+guides,28,paper/research/center_guides.csv,2026-11-09
+one device per job: yes,23,paper/research/center_guides.csv,2026-11-09
+one device per job: no,3,paper/research/center_guides.csv,2026-11-09
+one device per job: not stated,2,paper/research/center_guides.csv,2026-11-09
+same job on several GPU types or CPU: yes,7,paper/research/center_guides.csv,2026-11-09
+same job on several GPU types or CPU: no,19,paper/research/center_guides.csv,2026-11-09
+same job on several GPU types or CPU: unknown,2,paper/research/center_guides.csv,2026-11-09
+warns that the same seed can differ: yes,0,paper/research/center_guides.csv,2026-11-09

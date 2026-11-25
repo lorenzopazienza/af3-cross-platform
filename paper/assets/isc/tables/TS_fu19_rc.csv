@@ -1,0 +1,3 @@
+Contrast,Predictions,Top-1 flip,Success flip,Flips that matter,Identical output files
+"Recompile, A100 float32",300,"0.3 [0.0, 1.0]","0.0 [0.0, 0.0]","0.0 [0.0, 0.0]",0 of 300
+"Recompile, H100 float32",300,"0.3 [0.0, 1.0]","0.0 [0.0, 0.0]","0.0 [0.0, 0.0]",3 of 300

@@ -1,0 +1,87 @@
+group,targets,seeds,pair,dagger,statistic,kind,reference,estimate,ci_low,ci_high,source
+Main,60,5,"HW(V5,V6)",,flip_top1,HW,,0.18,0.1433333333333333,0.2166666666666666,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Main,60,5,"HW(V5,V6)",,flip_success,HW,,0.0366666666666666,0.0166666666666666,0.0566666666666666,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Main,60,5,"HW(V6,G)",,flip_top1,HW,,0.2066666666666666,0.1633333333333333,0.2533333333333333,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Main,60,5,"HW(V6,G)",,flip_top1,RC,RC(G),0.0733333333333333,0.0466666666666666,0.1033333333333333,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Main,60,5,"HW(V6,G)",,flip_top1,HW minus RC,RC(G),0.1333333333333333,0.0866666666666666,0.18,results/analysis/main_20261014/primary_v2/contrasts/hw_minus_rc.csv
+Main,60,5,"HW(V6,G)",,flip_success,HW,,0.0333333333333333,0.01,0.06,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Main,60,5,"HW(V6,G)",,flip_success,RC,RC(G),0.0166666666666666,0.0033333333333333,0.0333333333333333,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Main,60,5,"HW(V6,G)",,flip_success,HW minus RC,RC(G),0.0166666666666666,-0.0066666666666666,0.0433333333333333,results/analysis/main_20261014/primary_v2/contrasts/hw_minus_rc.csv
+Main,60,5,"HW(V5,G)",,flip_top1,HW,,0.23,0.18,0.28,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Main,60,5,"HW(V5,G)",,flip_top1,RC,RC(G),0.0733333333333333,0.0466666666666666,0.1033333333333333,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Main,60,5,"HW(V5,G)",,flip_top1,HW minus RC,RC(G),0.1566666666666666,0.1033333333333333,0.2099999999999999,results/analysis/main_20261014/primary_v2/contrasts/hw_minus_rc.csv
+Main,60,5,"HW(V5,G)",,flip_success,HW,,0.0433333333333333,0.02,0.0733333333333333,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Main,60,5,"HW(V5,G)",,flip_success,RC,RC(G),0.0166666666666666,0.0033333333333333,0.0333333333333333,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Main,60,5,"HW(V5,G)",,flip_success,HW minus RC,RC(G),0.0266666666666666,0.0033333333333333,0.0533333333333333,results/analysis/main_20261014/primary_v2/contrasts/hw_minus_rc.csv
+Protein-protein,30,5,"HW(V5,V6)",†,flip_top1,HW,,0.2333333333333333,0.1533333333333333,0.3266666666666666,results/analysis/ppi_20261015/contrasts.csv
+Protein-protein,30,5,"HW(V5,V6)",†,flip_success,HW,,0.0066666666666666,0.0,0.02,results/analysis/ppi_20261015/contrasts.csv
+Protein-protein,30,5,"HW(V6,G)",,flip_top1,HW,,0.3,0.22,0.38,results/analysis/ppi_20261015/contrasts.csv
+Protein-protein,30,5,"HW(V6,G)",,flip_top1,RC,RC(G),0.1933333333333333,0.12,0.28,results/analysis/ppi_20261015/contrasts.csv
+Protein-protein,30,5,"HW(V6,G)",,flip_top1,HW minus RC,RC(G),0.1066666666666666,0.0266666666666666,0.1866666666666666,results/analysis/ppi_20261015/hw_minus_rc.csv
+Protein-protein,30,5,"HW(V6,G)",,flip_success,HW,,0.0066666666666666,0.0,0.02,results/analysis/ppi_20261015/contrasts.csv
+A100,60,5,"HW(G,A)",,flip_top1,HW,,0.12,0.0833333333333333,0.16,results/analysis/a100_20261018/contrasts.csv
+A100,60,5,"HW(G,A)",,flip_top1,RC,RC(A),0.1,0.0666666666666666,0.1333333333333333,results/analysis/a100_20261018/contrasts.csv
+A100,60,5,"HW(G,A)",,flip_top1,HW minus RC,RC(A),0.0199999999999999,-0.0166666666666666,0.0566666666666666,results/analysis/a100_20261018/hw_minus_rc.csv
+A100,60,5,"HW(G,A)",,flip_success,HW,,0.02,0.0066666666666666,0.0366666666666666,results/analysis/a100_20261018/contrasts.csv
+A100,60,5,"HW(G,A)",,flip_success,RC,RC(G),0.0166666666666666,0.0033333333333333,0.0333333333333333,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+A100,60,5,"HW(G,A)",,flip_success,HW minus RC,RC(G),0.0033333333333333,-0.0133333333333333,0.02,results/analysis/a100_20261018/hw_minus_rc.csv
+A100,60,5,"HW(V6,A)",,flip_top1,HW,,0.2,0.1566666666666666,0.2466666666666666,results/analysis/a100_20261018/contrasts.csv
+A100,60,5,"HW(V6,A)",,flip_top1,RC,RC(A),0.1,0.0666666666666666,0.1333333333333333,results/analysis/a100_20261018/contrasts.csv
+A100,60,5,"HW(V6,A)",,flip_top1,HW minus RC,RC(A),0.1,0.0533333333333333,0.1466666666666666,results/analysis/a100_20261018/hw_minus_rc.csv
+A100,60,5,"HW(V6,A)",,flip_success,HW,,0.04,0.0166666666666666,0.0666666666666666,results/analysis/a100_20261018/contrasts.csv
+A100,60,5,"HW(V6,A)",,flip_success,RC,RC(A),0.0133333333333333,0.0033333333333333,0.0266666666666666,results/analysis/a100_20261018/contrasts.csv
+A100,60,5,"HW(V6,A)",,flip_success,HW minus RC,RC(A),0.0266666666666666,0.0099999999999999,0.0466666666666666,results/analysis/a100_20261018/hw_minus_rc.csv
+CPU,60,2,"HW(V5,C)",†,flip_top1,HW,,0.175,0.1083333333333333,0.2416666666666666,results/analysis/cpu60_20261018/contrasts.csv
+CPU,60,2,"HW(V5,C)",†,flip_success,HW,,0.0416666666666666,0.0083333333333333,0.0833333333333333,results/analysis/cpu60_20261018/contrasts.csv
+CPU,60,2,"HW(V6,C)",†,flip_top1,HW,,0.1583333333333333,0.0916666666666666,0.2333333333333333,results/analysis/cpu60_20261018/contrasts.csv
+CPU,60,2,"HW(V6,C)",†,flip_success,HW,,0.025,0.0,0.0583333333333333,results/analysis/cpu60_20261018/contrasts.csv
+CPU,60,2,"HW(G,C)",†,flip_top1,HW,,0.1916666666666666,0.125,0.2666666666666666,results/analysis/cpu60_20261018/contrasts.csv
+CPU,60,2,"HW(G,C)",†,flip_top1,RC,RC(G),0.0733333333333333,0.0466666666666666,0.1033333333333333,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+CPU,60,2,"HW(G,C)",†,flip_top1,HW minus RC,RC(G),0.1183333333333333,0.0499999999999999,0.19,results/analysis/cpu60_20261018/hw_minus_rc.csv
+CPU,60,2,"HW(G,C)",†,flip_success,HW,,0.0333333333333333,0.0083333333333333,0.0666666666666666,results/analysis/cpu60_20261018/contrasts.csv
+CPU,60,2,"HW(G,C)",†,flip_success,RC,RC(G),0.0166666666666666,0.0033333333333333,0.0333333333333333,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+CPU,60,2,"HW(G,C)",†,flip_success,HW minus RC,RC(G),0.0166666666666666,-0.0133333333333333,0.0516666666666666,results/analysis/cpu60_20261018/hw_minus_rc.csv
+Official inputs,60,5,"HW(V5o,V6o)",†,flip_top1,HW,,0.18,0.13,0.23,results/analysis/msa_20261102/contrasts.csv
+Official inputs,60,5,"HW(V5o,V6o)",†,flip_success,HW,,0.0466666666666666,0.0166666666666666,0.0833333333333333,results/analysis/msa_20261102/contrasts.csv
+Official inputs,60,5,"HW(V6o,Go)",†,flip_top1,HW,,0.2666666666666666,0.2166666666666666,0.3133333333333333,results/analysis/msa_20261102/contrasts.csv
+Official inputs,60,5,"HW(V6o,Go)",†,flip_top1,RC,RC(Go),0.08,0.05,0.1133333333333333,results/analysis/msa_20261102/contrasts.csv
+Official inputs,60,5,"HW(V6o,Go)",†,flip_top1,HW minus RC,RC(Go),0.1866666666666666,0.1333333333333333,0.24,results/analysis/msa_20261102/hw_minus_rc.csv
+Official inputs,60,5,"HW(V6o,Go)",†,flip_success,HW,,0.0533333333333333,0.0233333333333333,0.0866666666666666,results/analysis/msa_20261102/contrasts.csv
+Official inputs,60,5,"HW(V6o,Go)",†,flip_success,RC,RC(Go),0.0166666666666666,0.0033333333333333,0.0366666666666666,results/analysis/msa_20261102/contrasts.csv
+Official inputs,60,5,"HW(V6o,Go)",†,flip_success,HW minus RC,RC(Go),0.0366666666666666,0.0066666666666666,0.0733333333333333,results/analysis/msa_20261102/hw_minus_rc.csv
+H100,60,5,"HW(H,A)",,flip_top1,HW,,0.2066666666666666,0.1633333333333333,0.25,results/analysis/h100_20261104/contrasts.csv
+H100,60,5,"HW(H,A)",,flip_top1,RC,RC(A),0.1,0.0666666666666666,0.1333333333333333,results/analysis/a100_20261018/contrasts.csv
+H100,60,5,"HW(H,A)",,flip_top1,HW minus RC,RC(A),0.1066666666666666,0.0633333333333333,0.15,results/analysis/h100_20261104/hw_minus_rc.csv
+H100,60,5,"HW(H,A)",,flip_success,HW,,0.02,0.0033333333333333,0.04,results/analysis/h100_20261104/contrasts.csv
+H100,60,5,"HW(H,A)",,flip_success,RC,RC(H),0.0166666666666666,0.0033333333333333,0.03,results/analysis/h100_20261104/contrasts.csv
+H100,60,5,"HW(H,A)",,flip_success,HW minus RC,RC(H),0.0033333333333333,-0.0133333333333333,0.02,results/analysis/h100_20261104/hw_minus_rc.csv
+Large,34,5,"HW(V5,V6)",,flip_top1,HW,,0.2058823529411764,0.1470588235294117,0.2647058823529412,results/analysis/large_20261108/contrasts.csv
+Large,34,5,"HW(V5,V6)",,flip_success,HW,,0.0294117647058823,0.0058823529411764,0.0588235294117647,results/analysis/large_20261108/contrasts.csv
+Large,34,5,"HW(V6,G)",,flip_top1,HW,,0.2529411764705882,0.1764705882352941,0.3352941176470588,results/analysis/large_20261108/contrasts.csv
+Large,34,5,"HW(V6,G)",,flip_top1,RC,RC(G),0.1294117647058823,0.0705882352941176,0.2,results/analysis/large_20261108/contrasts.csv
+Large,34,5,"HW(V6,G)",,flip_top1,HW minus RC,RC(G),0.1235294117647058,0.0705882352941176,0.1823529411764705,results/analysis/large_20261108/hw_minus_rc.csv
+Large,34,5,"HW(V6,G)",,flip_success,HW,,0.0529411764705882,0.0117647058823529,0.1,results/analysis/large_20261108/contrasts.csv
+Large,34,5,"HW(V6,G)",,flip_success,RC,RC(G),0.0176470588235294,0.0,0.0470588235294117,results/analysis/large_20261108/contrasts.csv
+Large,34,5,"HW(V6,G)",,flip_success,HW minus RC,RC(G),0.0352941176470588,0.0058823529411764,0.0823529411764705,results/analysis/large_20261108/hw_minus_rc.csv
+Size control,34,5,"HW(V5,V6)",,flip_top1,HW,,0.2235294117647059,0.1647058823529411,0.288235294117647,results/analysis/large_20261108/contrasts.csv
+Size control,34,5,"HW(V5,V6)",,flip_success,HW,,0.0117647058823529,0.0,0.0352941176470588,results/analysis/large_20261108/contrasts.csv
+Size control,34,5,"HW(V6,G)",,flip_top1,HW,,0.2235294117647059,0.1647058823529411,0.288235294117647,results/analysis/large_20261108/contrasts.csv
+Size control,34,5,"HW(V6,G)",,flip_top1,RC,RC(G),0.0588235294117647,0.0235294117647058,0.1,results/analysis/large_20261108/contrasts.csv
+Size control,34,5,"HW(V6,G)",,flip_top1,HW minus RC,RC(G),0.1647058823529412,0.1058823529411764,0.2235294117647059,results/analysis/large_20261108/hw_minus_rc.csv
+Size control,34,5,"HW(V6,G)",,flip_success,HW,,0.0352941176470588,0.0058823529411764,0.0764705882352941,results/analysis/large_20261108/contrasts.csv
+Size control,34,5,"HW(V6,G)",,flip_success,RC,RC(G),0.0058823529411764,0.0,0.0176470588235294,results/analysis/large_20261108/contrasts.csv
+Size control,34,5,"HW(V6,G)",,flip_success,HW minus RC,RC(G),0.0294117647058823,0.0058823529411764,0.0647058823529411,results/analysis/large_20261108/hw_minus_rc.csv
+Replication,72,5,"HW(V5,V6)",,flip_top1,HW,,0.1833333333333333,0.1472222222222222,0.2222222222222222,results/analysis/repl_20261106/contrasts.csv
+Replication,72,5,"HW(V5,V6)",,flip_success,HW,,0.0194444444444444,0.0055555555555555,0.0361111111111111,results/analysis/repl_20261106/contrasts.csv
+Replication,72,5,"HW(V6,G)",,flip_top1,HW,,0.2194444444444444,0.1805555555555555,0.2583333333333333,results/analysis/repl_20261106/contrasts.csv
+Replication,72,5,"HW(V6,G)",,flip_top1,RC,RC(G),0.0527777777777777,0.0305555555555555,0.075,results/analysis/repl_20261106/contrasts.csv
+Replication,72,5,"HW(V6,G)",,flip_top1,HW minus RC,RC(G),0.1666666666666666,0.1277777777777777,0.2083333333333333,results/analysis/repl_20261106/hw_minus_rc.csv
+Replication,72,5,"HW(V6,G)",,flip_success,HW,,0.0305555555555555,0.0138888888888888,0.05,results/analysis/repl_20261106/contrasts.csv
+Replication,72,5,"HW(V6,G)",,flip_success,RC,RC(G),0.0027777777777777,0.0,0.0083333333333333,results/analysis/repl_20261106/contrasts.csv
+Replication,72,5,"HW(V6,G)",,flip_success,HW minus RC,RC(G),0.0277777777777777,0.0111111111111111,0.0472222222222222,results/analysis/repl_20261106/hw_minus_rc.csv
+Precision,60,5,"HWh(V6,G)",†,flip_top1,HW,,0.2066666666666666,0.16,0.2566666666666666,results/analysis/prec5_20261107/contrasts.csv
+Precision,60,5,"HWh(V6,G)",†,flip_top1,RC,RC(G),0.0733333333333333,0.0466666666666666,0.1033333333333333,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Precision,60,5,"HWh(V6,G)",†,flip_top1,HW minus RC,RC(G),0.1333333333333333,0.0933333333333333,0.1733333333333333,results/analysis/prec5_20261107/hw_minus_rc.csv
+Precision,60,5,"HWh(V6,G)",†,flip_success,HW,,0.0233333333333333,0.0066666666666666,0.0433333333333333,results/analysis/prec5_20261107/contrasts.csv
+Precision,60,5,"HWh(V6,G)",†,flip_success,RC,RC(G),0.0166666666666666,0.0033333333333333,0.0333333333333333,results/analysis/main_20261014/primary_v2/contrasts/contrasts.csv
+Precision,60,5,"HWh(V6,G)",†,flip_success,HW minus RC,RC(G),0.0066666666666666,-0.0133333333333333,0.03,results/analysis/prec5_20261107/hw_minus_rc.csv

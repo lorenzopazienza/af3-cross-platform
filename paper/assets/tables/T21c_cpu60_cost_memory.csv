@@ -1,0 +1,5 @@
+bucket,processes,median wall (s),"USD per structure, on demand","USD per structure, Spot",max RSS (GiB)
+256,38,1683.0,0.539,0.15,9.1
+512,38,4020.0,1.288,0.359,13.6
+768,28,7922.0,2.539,0.707,19.7
+1024,16,15009.0,4.81,1.34,30.0

@@ -1,0 +1,8 @@
+figure,quantity,value
+Fig. 1 (forest),"top-1 flip, lowest pair (%)",12.0
+Fig. 1 (forest),"top-1 flip, highest pair (%)",30.0
+Fig. 1 (forest),"success flip, lowest pair (%)",0.7
+Fig. 1 (forest),"success flip, highest pair (%)",5.3
+Fig. 4 (seeds),"difference, lowest estimate (points)",-1.7
+Fig. 4 (seeds),"difference, highest estimate (points)",+1.7
+Fig. 4 (seeds),one target (points),1.67

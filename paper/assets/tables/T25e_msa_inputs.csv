@@ -1,0 +1,10 @@
+"quantity (per target, 60 targets)",ColabFold (main study),official pipeline
+median unpaired MSA rows,9933.5,16012.5
+median unpaired MSA Neff (80%),5458.72,5180.88
+median paired MSA rows,0,37876.5
+median paired MSA Neff (80%),0,3797.34
+median templates,0,4
+templates in all; own entry; identity >= 0.95; entry contains the target ligand,0,240; 0; 100; 21
+"pipeline wall time (s), median; max",,702; 2847
+"pipeline peak VM memory (MiB), median; max",,2361.5; 8890
+"determinism, 10 pilot targets: run2 = run1; second host = first",,10/10; 10/10

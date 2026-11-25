@@ -1,0 +1,13 @@
+Version,Statistic,Targets,D_F (points),Reading
+"registered: 60 targets, RC(Hf) set to 0",Top-1 flip,60,"-10.3 [-15.3, -5.3]",reduced
+"(i) 60 targets, RC(Hf) measured on the pilot targets",Top-1 flip,60,"-10.3 [-15.3, -5.3]",reduced
+"(ii) 10 pilot targets, RC(Hf) measured",Top-1 flip,10,"-14.0 [-26.0, -2.0]",reduced
+"(ii) 10 pilot targets, RC(Hf) set to 0",Top-1 flip,10,"-14.0 [-26.0, -2.0]",reduced
+"registered: 60 targets, RC(Hf) set to 0",Success flip,60,"-0.3 [-2.0, 1.3]",not reduced
+"(i) 60 targets, RC(Hf) measured on the pilot targets",Success flip,60,"-0.3 [-2.0, 1.3]",not reduced
+"(ii) 10 pilot targets, RC(Hf) measured",Success flip,10,"0.0 [-6.0, 6.0]",not reduced
+"(ii) 10 pilot targets, RC(Hf) set to 0",Success flip,10,"0.0 [-6.0, 6.0]",not reduced
+"registered: 60 targets, RC(Hf) set to 0",Flips that matter,60,"-0.3 [-1.7, 1.0]",not reduced
+"(i) 60 targets, RC(Hf) measured on the pilot targets",Flips that matter,60,"-0.3 [-1.7, 1.0]",not reduced
+"(ii) 10 pilot targets, RC(Hf) measured",Flips that matter,10,"-2.0 [-6.0, 0.0]",not reduced
+"(ii) 10 pilot targets, RC(Hf) set to 0",Flips that matter,10,"-2.0 [-6.0, 0.0]",not reduced

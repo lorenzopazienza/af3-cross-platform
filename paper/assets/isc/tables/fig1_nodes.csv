@@ -1,0 +1,7 @@
+arm,device,machine_type
+V5,TPU v5e,n2d-48-24-v5lite-tpu
+V6,TPU v6e,ct6e-standard-1t
+C,CPU,n2-highmem-16
+G,NVIDIA L4,g2-standard-8
+A,A100 80 GB,a2-ultragpu-1g
+H,H100 80 GB,a3-highgpu-1g

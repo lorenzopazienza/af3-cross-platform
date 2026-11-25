@@ -1,0 +1,60 @@
+check,condition,value,detail
+1 exit codes,C,12/12 processes exit 0,
+1 exit codes,G,610/610 processes exit 0,
+1 exit codes,GT,300/300 processes exit 0,
+1 exit codes,Gd,610/610 processes exit 0,
+1 exit codes,Gh,120/120 processes exit 0,
+1 exit codes,V5,610/610 processes exit 0,
+1 exit codes,V6,610/610 processes exit 0,
+1 exit codes,V6h,120/120 processes exit 0,
+2a fresh runs started from an empty cache,V5,600/600 processes,pass
+2b warm rerun loaded its source executable,V5,10/10 processes,pass
+"2 bit-identity: warm rerun against r1, all outputs (mmCIF timestamp line ignored)",V5,10/10 targets,pass
+2 warm rerun coordinates identical to r1 (as written; M4),V5,50/50 samples,pass
+"2 overall (2a, 2b, then bit-identity)",V5,,pass
+2a fresh runs started from an empty cache,V6,600/600 processes,pass
+2b warm rerun loaded its source executable,V6,10/10 processes,pass
+"2 bit-identity: warm rerun against r1, all outputs (mmCIF timestamp line ignored)",V6,10/10 targets,pass
+2 warm rerun coordinates identical to r1 (as written; M4),V6,50/50 samples,pass
+"2 overall (2a, 2b, then bit-identity)",V6,,pass
+2a fresh runs started from an empty cache,G,600/600 processes,pass
+2b warm rerun loaded its source executable,G,10/10 processes,pass
+"2 bit-identity: warm rerun against r1, all outputs (mmCIF timestamp line ignored)",G,10/10 targets,pass
+2 warm rerun coordinates identical to r1 (as written; M4),G,50/50 samples,pass
+"2 overall (2a, 2b, then bit-identity)",G,,pass
+2a fresh runs started from an empty cache,GT,300/300 processes,pass
+2a fresh runs started from an empty cache,C,12/12 processes,pass
+2a fresh runs started from an empty cache,Gd,600/600 processes,pass
+2b warm rerun loaded its source executable,Gd,10/10 processes,pass
+"2 bit-identity: warm rerun against r1, all outputs (mmCIF timestamp line ignored)",Gd,10/10 targets,pass
+2 warm rerun coordinates identical to r1 (as written; M4),Gd,50/50 samples,pass
+"2 overall (2a, 2b, then bit-identity)",Gd,,pass
+2a fresh runs started from an empty cache,Gh,120/120 processes,pass
+2a fresh runs started from an empty cache,V6h,120/120 processes,pass
+2 every arm with a warm rerun is present,"V5, V6, G, Gd",4/4 arms,pass
+M2 overall top-1 is AlphaFold3's top-level model,V5,"610/610 (run, target)",pass
+M2 no full-precision tie at the top,V5,"0 tie(s) in 610 (run, target); 0 in 610 (run, target, seed)",pass
+M2 overall top-1 is AlphaFold3's top-level model,V6,"610/610 (run, target)",pass
+M2 no full-precision tie at the top,V6,"0 tie(s) in 610 (run, target); 0 in 610 (run, target, seed)",pass
+M2 overall top-1 is AlphaFold3's top-level model,G,"610/610 (run, target)",pass
+M2 no full-precision tie at the top,G,"0 tie(s) in 610 (run, target); 0 in 610 (run, target, seed)",pass
+M2 overall top-1 is AlphaFold3's top-level model,GT,"300/300 (run, target)",pass
+M2 no full-precision tie at the top,GT,"0 tie(s) in 300 (run, target); 0 in 300 (run, target, seed)",pass
+M2 overall top-1 is AlphaFold3's top-level model,C,"12/12 (run, target)",pass
+M2 no full-precision tie at the top,C,"0 tie(s) in 12 (run, target); 0 in 12 (run, target, seed)",pass
+M2 overall top-1 is AlphaFold3's top-level model,Gd,"610/610 (run, target)",pass
+M2 no full-precision tie at the top,Gd,"0 tie(s) in 610 (run, target); 0 in 610 (run, target, seed)",pass
+M2 overall top-1 is AlphaFold3's top-level model,Gh,"120/120 (run, target)",pass
+M2 no full-precision tie at the top,Gh,"0 tie(s) in 120 (run, target); 0 in 120 (run, target, seed)",pass
+M2 overall top-1 is AlphaFold3's top-level model,V6h,"120/120 (run, target)",pass
+M2 no full-precision tie at the top,V6h,"0 tie(s) in 120 (run, target); 0 in 120 (run, target, seed)",pass
+M1 computed for every sample,V5,2900/3050 samples,"FAIL, targets: 7OZC, 7WDT, 7WJB"
+M1 computed for every sample,V6,2900/3050 samples,"FAIL, targets: 7OZC, 7WDT, 7WJB"
+M1 computed for every sample,G,2900/3050 samples,"FAIL, targets: 7OZC, 7WDT, 7WJB"
+M1 computed for every sample,GT,1425/1500 samples,"FAIL, targets: 7OZC, 7WDT, 7WJB"
+M1 computed for every sample,C,60/60 samples,pass
+M1 computed for every sample,Gd,2900/3050 samples,"FAIL, targets: 7OZC, 7WDT, 7WJB"
+M1 computed for every sample,Gh,570/600 samples,"FAIL, targets: 7OZC, 7WDT, 7WJB"
+M1 computed for every sample,V6h,570/600 samples,"FAIL, targets: 7OZC, 7WDT, 7WJB"
+"3 success-rate sanity (overall top-1, r1)",V6,70% of 60 targets,pass
+"3 success-rate sanity (top-1 per seed, r1; secondary)",V6,"70% of 300 (target, seed)",pass

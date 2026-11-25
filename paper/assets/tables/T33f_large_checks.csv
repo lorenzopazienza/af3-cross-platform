@@ -1,0 +1,7 @@
+condition,repetition,targets,"(target, seed) units with 5 samples",status,"r2 subset, targets bit-identical"
+V5,r1,68,340 of 340,complete,
+V5,r2,20,100 of 100,complete,20 of 20
+V6,r1,68,340 of 340,complete,
+V6,r2,20,100 of 100,complete,20 of 20
+G,r1,68,340 of 340,complete,
+G,r2,68,340 of 340,complete,

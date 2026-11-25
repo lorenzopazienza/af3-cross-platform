@@ -1,0 +1,9 @@
+arm,device,machine type,config,attention,matmul precision,jax,libtpu,main processes,memory-limit processes,ppi processes,embed processes,on-demand USD/h
+V5,TPU v5 lite,n2d-48-24-v5lite-tpu,tpu_xla,xla,,0.10.2,0.0.43.2,610,3,150,10,1.560
+V6,TPU v6 lite,ct6e-standard-1t,tpu_xla,xla,,0.10.2,0.0.43.2,610,4,300,10,2.970
+G,NVIDIA L4,g2-standard-8,l4_xla,xla,,0.10.2,-,610,5,300,20,0.851;0.854;0.897
+GT,NVIDIA L4,g2-standard-8,l4_triton,triton,,0.10.2,-,300,5,0,0,0.851;0.854;0.897
+Gd,NVIDIA L4,g2-standard-8,l4_xla_det,xla,,0.10.2,-,610,0,0,10,0.851;0.854;0.897
+V6h,TPU v6 lite,ct6e-standard-1t,tpu_xla_highest,xla,highest,0.10.2,0.0.43.2,120,0,0,0,2.970
+Gh,NVIDIA L4,g2-standard-8,l4_xla_highest,xla,highest,0.10.2,-,120,0,0,0,0.851;0.854;0.897
+C,cpu,n2-highmem-16,cpu_xla,xla,,0.10.2,-,12,0,0,0,1.154

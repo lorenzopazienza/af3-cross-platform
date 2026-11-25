@@ -1,0 +1,6 @@
+contrast,side a,side b,targets,overall top-1 differs (targets),overall top-1 success differs (targets),success a (targets),success b (targets),ledger,agrees
+"HW(V5,V6)",V5 r1,V6 r1,60,16,3,45,42,16,yes
+"HW(V6,G)",V6 r1,G r1,60,25,4,42,46,,
+RC(G),G r1,G r2,60,9,3,46,43,,
+RC(V5),V5 r1,V5 r2,60,0,0,45,45,,
+RC(V6),V6 r1,V6 r2,60,0,0,42,42,,

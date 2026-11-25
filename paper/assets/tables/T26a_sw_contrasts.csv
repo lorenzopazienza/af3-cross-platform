@@ -1,0 +1,3 @@
+contrast,role,targets,top-1 flip (%),success flip (%),flips that matter (%),bit-identical samples (%)
+SW(V6),software stack (follow-up 7),60,"0.0 [0.0, 0.0]","0.0 [0.0, 0.0]","0.0 [0.0, 0.0]","100.0 [100.0, 100.0]"
+SW(G),software stack (follow-up 7),60,"7.0 [4.3, 10.0]","2.0 [0.7, 3.7]","1.3 [0.3, 2.7]","0.0 [0.0, 0.0]"

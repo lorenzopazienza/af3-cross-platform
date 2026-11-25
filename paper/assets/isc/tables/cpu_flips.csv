@@ -1,0 +1,7 @@
+contrast,statistic,pairs,all 60 targets,on the 6 targets C ran in both sessions,on the other 54 targets
+"HW(V5,C)",flip_top1,120,21,0,21
+"HW(V5,C)",flip_success,120,5,1,4
+"HW(V5,C)",flip_matters,120,3,0,3
+"HW(V6,C)",flip_top1,120,19,0,19
+"HW(V6,C)",flip_success,120,3,1,2
+"HW(V6,C)",flip_matters,120,0,0,0

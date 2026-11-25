@@ -1,0 +1,8 @@
+contrast,targets,seeds,event,target,seed,top-1 flip
+"HWh(V6,G)",post-cutoff 39,1 to 5,success flip,7MGT,1,False
+"HWh(V6,G)",post-cutoff 39,1 to 5,success flip,7MGT,4,True
+"HWh(V6,G)",post-cutoff 39,1 to 5,success flip,7Q5I,3,True
+"HWh(V6,G)",post-cutoff 39,1 to 5,success flip,7U3J,1,True
+"HWh(V6,G)",post-cutoff 39,1 to 5,flip that matters,7MGT,4,True
+"HWh(V6,G)",post-cutoff 39,1 to 5,flip that matters,7Q5I,3,True
+"HWh(V6,G)",post-cutoff 39,1 to 5,flip that matters,7U3J,1,True

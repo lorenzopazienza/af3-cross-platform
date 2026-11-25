@@ -1,0 +1,21 @@
+n_seeds,condition,statistic,targets,n_targets,estimate,ci_low,ci_high
+1,V5-G,success_difference,all 60,60.0,0.0,-0.0666666666666666,0.0666666666666666
+2,V5-G,success_difference,all 60,60.0,0.0,0.0,0.0
+3,V5-G,success_difference,all 60,60.0,0.0166666666666666,-0.0333333333333333,0.0833333333333333
+4,V5-G,success_difference,all 60,60.0,0.0,-0.05,0.05
+5,V5-G,success_difference,all 60,60.0,-0.0166666666666666,-0.0833333333333333,0.0333333333333333
+6,V5-G,success_difference,all 60,60.0,-0.0166666666666666,-0.0833333333333333,0.0333333333333333
+7,V5-G,success_difference,all 60,60.0,-0.0166666666666666,-0.0833333333333333,0.0333333333333333
+8,V5-G,success_difference,all 60,60.0,0.0,-0.05,0.05
+9,V5-G,success_difference,all 60,60.0,0.0,-0.05,0.05
+10,V5-G,success_difference,all 60,60.0,0.0,-0.05,0.05
+11,V5-G,success_difference,all 60,60.0,0.0166666666666666,-0.0333333333333333,0.0666666666666666
+12,V5-G,success_difference,all 60,60.0,0.0166666666666666,-0.0333333333333333,0.0666666666666666
+13,V5-G,success_difference,all 60,60.0,0.0166666666666666,0.0,0.05
+14,V5-G,success_difference,all 60,60.0,0.0166666666666666,0.0,0.05
+15,V5-G,success_difference,all 60,60.0,0.0166666666666666,0.0,0.05
+16,V5-G,success_difference,all 60,60.0,0.0166666666666666,0.0,0.05
+17,V5-G,success_difference,all 60,60.0,0.0166666666666666,0.0,0.05
+18,V5-G,success_difference,all 60,60.0,0.0166666666666666,0.0,0.05
+19,V5-G,success_difference,all 60,60.0,0.0166666666666666,0.0,0.05
+20,V5-G,success_difference,all 60,60.0,0.0,-0.05,0.05

@@ -1,0 +1,10 @@
+check,condition,value,detail
+"machine type of every A, Ah and AT session","A, Ah, AT",a2-ultragpu-1g,pass
+1 exit codes (a100),A,610/610 processes exit 0,pass
+1 exit codes (a100),Ah,120/120 processes exit 0,pass
+1 exit codes (a100),AT,300/300 processes exit 0,pass
+2a fresh runs started from an empty cache,A,600/600 processes,pass
+2b warm rerun loaded its source executable,A,10/10 processes,pass
+"2 bit-identity: warm rerun against r1, all outputs (mmCIF timestamp line ignored)",A,10/10 targets,pass
+2 warm rerun coordinates identical to r1 (as written; M4),A,50/50 samples,pass
+"2 overall (2a, 2b, then bit-identity)",A,,pass

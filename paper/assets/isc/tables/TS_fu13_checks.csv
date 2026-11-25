@@ -1,0 +1,7 @@
+Check,Conditions,Result
+Every process exits 0 or its failure is recorded,"L4, layer capture; L4 float32; v5e, layer capture; v6e, layer capture; v6e float32; perturbation, 7 sizes",pass
+One machine type per condition,"L4, layer capture; L4 float32; v5e, layer capture; v6e, layer capture; v6e float32; perturbation, 7 sizes",pass
+Perturbation at size 0 against the main study's v6e,120/120 identical,pass
+Layer capture on a TPU against the main study,10/10 identical,pass
+"v6e float32, second run against the first",10/10 identical,pass
+"Capture files complete, same token subset",50/50 pass,pass

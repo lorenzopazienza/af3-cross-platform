@@ -1,0 +1,26 @@
+section,name,statistic,(1) primary,(2) 57 targets,(3) rescored
+"success rate, r1",V5,success_rate_overall_top1,75.0,78.9,76.7
+"success rate, r1",V5,success_rate_top1_per_seed,70.0,73.7,71.7
+"success rate, r1",V6,success_rate_overall_top1,70.0,73.7,71.7
+"success rate, r1",V6,success_rate_top1_per_seed,70.3,74.0,71.7
+"success rate, r1",G,success_rate_overall_top1,76.7,80.7,78.3
+"success rate, r1",G,success_rate_top1_per_seed,71.0,74.7,72.0
+"success rate, r1",GT,success_rate_overall_top1,75.0,78.9,76.7
+"success rate, r1",GT,success_rate_top1_per_seed,71.7,75.4,72.3
+"success rate, r1",C,success_rate_overall_top1,66.7,66.7,66.7
+"success rate, r1",C,success_rate_top1_per_seed,75.0,75.0,75.0
+"success rate, r1",Gd,success_rate_overall_top1,71.7,75.4,71.7
+"success rate, r1",Gd,success_rate_top1_per_seed,72.0,75.8,72.7
+"success rate, r1",Gh,success_rate_overall_top1,68.3,71.9,70.0
+"success rate, r1",Gh,success_rate_top1_per_seed,71.7,75.4,73.3
+"success rate, r1",V6h,success_rate_overall_top1,68.3,71.9,70.0
+"success rate, r1",V6h,success_rate_top1_per_seed,69.2,72.8,70.8
+Q3,answer,seeds needed,not reached,not reached,not reached
+checks,V6,"3 success-rate sanity (overall top-1, r1)",70% of 60 targets,74% of 57 targets,72% of 60 targets
+checks,V6,"3 success-rate sanity (top-1 per seed, r1; secondary)","70% of 300 (target, seed)","74% of 285 (target, seed)","72% of 300 (target, seed)"
+flips,"HW(V5,V6)",flip_success,"3.7 [1.7, 5.7]","3.9 [1.8, 6.0]","4.0 [2.0, 6.0]"
+flips,"HW(V5,V6)",flip_matters,"3.0 [1.3, 5.0]","3.2 [1.4, 5.3]","3.0 [1.3, 5.0]"
+flips,"HW(V6,G)",flip_success,"3.3 [1.0, 6.0]","3.5 [1.1, 6.3]","4.3 [1.7, 7.3]"
+flips,"HW(V6,G)",flip_matters,"2.7 [0.7, 5.0]","2.8 [0.7, 5.3]","2.7 [0.7, 5.0]"
+flips,"HW(G,C)",flip_success,"16.7 [0.0, 33.3]","16.7 [0.0, 33.3]","16.7 [0.0, 33.3]"
+flips,"HW(G,C)",flip_matters,"8.3 [0.0, 25.0]","8.3 [0.0, 25.0]","8.3 [0.0, 25.0]"
