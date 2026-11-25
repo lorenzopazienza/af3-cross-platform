@@ -2,12 +2,13 @@
 
 Author: Lorenzo Pazienza, ORCID 0009-0006-1687-0125. Contact: lorenzo.pazienza@gmail.com.
 Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available). The paper's supplementary material is the PDF `Pazienza_AlphaFold3_cross_platform_reproducibility_supplement.pdf` in this record. Companion record (inputs with ColabFold MSAs, targets, manifests, data freeze, run
-records): 10.5281/zenodo.24057470. This record: 10.5281/zenodo.24057544. Code: https://github.com/lorenzopazienza/alphafold-on-tpu, the repository commit tagged zenodo-v1.
+records): 10.5281/zenodo.24057470. This record: 10.5281/zenodo.24057544. Code: https://github.com/lorenzopazienza/af3-cross-platform, the repository commit tagged zenodo-v1.
 A copy of that commit is in record R1.
 
-Pre-registration (OSF, public since 2026-11-17): project https://osf.io/qtz3v; the main study's registration
-https://osf.io/fegsy; the addenda of follow-up 10 (https://osf.io/nsbgp), 11 (https://osf.io/64bpy), 13
-(https://osf.io/c4kh7), 14 (https://osf.io/eafkx), 15 (https://osf.io/h9yw8) and 16 (https://osf.io/hcxm7).
+Pre-registration (OSF): project https://osf.io/qtz3v; the main study's registration https://osf.io/fegsy; the addenda
+of follow-up 10 (https://osf.io/nsbgp), 11 (https://osf.io/64bpy), 13 (https://osf.io/c4kh7), 14 (https://osf.io/eafkx),
+15 (https://osf.io/h9yw8), 16 (https://osf.io/hcxm7), 17 (https://osf.io/x4hry), 18 (https://osf.io/mq8fh), 19
+(https://osf.io/4cbgf), 20 (https://osf.io/hjf8z) and 21 (https://osf.io/ctv2d).
 
 ## Terms of use of this record
 
@@ -51,13 +52,13 @@ Please also cite the paper when using these data. Paper: see the related identif
 
 AlphaFold3 v3.0.4 outputs (official model parameters, AlphaFold3's defaults: 10 recycles, 5 diffusion samples per
 seed) from the study, run on TPU v5e, TPU v6e, NVIDIA L4, A100 and H100, and CPU, covering the main study,
-follow-ups 1 to 16 and the two later measurements `memlimit_ah` and `warm_th`.
+follow-ups 1 to 21 and the two later measurements `memlimit_ah` and `warm_th`.
 **No model parameters (weights) are included.** They are available only from Google DeepMind
 (https://github.com/google-deepmind/alphafold3).
 
-The outputs of the study come from the 439 sessions of the data freeze
-`4ec185c5a929738439de3b916a9c8475c4c3abd218fa140bfd460acf917d4486` (the SHA-256 of
-`results/freeze/followups1316_20261117/manifest_sha256.tsv` in record R1, which lists every frozen file with its SHA-256). Other
+The outputs of the study come from the 607 sessions of the data freeze
+`d706dffc07fec6d86471e28f062178e4f309193d3bfd6a66de47959eb3bfdd8f` (the SHA-256 of
+`results/freeze/followups1721_20261125/manifest_sha256.tsv` in record R1, which lists every frozen file with its SHA-256). Other
 archives hold other material, under the same terms: the results of AlphaFold3's data pipeline with the three deliveries of follow-up
 6, which have their own freezes (below), the superseded or engineering sessions (not used in any reported result) and the analysis
 outputs derived from the study's outputs.
@@ -92,6 +93,8 @@ outputs derived from the study's outputs.
 | `af3_hlo.tar.gz` | follow-up 16, the compiled model on the v5e and the v6e (2 sessions) | structures, full confidences and logs |
 | `hlo_xla_dumps.tar.gz` | follow-up 16 | the XLA dumps of every process (`<run>/<target>/xla_dump/`, 21,696 files: HLO and MLIR text, buffer assignment and memory reports, compiler options), with the Apache License 2.0 of AlphaFold 3's code they are compiled from (`LICENSE_ALPHAFOLD3_CODE_APACHE-2.0.txt`) and `NOTICE_XLA_DUMPS.txt`. They hold no model parameters: the parameters are arguments of the compiled model, not constants, and the build refuses any dump with more than 65,536 characters of printed constants. Home paths are redacted |
 | `af3_memlimit_ah_warm_th.tar.gz` | the memory limit on the A100 and H100 (`memlimit_ah`, 2 sessions; 7D5C padded to larger buckets) and the warm cost on the L4 Triton arm and the H100 (`warm_th`, 2 sessions) | structures, full confidences and logs |
+| `af3_fu17_21.tar.gz` | follow-ups 17 to 21 (`dtp` 85, `tri` 17, `rcf` 21, `aut` 24 and `xvm` 21 sessions): the float32 trunk at the default precision, Triton attention on the H100 and the A100, recompilation of the float32 trunk on the other 50 targets, the L4 without autotuning, recompilation on new VMs | structures (`*_model.cif`), `*_summary_confidences.json`, `*_ranking_scores.csv`, `TERMS_OF_USE.md` and logs; no full confidences (Left out, below) |
+| `af3_fu17_v6fd_full_outputs.tar.gz` | follow-up 17, the 20 processes its check 5 compares byte for byte (V6fd r2, and V6fd r1 seed 1 on the 10 pilot targets) | every other output file of these processes: the full `*_confidences.json` and `*_data.json`, so that the check can be repeated from the public records |
 | `analysis_outputs.tar.gz` | every analysis of the study and its follow-ups | the derived analysis outputs (`results/analysis/`: per-sample tables such as `samples.csv` with ranking scores, pLDDT, ipTM, M1 and DockQ, contrasts, reports and run logs, including every analysis after 8 November: `campaign`, `ranking`, `prec5_exploratory`, `memlimit_ah`, `warm_th`, `fu13`, `fu14`, `returned`, `rare`, `rounded`, `winners`, `cpu_matched`, `rcx`, `winners_ext`, `pb_flips`, `best25` and `hlo`), the tables and figures of the earlier analyses (`results/paper_assets/`, `results/paper_assets_*/`, with `sources.tsv`, the SHA-256 of every input they were made from), and the paper's own tables and figures (`paper/assets/`, from the repository commit tagged `zenodo-v1`, named in `PAPER_ASSETS_COMMIT.txt`); they carry values computed from AlphaFold3 outputs, so they are released here under the same terms. The code that made them is in the repository (`analysis/`, `scripts/analysis_runs/`) and in its copy in record R1, and the session lists they were run on are in record R1 |
 | `af3_superseded_engineering.tar.gz` | **superseded or engineering, not used in any reported result** (15 sessions with the official weights: the first pilot, its V6h and Gh arms and V5 warm completion, the L4 determinism diagnostic, a GT smoke test, and one interrupted pilot session) | structures, full confidences and logs; `SUPERSEDED_SESSIONS.csv` maps each session to the section 10 row of the analysis plan that records it |
 | `REDACTIONS.tsv` (plain file) | every file packaged with a redaction (below) |
@@ -139,7 +142,8 @@ Members of the session archives are `af3/<session>/<run>/<target>/af3_output/<ta
   are AlphaFold3's copies of its top-ranked sample.
 
 The run records of each session (`session.json`, `runs.jsonl`, `run.json`, launch records) are in record R1
-(`session_records.tar.gz`, `session_records_followups.tar.gz`, `session_records_followups1316.tar.gz`), under the same paths.
+(`session_records.tar.gz`, `session_records_followups.tar.gz`, `session_records_followups1316.tar.gz`,
+`session_records_followups1721.tar.gz`), under the same paths.
 
 ### Left out
 
@@ -152,9 +156,15 @@ The run records of each session (`session.json`, `runs.jsonl`, `run.json`, launc
   the data freeze could not reconcile between the run machine and the results bucket; both lists are in record R1
   (`release_excluded_sessions.csv`, `release_excluded_files.csv`). Launch attempts that never ran have no outputs;
   their launcher records are in R1.
-- The AlphaFold3 outputs of the sessions of follow-ups 3 to 16 outside the freeze (smoke tests, Spot preemptions, interruptions,
+- The full `*_confidences.json` of follow-ups 17 to 21, and their `*_data.json`, except those of the 20 follow-up 17
+  processes in `af3_fu17_v6fd_full_outputs.tar.gz` (decision of 2026-11-25): with them this record would pass Zenodo's
+  50 GB. No analysis of follow-ups 17 to 21 reads them, except follow-up 17's check 5, whose files are here. They are listed
+  with their SHA-256 in the data freeze (record R1), stay in the results bucket, and are available from the author on
+  request. The `*_data.json` were checked against the frozen inputs like the others.
+- The AlphaFold3 outputs of the sessions of follow-ups 3 to 21 outside the freeze (smoke tests, Spot preemptions, interruptions,
   relaunched-over sessions, `eigen_check`, the first LG session of follow-up 13). They enter no analysis. Their records are in
-  R1, each mapped to its row of section 10 (`outside_freeze_records.tar.gz`, `outside_freeze_records_followups1316.tar.gz`).
+  R1, each mapped to its row of section 10 (`outside_freeze_records.tar.gz`, `outside_freeze_records_followups1316.tar.gz`,
+  `outside_freeze_records_followups1721.tar.gz`).
 - The layer-wise captures of follow-up 13 (arm L: `fu13_capture_seed-<s>.npz`, 40 files, 6.3 GiB): they are bfloat16 values in
   uncompressed `.npz` files, which gzip shrinks only to 0.80 of their size, so with them this record would pass Zenodo's 50 GB.
   They are listed with their SHA-256 in the data freeze (record R1), the follow-up 13 analysis outputs computed from them are in

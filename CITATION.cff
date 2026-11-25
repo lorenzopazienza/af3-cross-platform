@@ -9,7 +9,7 @@ authors:
     email: lorenzo.pazienza@gmail.com
     orcid: "https://orcid.org/0009-0006-1687-0125"
 license: MIT
-repository-code: "https://github.com/lorenzopazienza/alphafold-on-tpu"
+repository-code: "https://github.com/lorenzopazienza/af3-cross-platform"
 version: zenodo-v1
 preferred-citation:
   type: article

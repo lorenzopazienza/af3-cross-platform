@@ -6,6 +6,18 @@ release (Part A) brings both drafts to the final freeze `4ec185c5`, 439 sessions
 only the new and changed files are built and uploaded. This release moves the tag `zenodo-v1` to its own commit, and R1 gains a
 copy of the code at that commit. Part C says how a later version is made the same way.
 
+**The release of 2026-11-25.** Part A was prepared on 2026-11-17 and not run. It runs on 2026-11-25 with follow-ups 17 to 21
+added as a second batch, `followups1721` (the final freeze `d706dffc`, 607 sessions; `LATER_LABELS` in `release.py`), so both
+batches are built and uploaded at once. Wherever the steps below name the batch, use `followups1316,followups1721`
+(`vm-lists --batch`, `BATCH=` of `vm_steps.sh`, `archives --batch`); the scan, the bundle and the copies take the new
+archives and the new freeze folder `results/freeze/followups1721_20261125/` too. New: R1 `session_records_followups1721.tar.gz`
+(laptop) and `outside_freeze_records_followups1721.tar.gz` (VM, 882 sessions at most); R2 `af3_fu17_21.tar.gz` (structures,
+ranking summaries, terms and logs of the five follow-ups) and `af3_fu17_v6fd_full_outputs.tar.gz` (every output file of the
+20 processes of follow-up 17's check 5). The full confidences and `*_data.json` of follow-ups 17 to 21 stay out (decision of
+2026-11-25: R2 would pass 50 GB with them). Expected: R1 49 files, R2 93 files with the supplement, about 46.5 GB; the VM
+copies the 312 sessions of both batches with every file, so its boot disk is 300 GB; about 2.5 h on the VM. The commands
+as run that day are in its row of section 10.
+
 Commands are written out in full for zsh on the laptop, from the repository root. Steps marked VM run on the VM
 through `gcloud compute ssh --command`. Lorenzo runs every step that creates or deletes a cloud resource, and every step on
 Zenodo. Nothing here publishes: Lorenzo publishes by hand after checking each draft.

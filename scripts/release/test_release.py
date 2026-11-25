@@ -848,9 +848,10 @@ def test_vm_steps_script_is_valid_and_copies_outputs_only_for_released_sessions(
 
 DOI = {'R1': '10.5281/zenodo.24057470', 'R2': '10.5281/zenodo.24057544'}
 TAG = 'zenodo-v1'   # the repository tag of this release, moved from the first build's commit (366159b) to the release commit
-# The OSF registrations, public since 2026-11-17: the project, the main study and the addenda of follow-ups 10, 11, 13 to 16.
+# The OSF registrations: the project, the main study and the addenda of follow-ups 10, 11 and 13 to 21.
 OSF = ['https://osf.io/qtz3v', 'https://osf.io/fegsy', 'https://osf.io/nsbgp', 'https://osf.io/64bpy', 'https://osf.io/c4kh7',
-       'https://osf.io/eafkx', 'https://osf.io/h9yw8', 'https://osf.io/hcxm7']
+       'https://osf.io/eafkx', 'https://osf.io/h9yw8', 'https://osf.io/hcxm7', 'https://osf.io/x4hry', 'https://osf.io/mq8fh',
+       'https://osf.io/4cbgf', 'https://osf.io/hjf8z', 'https://osf.io/ctv2d']
 PAPER_POINTER = 'Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available).'
 # The relations of Zenodo's deposit metadata reference (developers.zenodo.org, read on 2026-11-08); isRelatedTo is not one.
 ZENODO_RELATIONS = {'isCitedBy', 'cites', 'isSupplementTo', 'isSupplementedBy', 'isContinuedBy', 'continues', 'isDescribedBy',
@@ -895,7 +896,7 @@ def test_zenodo_metadata(record):
   assert m['contributors'][0]['type'] == 'ContactPerson' and m['contributors'][0]['orcid'] == '0009-0006-1687-0125'
   address = release.EMAIL.findall(m['notes'].encode())
   assert len(address) == 1 and hashlib.sha256(address[0]).hexdigest() == release.CONTACT_SHA256
-  assert 'github.com/lorenzopazienza/alphafold-on-tpu' in str(m['related_identifiers'])
+  assert 'github.com/lorenzopazienza/af3-cross-platform' in str(m['related_identifiers'])
   assert 'arXiv' not in str(m['related_identifiers']) and PAPER_POINTER in m['description']   # added on Zenodo when available
   assert not re.search(r'<paper|&lt;paper|<arXiv|<commit', json.dumps(m))
   other = 'R2' if record == 'R1' else 'R1'
@@ -903,7 +904,7 @@ def test_zenodo_metadata(record):
   assert links[DOI[other]] == {'R1': 'isSourceOf', 'R2': 'isDerivedFrom'}[record]
   assert set(links.values()) <= ZENODO_RELATIONS
   assert '<DOI of record' not in str(m) and '&lt;DOI' not in str(m)
-  assert release.FREEZE_ID in m['description'] and DOI[other] in m['description'] and '439 sessions' in m['description']
+  assert release.FREEZE_ID in m['description'] and DOI[other] in m['description'] and '607 sessions' in m['description']
   for url in OSF:
     assert links[url] == 'isDocumentedBy', url
 
@@ -912,10 +913,10 @@ def test_zenodo_metadata(record):
 def test_readme_carries_the_decisions(record):
   text = (release.HERE / 'records' / record / 'README.md').read_text()
   for needed in (release.FREEZE_ID, '0009-0006-1687-0125', DOI['R1'], DOI['R2'], 'REDACTIONS.tsv', 'LICENCES.md',
-                 '439 sessions', *OSF):
+                 '607 sessions', *OSF):
     assert needed in text
   assert '<DOI of record' not in text
-  assert PAPER_POINTER in text and f'alphafold-on-tpu, the repository commit tagged {TAG}.' in text
+  assert PAPER_POINTER in text and f'af3-cross-platform, the repository commit tagged {TAG}.' in text
   assert 'DRAFT' not in text and 'not yet published' not in text and 'angle brackets' not in text
   assert not re.search(r'<paper|<arXiv|<commit', text)
   address = release.EMAIL.findall(text.encode())
@@ -984,7 +985,7 @@ def test_first_build_archives_are_first_and_unchanged():
 def test_first_build_archives_keep_their_members_without_the_new_kinds(tmp_path):
   old = {'S_main': 'main', 'S_pilot': 'pilot2', 'S_mem': 'memlimit', 'S_ppi': 'ppi', 'S_embed': 'embed',
          'S_att': 'attempt', 'S_out': 'outside', **{f'S_{k}': k for k in release.FOLLOWUP_KINDS}}
-  new = {f'S_{k}': k for k in release.LATER_KINDS + ('outside_followups1316',)}
+  new = {f'S_{k}': k for k in release.LATER_KINDS + ('outside_followups1316', 'outside_followups1721')}
   root = tmp_path / 'af3'
   for s in list(old) + list(new):
     _old_session(root, s)
@@ -1079,6 +1080,7 @@ def test_later_mapping_covers_the_local_launcher_records():
   frozen = release.freeze_sessions()
   kinds = [release.classify(d.name, ['launch_record.txt'], frozen)[0] for d in lau.iterdir() if d.is_dir()]
   assert 'unmapped' not in kinds and kinds.count('outside_followups1316') == 247
+  assert kinds.count('outside_followups1721') == 882                     # follow-ups 17 to 21 (batch of 2026-11-25)
 
 
 def test_later_outside_archive_holds_records_only_and_its_table(tmp_path, monkeypatch):
@@ -1451,7 +1453,16 @@ def test_archives_of_a_batch_and_the_vm_lists(tmp_path, capsys):
   assert vm == ['outside_freeze_records_followups1316.tar.gz', 'af3_fu13.tar.gz',
                 'af3_fu14.tar.gz', 'af3_rcx.tar.gz', 'af3_hlo.tar.gz', 'hlo_xla_dumps.tar.gz', 'af3_memlimit_ah_warm_th.tar.gz']
   release.archives(types.SimpleNamespace(built_on='laptop', batch='followups1316'))
-  assert capsys.readouterr().out.strip() == 'session_records_followups1316.tar.gz,code_alphafold-on-tpu_zenodo-v1.tar.gz'
+  assert capsys.readouterr().out.strip() == 'session_records_followups1316.tar.gz'
+  release.archives(types.SimpleNamespace(built_on='vm', batch='followups1721'))
+  assert capsys.readouterr().out.strip().split(',') == ['outside_freeze_records_followups1721.tar.gz', 'af3_fu17_21.tar.gz',
+                                                        'af3_fu17_v6fd_full_outputs.tar.gz']
+  release.archives(types.SimpleNamespace(built_on='laptop', batch='followups1721'))
+  assert capsys.readouterr().out.strip() == 'session_records_followups1721.tar.gz,code_alphafold-on-tpu_zenodo-v1.tar.gz'
+  release.archives(types.SimpleNamespace(built_on='vm', batch='followups1316,followups1721'))
+  assert capsys.readouterr().out.strip().split(',') == vm + ['outside_freeze_records_followups1721.tar.gz',
+                                                             'af3_fu17_21.tar.gz', 'af3_fu17_v6fd_full_outputs.tar.gz']
+  assert release.archives(types.SimpleNamespace(built_on='vm', batch='followups1316,nope')) == 2
   inv = tmp_path / 'inv'
   release.write_csv(_file(inv, 'sessions.csv').parent / 'sessions.csv',
                     [{'session': 'A', 'kind': 'main'}, {'session': 'B', 'kind': 'fu13'}, {'session': 'C', 'kind': 'outside'},
@@ -1462,13 +1473,22 @@ def test_archives_of_a_batch_and_the_vm_lists(tmp_path, capsys):
   assert release.vm_lists(types.SimpleNamespace(inventory=str(inv), out=str(tmp_path / 'c'), batch=None)) == 0
   assert (tmp_path / 'c' / 'sessions_release.txt').read_text() == 'A\nB\nE\n'
   assert (tmp_path / 'c' / 'sessions_outside.txt').read_text() == 'C\nD\n'
+  release.write_csv(inv / 'sessions.csv',
+                    [{'session': 'A', 'kind': 'main'}, {'session': 'B', 'kind': 'fu13'}, {'session': 'D', 'kind': 'outside_followups1316'},
+                     {'session': 'F', 'kind': 'dtp'}, {'session': 'G', 'kind': 'outside_followups1721'}, {'session': 'H', 'kind': 'xvm'}])
+  assert release.vm_lists(types.SimpleNamespace(inventory=str(inv), out=str(tmp_path / 'd'),
+                                                batch='followups1316,followups1721')) == 0
+  assert (tmp_path / 'd' / 'sessions_release.txt').read_text() == 'B\nF\nH\n'
+  assert (tmp_path / 'd' / 'sessions_outside.txt').read_text() == 'D\nG\n'
+  assert release.vm_lists(types.SimpleNamespace(inventory=str(inv), out=str(tmp_path / 'e'), batch='followups1316,x')) == 2
 
 
 def test_the_records_stay_within_the_limits_with_the_new_archives():
   r1 = sum(1 for a in release.ARCHIVES if a[0] == 'R1')
   r2 = sum(1 for a in release.ARCHIVES if a[0] == 'R2')
-  assert (r1, r2) == ({'R2': 12, 'R1': 13}[release.HLO_DUMPS_RECORD], {'R2': 42, 'R1': 41}[release.HLO_DUMPS_RECORD])
-  assert 2 * r1 + release.PLAIN_FILES['R1'] <= 43 and 2 * r2 + release.PLAIN_FILES['R2'] <= 89
+  assert (r1, r2) == ({'R2': 14, 'R1': 15}[release.HLO_DUMPS_RECORD], {'R2': 44, 'R1': 43}[release.HLO_DUMPS_RECORD])
+  assert 2 * r1 + release.PLAIN_FILES['R1'] <= release.ZENODO_MAX_FILES and 2 * r2 + release.PLAIN_FILES['R2'] + 1 <= 100
+  assert 2 * r1 + release.PLAIN_FILES['R1'] == 49 and 2 * r2 + release.PLAIN_FILES['R2'] == 93   # with follow-ups 17 to 21
 
 
 # ---------------------------------------------------------------- the paper's supplement in R2
@@ -1624,7 +1644,7 @@ def test_a_later_version_with_the_option_adds_the_supplement_and_without_it_warn
 def test_the_supplement_counts_as_a_plain_file_of_r2():
   r2 = sum(1 for a in release.ARCHIVES if a[0] == 'R2')
   assert release.PLAIN_FILES == {'R1': 17 + 2 * len(release.BATCHES), 'R2': 5}
-  assert 2 * r2 + release.PLAIN_FILES['R2'] == {'R2': 89, 'R1': 87}[release.HLO_DUMPS_RECORD]
+  assert 2 * r2 + release.PLAIN_FILES['R2'] == {'R2': 93, 'R1': 91}[release.HLO_DUMPS_RECORD]
   assert release.SUPPLEMENT_RECORD == 'R2' and SUPP.endswith('_supplement.pdf')
 
 
@@ -1636,3 +1656,43 @@ def test_the_supplement_is_named_in_r2_only():
   assert 'supplement' not in (release.HERE / 'records' / 'R1' / 'README.md').read_text().lower()
   assert 'supplement' not in json.loads((release.HERE / 'records' / 'R1' / 'zenodo.json').read_text())['metadata']['description'].lower()
 
+
+
+def test_fu17_full_outputs_select_the_20_processes_of_check_5(tmp_path):
+  pilot = sorted(release.pilot_targets())
+  assert len(pilot) == 10
+  r2, r1 = '20261124T000000Z_v6e_dtp_v6fd_r2_01', '20261124T000000Z_v6e_dtp_v6fd_01'
+  run1, run2 = 'v6e_xla_dtp_f32def_rep1_seed1_fresh', 'v6e_xla_dtp_f32def_rep1_seed2_fresh'
+  other = next(t for t in ('7U3J', '8A3D', '9ZZZ') if t not in pilot)
+  sel = release.ARCHIVE_SELECT['af3_fu17_v6fd_full_outputs.tar.gz']
+  assert sel is release.fu17_full_outputs
+  assert sel(r2, f'{run2}/{other}/af3_output/{other}/{other}_data.json')            # every process of V6fd r2
+  assert sel(r1, f'{run1}/{pilot[0]}/af3_output/{pilot[0]}/{pilot[0]}_confidences.json')
+  assert not sel(r1, f'{run2}/{pilot[0]}/af3_output/{pilot[0]}/{pilot[0]}_confidences.json')   # seed 1 only
+  assert not sel(r1, f'{run1}/{other}/af3_output/{other}/{other}_confidences.json')             # pilot targets only
+  assert not sel('20261124T000000Z_l4_dtp_gfd_01', f'{run1}/{pilot[0]}/af3_output/x_data.json')
+  assert not sel(r2, 'job.log')
+  # members() applies the selection; the five-follow-up archive takes no full confidence and no *_data.json
+  root = tmp_path / 'af3'
+  for s, run, t in ((r1, run1, pilot[0]), (r1, run1, other), (r2, run2, other)):
+    d = root / s / run / t / 'af3_output' / t
+    for n in (f'{t}_data.json', f'{t}_confidences.json', f'{t}_summary_confidences.json', f'{t}_model.cif'):
+      _file(d, n, b'{}')
+  specs = {a[1]: a for a in release.ARCHIVES}
+  kinds_of = {r1: 'dtp', r2: 'dtp'}
+  full = [m for m, _ in release.members(specs['af3_fu17_v6fd_full_outputs.tar.gz'], root, tmp_path, None, kinds_of, {})]
+  assert sorted(m.rsplit('/', 1)[1] for m in full) == sorted([f'{pilot[0]}_confidences.json', f'{pilot[0]}_data.json',
+                                                               f'{other}_confidences.json', f'{other}_data.json'])
+  light = [m for m, _ in release.members(specs['af3_fu17_21.tar.gz'], root, tmp_path, None, kinds_of, {})]
+  assert len(light) == 6 and not [m for m in light if m.endswith(('_data.json', '/' + pilot[0] + '_confidences.json'))]
+  assert specs['af3_fu17_21.tar.gz'][2] == ['dtp', 'tri', 'rcf', 'aut', 'xvm'] and specs['af3_fu17_21.tar.gz'][0] == 'R2'
+  assert release.BATCH_OF['af3_fu17_21.tar.gz'] == release.BATCH_OF[release.CODE_ARCHIVE] == 'followups1721'
+
+
+def test_fu1721_sessions_outside_the_freeze_map_to_their_rows():
+  for s, row in (('20261123T234813Z_h100_tri_smoke_ht', release.R18), ('20261124T023724Z_l4_dtp_gfd_13', release.R17),
+                 ('20261124T113837Z_h100_rcf_hf_r2b_04', release.R19), ('20261124T160000Z_l4_aut_gna_21', release.R20),
+                 ('20261124T095048Z_l4_xvm_g_r3_01', release.R21)):
+    kind, why = release.classify(s, ['launch_record.txt'], {})
+    assert kind == 'outside_followups1721' and row in why, s
+  assert release.classify('20261125T000000Z_l4_dtp_gfd_01', ['launch_record.txt'], {})[0] == 'unmapped'   # after the window

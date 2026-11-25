@@ -5,7 +5,8 @@
 # connection does not stop it:
 #   nohup bash ~/repo/scripts/release/vm_steps.sh all > ~/vm_steps.log 2>&1 &
 # One step at a time: vm_steps.sh copy | check | build
-# An incremental version (RUNBOOK.md, "Later versions") sets BATCH (for example BATCH=followups1316): the copy lists then
+# An incremental version (RUNBOOK.md, "Later versions") sets BATCH (for example BATCH=followups1316, or several batches
+# comma-separated, BATCH=followups1316,followups1721): the copy lists then
 # hold only that batch's sessions, and build makes only that batch's VM archives.
 set -eu
 set -o pipefail

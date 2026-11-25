@@ -82,6 +82,7 @@ characters or it holds an MLIR resource blob (the model weights must never be in
 """
 import argparse
 import csv
+import functools
 import gzip
 import hashlib
 import io
@@ -99,8 +100,9 @@ import zlib
 HERE = pathlib.Path(__file__).resolve().parent            # scripts/release: this script, records/<R>/README.md
 REPO = HERE.parents[1]
 OUT_DIR = REPO / 'results' / 'release'   # inventory and layout outputs
-FREEZE = REPO / 'results' / 'freeze' / 'followups1316_20261117'   # the final freeze (results/freeze/INDEX.md)
-FREEZE_ID = '4ec185c5a929738439de3b916a9c8475c4c3abd218fa140bfd460acf917d4486'
+FREEZE = REPO / 'results' / 'freeze' / 'followups1721_20261125'   # the final freeze (results/freeze/INDEX.md)
+FREEZE_ID = 'd706dffc07fec6d86471e28f062178e4f309193d3bfd6a66de47959eb3bfdd8f'
+FREEZE_1316_ID = '4ec185c5a929738439de3b916a9c8475c4c3abd218fa140bfd460acf917d4486'   # the freeze of batch followups1316
 # The first build (uploaded to the two drafts on 2026-11-09) was made from freeze 68923012, at commit 366159b, then tagged
 # zenodo-v1 (the tag now names the commit of this release, CODE_TAG; 'zenodo-v1' stays the name of the first build's
 # batch in BATCH_OF); its archives are kept byte for byte unless a later batch rebuilds them (BATCH_OF,
@@ -268,10 +270,14 @@ FOLLOWUP_KINDS = ('cpu60', 'a100', 'feat', 'msa', 'sw', 'seeds', 'h100', 'repl',
 #   rules     (plan prefix, first and last launch stamp, section 10 row) for each of its sessions outside the freeze:
 #             records only, in R1. A session named like the label that is neither frozen nor mapped stops the build.
 BATCHES = {
-    'followups1316': {'freeze': 'followups1316_20261117', 'freeze_id': FREEZE_ID, 'sessions': 439,
+    'followups1316': {'freeze': 'followups1316_20261117', 'freeze_id': FREEZE_1316_ID, 'sessions': 439,
                       'what': 'follow-ups 13 to 16, memlimit_ah and warm_th'},
+    'followups1721': {'freeze': 'followups1721_20261125', 'freeze_id': FREEZE_ID, 'sessions': 607,
+                      'what': 'follow-ups 17 to 21'},
 }
-CURRENT_BATCH = 'followups1316'
+# The batch of this release, which also carries the code copy. The release of 2026-11-25 builds both batches at once
+# (--batch followups1316,followups1721): followups1316 was prepared on 2026-11-17 and never uploaded.
+CURRENT_BATCH = 'followups1721'
 OUTPUTS = ['model_cif', 'ranking_summary', 'terms', 'full_confidences', 'af3_logs']
 # The record of follow-up 16's XLA dumps is Lorenzo's decision (records/LICENCES.md, "XLA dumps of follow-up 16"):
 # R2 is the proposal, by the reading of decision (5) of 2026-11-08; set 'R1' here if he decides otherwise.
@@ -279,6 +285,20 @@ HLO_DUMPS_RECORD = 'R2'
 R13 = '2026-11-12, Follow-up 13 (label why), complete'
 R14 = '2026-11-13, Follow-up 14 (label f32), complete'
 R15 = '2026-11-15, Follow-up 15 (label rcx), complete'
+R17 = '2026-11-24, Follow-up 17 (label dtp), complete'
+R18 = '2026-11-24, Follow-up 18 (label tri), complete'
+R19 = '2026-11-24, Follow-up 19 (label rcf), complete'
+R20 = '2026-11-24, Follow-up 20 (label aut), complete'
+R21 = '2026-11-24, Follow-up 21 (label xvm), complete'
+# Follow-ups 17 to 21 (decision of 2026-11-25): R2 would pass 50 GB with their full confidences (about 52.8 GB by the
+# layout of 2026-11-17), so their archive holds the structures, ranking summaries, terms and logs; their full
+# confidences and *_data.json stay in the results bucket and in the freeze manifest with their SHA-256, available on
+# request. No analysis of follow-ups 17 to 21 reads them, except follow-up 17's check 5, whose 20 processes keep every
+# output file (FU17_FULL_OUTPUTS, archive af3_fu17_v6fd_full_outputs.tar.gz).
+FU1721_OUTPUTS = ['model_cif', 'ranking_summary', 'terms', 'af3_logs']
+FU1721_LEFT_OUT = ('the full confidences and *_data.json of follow-ups 17 to 21 (decision of 2026-11-25: R2 would pass '
+                   '50 GB with them), except those of the 20 follow-up 17 processes its check 5 compares byte for byte; '
+                   'they stay in the results bucket and in the freeze manifest with their SHA-256, available on request')
 LATER_LABELS = [
     {'kind': 'fu13', 'plans': ('why_',), 'batch': 'followups1316',
      'archives': {'af3_fu13.tar.gz': ('R2', OUTPUTS)},   # its layer captures are left out (LEFT_OUT, decision of 2026-11-17)
@@ -318,6 +338,36 @@ LATER_LABELS = [
      'archives': {'af3_memlimit_ah_warm_th.tar.gz': ('R2', OUTPUTS)}, 'rules': []},
     {'kind': 'warm_th', 'plans': ('warm_th_',), 'batch': 'followups1316',
      'archives': {'af3_memlimit_ah_warm_th.tar.gz': ('R2', OUTPUTS)}, 'rules': []},
+    # Follow-ups 17 to 21 (batch followups1721, decision of 2026-11-25): structures, ranking summaries, terms and logs of
+    # the five follow-ups in one archive; their full confidences and *_data.json stay out (FU1721_LEFT_OUT), except the
+    # full outputs of the 20 follow-up 17 processes that its check 5 compares byte for byte (FU17_FULL_OUTPUTS).
+    {'kind': 'dtp', 'plans': ('dtp_',), 'batch': 'followups1721',
+     'archives': {'af3_fu17_21.tar.gz': ('R2', FU1721_OUTPUTS),
+                  'af3_fu17_v6fd_full_outputs.tar.gz': ('R2', ['full_confidences', 'data_json'])},
+     'rules': [('dtp_', '20261123T234700Z', '20261124T162700Z',
+                f'{R17}, items 1 to 3 (Gfd: Spot VMs lost during the run and relaunched on demand, dtp_gfd_13 preempted '
+                'twice; Afd: attempts with no VM, Spot VMs lost in us-central1, the moves on demand; Hfd: attempts with '
+                'no VM; finished processes of the lost sessions kept and not used)')]},
+    {'kind': 'tri', 'plans': ('tri_',), 'batch': 'followups1721',
+     'archives': {'af3_fu17_21.tar.gz': ('R2', FU1721_OUTPUTS)},
+     'rules': [('tri_', '20261123T234800Z', '20261124T034300Z',
+                f'{R18}, item 1 (the smoke test; HT: five Spot VMs lost, attempts with no VM; finished processes of the '
+                'lost sessions kept and not used)')]},
+    {'kind': 'rcf', 'plans': ('rcf_',), 'batch': 'followups1721',
+     'archives': {'af3_fu17_21.tar.gz': ('R2', FU1721_OUTPUTS)},
+     'rules': [('rcf_', '20261124T113800Z', '20261124T191600Z',
+                f'2026-11-24, Follow-up 19, Hf r2b relaunch; {R19}, items 1 and 2 (Hf r2b: the deadline after a 68 min '
+                'apt setup, Spot preemptions; Af r2b: attempts with no VM, the moves on demand and to us-central1)')]},
+    {'kind': 'aut', 'plans': ('aut_',), 'batch': 'followups1721',
+     'archives': {'af3_fu17_21.tar.gz': ('R2', FU1721_OUTPUTS)},
+     'rules': [('aut_', '20261124T152600Z', '20261124T193400Z',
+                f'{R20} (109 launches with no VM, no capacity or one HTTP 503, each retried unchanged)')]},
+    {'kind': 'xvm', 'plans': ('xvm_',), 'batch': 'followups1721',
+     'archives': {'af3_fu17_21.tar.gz': ('R2', FU1721_OUTPUTS)},
+     'rules': [('xvm_', '20261124T095000Z', '20261124T205800Z',
+                f'{R21}, items 1 and 2 (G r3: the 11 Spot VMs lost in round 1, attempts with no VM; A r3: attempts with '
+                'no VM, no capacity or quota, the move to us-central1; finished processes of the lost sessions kept and '
+                'not used)')]},
 ]
 LATER_KINDS = tuple(lab['kind'] for lab in LATER_LABELS)
 OUTSIDE_KINDS = ('outside',) + tuple(f'outside_{b}' for b in BATCHES)
@@ -585,6 +635,27 @@ def later_archives():
 
 
 ARCHIVES += later_archives()
+
+
+@functools.lru_cache(maxsize=None)
+def pilot_targets(repo=REPO):
+  """The 10 pilot targets of inputs/manifest.csv."""
+  return frozenset(r['pdb_id'] for r in csv.DictReader(open(pathlib.Path(repo) / 'inputs' / 'manifest.csv'))
+                   if r['pilot'] == 'yes')
+
+
+def fu17_full_outputs(session, rel):
+  """True for a file of the 20 follow-up 17 processes whose every output file its check 5 compares byte for byte, the
+  units of scripts/analysis_runs/dtp/fetch_full_outputs.py: every process of V6fd r2, and V6fd r1's seed 1 on the 10
+  pilot targets."""
+  parts = rel.split('/')
+  if len(parts) < 3 or '_dtp_v6fd_' not in session:
+    return False
+  return '_dtp_v6fd_r2_' in session or ('dtp_f32def_rep1_seed1_' in parts[0] and parts[1] in pilot_targets())
+
+
+# Archives that hold only some files of their kinds and categories: archive -> (session, path in session) -> bool.
+ARCHIVE_SELECT = {'af3_fu17_v6fd_full_outputs.tar.gz': fu17_full_outputs}
 # A copy of the code in R1 (decision D5 of 2026-11-18), so that the code has a DOI: `git archive` of the commit tagged
 # CODE_TAG (build --code_ref REF; the commit REF names must be the tag's, since the archive's name carries the tag), every
 # file under CODE_PREFIX, with CODE_COMMIT.txt giving the full hash. Committed files only, packaged byte for byte with
@@ -680,6 +751,16 @@ def layout(args):
       rows.append({'record': record, 'archive': name, 'contents': ', '.join(cats), 'files': len(files), 'raw_bytes': raw,
                    'estimated_bytes': int(raw * RATIO['repo'])})
       continue
+    if name in ARCHIVE_SELECT:   # only some files of the kind: estimated from the local copies in the freeze's sessions
+      fz = [r['session'] for r in csv.DictReader(open(FREEZE / 'sessions.tsv'), delimiter='\t') if r['kind'] in kinds]
+      files = [(s, p) for s in fz for p in (REPO / 'results' / 'af3' / s).rglob('*') if p.is_file()
+               and category(str(p.relative_to(REPO / 'results' / 'af3' / s))) in cats
+               and ARCHIVE_SELECT[name](s, str(p.relative_to(REPO / 'results' / 'af3' / s)))]
+      raw = sum(p.stat().st_size for _, p in files)
+      est = sum(int(p.stat().st_size * RATIO.get(category(p.name), 0.2)) for _, p in files)
+      rows.append({'record': record, 'archive': name, 'contents': f'{", ".join(kinds)}: {", ".join(cats)}, selected '
+                   f'processes only', 'files': len(files), 'raw_bytes': raw, 'estimated_bytes': est})
+      continue
     sel = [r for r in summary if r['kind'] in kinds and r['category'] in cats]
     raw = sum(int(r['bytes']) for r in sel)
     est = sum(int(int(r['bytes']) * RATIO[r['category']]) for r in sel)
@@ -707,7 +788,8 @@ def layout(args):
     lines.append('')
   lines += ['## Left out', '', '| category | files | GiB | why |', '|---|---|---|---|']
   lines += [f'| {c} | {v[0]} | {gib(v[1])} | {LEFT_OUT[c]} |' for c, v in sorted(left.items())]
-  lines += ['', 'Also left out: random-weight engineering sessions, the AlphaFold3 outputs of the sessions of follow-ups 3 to 16 outside the freeze (their records are released), the freeze\'s unexplained files '
+  lines += ['', 'Also left out: random-weight engineering sessions, the AlphaFold3 outputs of the sessions of follow-ups 3 to 21 outside the freeze (their records are released), '
+            f'{FU1721_LEFT_OUT}, the freeze\'s unexplained files '
             'except launcher records of attempts that never ran (inventory/excluded_sessions.csv, inventory/excluded_files.csv), and the AlphaFold3 model weights, '
             'which are never packaged (guard() in release.py).', '']
   (out / 'layout.md').write_text('\n'.join(lines) + '\n')
@@ -1075,6 +1157,7 @@ def check_official_weights(session_dir):
 def members(spec, root, repo, sessions_filter, kinds_of, odd):
   """[(archive member path, source path)] of one archive, sorted."""
   _, name, kinds, cats = spec
+  keep = ARCHIVE_SELECT.get(name, lambda s, rel: True)
   out = []
   if kinds == 'git':
     return out   # read from git by build() (build --code_ref, export_code())
@@ -1088,7 +1171,7 @@ def members(spec, root, repo, sessions_filter, kinds_of, odd):
     for p in sorted((pathlib.Path(root) / s).rglob('*')):
       rel = str(p.relative_to(pathlib.Path(root) / s))
       # the freeze's unexplained files stay out, except launcher records of attempts that never ran
-      if p.is_file() and category(rel) in cats and ((s, rel) not in odd or kinds_of[s] == 'attempt'):
+      if p.is_file() and category(rel) in cats and ((s, rel) not in odd or kinds_of[s] == 'attempt') and keep(s, rel):
         out.append((f'af3/{s}/{rel}', p))
   return out
 
@@ -1369,7 +1452,7 @@ def code_tree(repo, commit):
 def code_commit_text(commit):
   """CODE_COMMIT.txt: the full hash on the first line, then what the copy is (the same bytes for any ref of the commit)."""
   return (f'{commit}\n\nThe files of {CODE_PREFIX} are the commit above, tagged {CODE_TAG}, of '
-          f'https://github.com/lorenzopazienza/alphafold-on-tpu, read with git archive, byte for byte, without '
+          f'https://github.com/lorenzopazienza/af3-cross-platform, read with git archive, byte for byte, without '
           f'{", ".join(CODE_EXCLUDES)} (tables and figures computed from AlphaFold 3 outputs: record R2, {PAPER_ASSETS[0]}).\n')
 
 
@@ -1759,22 +1842,28 @@ def scan(args):
 def archives(args):
   """The archives built on one machine; with --batch, only those of that batch (an incremental version)."""
   batch = getattr(args, 'batch', None)
+  batches = set(batch.split(',')) if batch else None
+  if batches and batches - set(BATCH_OF.values()):
+    print(f'!! unknown batch {",".join(sorted(batches - set(BATCH_OF.values())))}', file=sys.stderr)
+    return 2
   print(','.join(spec[1] for spec in ARCHIVES if BUILT_ON.get(spec[1], 'vm') == args.built_on
-                 and (not batch or BATCH_OF[spec[1]] == batch)))
+                 and (not batches or BATCH_OF[spec[1]] in batches)))
   return 0
 
 
 def vm_lists(args):
   """The VM's copy lists from the inventory's sessions.csv: sessions_release.txt (sessions whose outputs and records
   are released) and sessions_outside.txt (sessions outside the freeze: records only, copied without outputs). With
-  --batch, only the sessions of that batch's labels; without it, every released session (a full rebuild)."""
+  --batch (one batch or several, comma-separated), only the sessions of those batches' labels; without it, every
+  released session (a full rebuild)."""
   rows = list(csv.DictReader(open(pathlib.Path(args.inventory) / 'sessions.csv')))
   if args.batch:
-    if args.batch not in BATCHES:
-      print(f'!! unknown batch {args.batch}', file=sys.stderr)
+    batches = set(args.batch.split(','))
+    if batches - set(BATCHES):
+      print(f'!! unknown batch {",".join(sorted(batches - set(BATCHES)))}', file=sys.stderr)
       return 2
-    inside = {lab['kind'] for lab in LATER_LABELS if lab['batch'] == args.batch}
-    outside = {f'outside_{args.batch}'}
+    inside = {lab['kind'] for lab in LATER_LABELS if lab['batch'] in batches}
+    outside = {f'outside_{b}' for b in batches}
   else:
     outside = set(OUTSIDE_KINDS)
     inside = {r['kind'] for r in rows} - outside
@@ -1833,11 +1922,11 @@ def main():
   p.add_argument('--jobs', type=int, default=6)
   p = sub.add_parser('archives')
   p.add_argument('--built_on', required=True, choices=['laptop', 'vm'])
-  p.add_argument('--batch', choices=sorted(set(BATCH_OF.values())), help='only the archives of this batch')
+  p.add_argument('--batch', help='only the archives of these batches, comma-separated (BATCH_OF values)')
   p = sub.add_parser('vm-lists')
   p.add_argument('--inventory', default=str(OUT_DIR / 'inventory'))
   p.add_argument('--out', required=True)
-  p.add_argument('--batch', help='a batch of BATCHES (incremental build); omit for every released session')
+  p.add_argument('--batch', help='batches of BATCHES, comma-separated (incremental build); omit for every released session')
   p = sub.add_parser('merge-redactions')
   p.add_argument('--out', required=True)
   p.add_argument('--record', required=True, choices=sorted(RECORDS))

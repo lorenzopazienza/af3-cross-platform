@@ -6,7 +6,7 @@ reproducibility study of AlphaFold 3 inference on TPUs, GPUs and CPUs.
 ## Status
 
 The study is complete. Its data are frozen in the final data freeze
-`4ec185c5a929738439de3b916a9c8475c4c3abd218fa140bfd460acf917d4486`, made on 17 November 2026: 439 sessions.
+`d706dffc07fec6d86471e28f062178e4f309193d3bfd6a66de47959eb3bfdd8f`, made on 25 November 2026: 607 sessions.
 
 ## Where things are
 
@@ -29,7 +29,8 @@ The study is complete. Its data are frozen in the final data freeze
 
 The plan and its addenda are registered on OSF: the main study at https://osf.io/fegsy, and the addenda of follow-ups
 10 (https://osf.io/nsbgp), 11 (https://osf.io/64bpy), 13 (https://osf.io/c4kh7), 14 (https://osf.io/eafkx),
-15 (https://osf.io/h9yw8) and 16 (https://osf.io/hcxm7).
+15 (https://osf.io/h9yw8), 16 (https://osf.io/hcxm7), 17 (https://osf.io/x4hry), 18 (https://osf.io/mq8fh),
+19 (https://osf.io/4cbgf), 20 (https://osf.io/hjf8z) and 21 (https://osf.io/ctv2d).
 
 ## Reproducing an analysis
 
@@ -56,8 +57,9 @@ into `paper/assets/`, checks every input's SHA-256 and writes the derived and re
   the commit tagged `zenodo-v1`, without `paper/assets/` (in R2, under the AlphaFold 3 Output Terms).
 - Record R2, DOI [10.5281/zenodo.24057544](https://doi.org/10.5281/zenodo.24057544), under the AlphaFold 3 Output Terms
   of Use: AlphaFold 3 outputs, the results of its data pipeline, and the analysis outputs derived from them.
-- The layer captures of follow-up 13 are in neither record. The freeze manifest lists them with their SHA-256; they are
-  available on request.
+- The layer captures of follow-up 13, and the full confidences and `*_data.json` of follow-ups 17 to 21 (except the 20
+  processes of follow-up 17's check 5, in R2), are in neither record. The freeze manifest lists them with their SHA-256;
+  they are available on request.
 
 ## Paper
 

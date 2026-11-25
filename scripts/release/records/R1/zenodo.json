@@ -1,7 +1,7 @@
 {
  "metadata": {
   "title": "AlphaFold3 on TPU and GPU: inputs, targets, manifests, data freeze and run records",
-  "description": "<p>Record R1 of the study: the frozen AlphaFold3 inputs with their ColabFold MSAs, targets, manifests, every data freeze (final identifier 4ec185c5a929738439de3b916a9c8475c4c3abd218fa140bfd460acf917d4486, 439 sessions), session lists, the run records of the main study, follow-ups 1 to 16 and the two later measurements (memlimit_ah, warm_th), the records of sessions outside the freeze mapped to the analysis plan, and a copy of the code at the repository commit tagged zenodo-v1.</p><p>No AlphaFold3 Output and no model parameters are in this record. The outputs, the results of AlphaFold3's data pipeline, the follow-up 6 deliveries and the XLA dumps of follow-up 16 are in the companion record, 10.5281/zenodo.24057544, under the AlphaFold 3 Output Terms of Use. Provenance files are released with the contact address and home paths redacted; REDACTIONS.tsv lists each file with the SHA-256 of the original and of the released copy. LICENCES.md gives the licence of every third-party source and of each archive.</p><p>Pre-registration on OSF (public since 2026-11-17): project https://osf.io/qtz3v, main study https://osf.io/fegsy, addenda of follow-ups 10 (https://osf.io/nsbgp), 11 (https://osf.io/64bpy), 13 (https://osf.io/c4kh7), 14 (https://osf.io/eafkx), 15 (https://osf.io/h9yw8) and 16 (https://osf.io/hcxm7).</p><p>Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available).</p>",
+  "description": "<p>Record R1 of the study: the frozen AlphaFold3 inputs with their ColabFold MSAs, targets, manifests, every data freeze (final identifier d706dffc07fec6d86471e28f062178e4f309193d3bfd6a66de47959eb3bfdd8f, 607 sessions), session lists, the run records of the main study, follow-ups 1 to 21 and the two later measurements (memlimit_ah, warm_th), the records of sessions outside the freeze mapped to the analysis plan, and a copy of the code at the repository commit tagged zenodo-v1.</p><p>No AlphaFold3 Output and no model parameters are in this record. The outputs, the results of AlphaFold3's data pipeline, the follow-up 6 deliveries and the XLA dumps of follow-up 16 are in the companion record, 10.5281/zenodo.24057544, under the AlphaFold 3 Output Terms of Use. Provenance files are released with the contact address and home paths redacted; REDACTIONS.tsv lists each file with the SHA-256 of the original and of the released copy. LICENCES.md gives the licence of every third-party source and of each archive.</p><p>Pre-registration on OSF: project https://osf.io/qtz3v, main study https://osf.io/fegsy, addenda of follow-ups 10 (https://osf.io/nsbgp), 11 (https://osf.io/64bpy), 13 (https://osf.io/c4kh7), 14 (https://osf.io/eafkx), 15 (https://osf.io/h9yw8), 16 (https://osf.io/hcxm7), 17 (https://osf.io/x4hry), 18 (https://osf.io/mq8fh), 19 (https://osf.io/4cbgf), 20 (https://osf.io/hjf8z) and 21 (https://osf.io/ctv2d).</p><p>Paper: see the related identifiers of this Zenodo record (arXiv preprint and conference version, added when available).</p>",
   "keywords": [
    "AlphaFold 3",
    "protein structure prediction",
@@ -17,7 +17,7 @@
   "license": "cc-by-4.0",
   "related_identifiers": [
    {
-    "identifier": "https://github.com/lorenzopazienza/alphafold-on-tpu",
+    "identifier": "https://github.com/lorenzopazienza/af3-cross-platform",
     "relation": "isSupplementedBy",
     "resource_type": "software"
    },
@@ -73,6 +73,31 @@
    },
    {
     "identifier": "https://osf.io/hcxm7",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/x4hry",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/mq8fh",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/4cbgf",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/hjf8z",
+    "relation": "isDocumentedBy",
+    "resource_type": "other"
+   },
+   {
+    "identifier": "https://osf.io/ctv2d",
     "relation": "isDocumentedBy",
     "resource_type": "other"
    }
