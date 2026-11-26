@@ -3445,7 +3445,7 @@ def fu18_table(out, main_dir):
                         '60, 5',
                         f'H100 Triton vs A100 Triton {rate_ci(_one(con, contrast="HW(HT,AT)", statistic="flip_top1"))}, '
                         f'minus recompile H100 Triton {diff_ci(e1)}',
-                        f'beyond recompilation; L4 vs A100 Triton not ({diff_ci(g["flip_top1"])})')
+                        f'beyond recompilation; L4 Triton vs A100 Triton not ({diff_ci(g["flip_top1"])})')
 
 
 def fu19_table(out, main_dir):
@@ -4403,7 +4403,7 @@ def table_campaign(out, cc, procs, fz, plan_lines):
         int((p.exit_code == 0).sum()), int(((p.exit_code == 1) & (p.failure == 'oom')).sum()), h1(q('process wall h')),
         h1(q('VM h, included sessions')))
   tv = lambda name: v['total', 'all', name]   # noqa: E731
-  row('total', 'all', 'every session of the final freeze', int(tv('frozen sessions')),
+  row('total', 'all', 'sessions through Follow-up 12', int(tv('frozen sessions')),
       int(tv('processes')), int(tv('samples')), int(tv('exit 0')), int(tv('exit 1, OOM')), h1(tv('process wall h')),
       h1(vm_sum))
   dev_vm = float(v['device', 'all', 'VM h, included sessions'])
@@ -4443,7 +4443,8 @@ def table_campaign(out, cc, procs, fz, plan_lines):
               'process and VM hours; and its cost at list prices (recorded items with the dates of their plan rows, '
               'estimated items, total)', ROLE_CAMPAIGN, colspec='lp{5.0cm}rrrrrrrr', tex_df=tdf,
               notes=['Sessions by label: sessions of the final freeze, for the main study and FU1 to FU12 (the processes of FU13 to '
-                     'FU16 are given in the text); by device: sessions with a process on that '
+                     'FU21 and the 58 of the memory-limit and warm-cost measurements on the A100, the H100, and the L4 '
+                     'Triton are given in the text); by device: sessions with a process on that '
                      'device. Process wall h: wall_seconds of runs.jsonl, including featurization and compilation. VM h: '
                      'launcher records, VM running to deleted; device rows include FU5 on the CPU row. OOM stops: the '
                      'planned stops of the memory-limit measurement. Recorded: spend written in the plan rows from the '

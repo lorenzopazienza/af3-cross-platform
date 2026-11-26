@@ -21,7 +21,7 @@ by device,NVIDIA L4,g2-standard-8,155,5480,27390,5478,2,532.8,587.2,
 by device,A100 80 GB,a2-ultragpu-1g,12,1030,5150,1030,0,39.6,44.1,
 by device,H100 80 GB,a3-highgpu-1g,6,600,3000,600,0,14.3,16.2,
 by device,CPU,n2-highmem-16,63,132,660,132,0,202.9,214.8,
-total,all,every session of the final freeze,295,13499,67475,13495,4,1026.7,1113.3,
+total,all,sessions through Follow-up 12,295,13499,67475,13495,4,1026.7,1113.3,
 cost,recorded,FU6: L4 official r1 27.70 (row of 2026-10-27); v6e official 31.30 (row of 2026-10-28); v5e official 18.50 (row of 2026-10-29); L4 official r2 24.53 (row of 2026-10-29),,,,,,,,102.03
 cost,recorded,FU6: smoke tests 1.02 (row of 2026-10-29),,,,,,,,1.02
 cost,recorded,engineering check: eigen_check (outside the follow-up caps) 0.83 (row of 2026-10-29),,,,,,,,0.83
