@@ -2,8 +2,8 @@
 
 This folder holds the tables and figures of the paper "Same Seed, Different Top Prediction: Cross-Platform
 Reproducibility of AlphaFold 3 Inference on TPUs, GPUs, and CPUs", the scripts that copy and relabel them, and the
-list of the numbers the paper prints with their sources. The text of the paper and of its supplement is on arXiv:
-[arXiv ID]. It is not in this repository.
+list of the numbers the paper prints with their sources. The text of the paper and of its supplement is on arXiv as
+[arXiv:2611.34462](https://arxiv.org/abs/2611.34462). It is not in this repository.
 
 ## Contents
 

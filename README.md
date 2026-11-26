@@ -63,7 +63,8 @@ into `paper/assets/`, checks every input's SHA-256 and writes the derived and re
 
 ## Paper
 
-[arXiv ID]. To cite this work, see `CITATION.cff`.
+The paper and its supplement are on arXiv as [arXiv:2611.34462](https://arxiv.org/abs/2611.34462). To cite this
+work, see `CITATION.cff`.
 
 It follows the preprint *Using the Whole Slice: AlphaFold2 Inference on an Eight-Chip TPU v5e*
 ([arXiv:2609.34818](https://arxiv.org/abs/2609.34818)). The code and data of that preprint are archived at
